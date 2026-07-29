@@ -1,0 +1,2134 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<meta name="theme-color" content="#ffffff" />
+<title>Juan Diego Hernández — Software Engineer</title>
+<meta name="description" content="Portafolio de Juan Diego Hernández. Técnico en Desarrollo de Software y futuro Ingeniero en Sistemas." />
+
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%232667ff'/%3E%3Ctext x='50' y='68' font-family='monospace' font-size='56' font-weight='800' text-anchor='middle' fill='%23fff'%3EJ%3C/text%3E%3C/svg%3E" />
+
+<!-- Apply theme BEFORE render to prevent flash -->
+<script>
+  (function() {
+    var t = localStorage.getItem('theme');
+    if (t === 'dark') document.documentElement.classList.add('dark');
+  })();
+</script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+
+<script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+<script>
+  tailwind.config = {
+    darkMode: 'class',
+    theme: {
+      extend: {
+        colors: {
+          accent: { DEFAULT: '#2667ff', soft: '#3a86ff' },
+        },
+        fontFamily: {
+          display: ['"Inter Tight"', 'system-ui', 'sans-serif'],
+          sans: ['Inter', 'system-ui', 'sans-serif'],
+          mono: ['"JetBrains Mono"', 'monospace'],
+        },
+      },
+    },
+  };
+</script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+<script src="https://unpkg.com/lenis@1.0.42/dist/lenis.min.js"></script>
+
+<style>
+  :root { --accent: #2667ff; }
+  * { -webkit-font-smoothing: antialiased; }
+  html { background: #ffffff; transition: background-color 0.4s ease; }
+  html.dark { background: #000000; }
+  body { font-family: 'Inter', system-ui, sans-serif; overflow-x: hidden; cursor: none; transition: background-color 0.4s ease, color 0.4s ease; }
+
+  #cursor { position: fixed; top:0; left:0; width: 28px; height: 28px; border: 1px solid #2667ff; border-radius: 50%; pointer-events: none; z-index: 9999; transform: translate(-50%,-50%); mix-blend-mode: difference; transition: width .2s, height .2s; }
+  #cursor-dot { position: fixed; top:0; left:0; width: 4px; height: 4px; background: #000; border-radius: 50%; pointer-events: none; z-index: 10000; transform: translate(-50%,-50%); }
+  html.dark #cursor-dot { background: #fff; }
+  .cursor-hover #cursor { width: 64px; height: 64px; }
+  .cursor-hover #cursor-dot { background: #2667ff; box-shadow: 0 0 12px #2667ff; }
+  @media (max-width: 768px) { body { cursor: auto; } #cursor, #cursor-dot { display: none; } }
+
+  /* Loader */
+  #loader { position: fixed; inset: 0; z-index: 99999; background: #fff; display: flex; align-items: center; justify-content: center; transition: opacity .9s ease, visibility .9s; }
+  html.dark #loader { background: #000; }
+  #loader.done { opacity: 0; visibility: hidden; pointer-events: none; }
+  #loader .num { font-family: 'Inter Tight'; font-weight: 800; font-size: 22vw; line-height: 1; letter-spacing: -0.05em; background: linear-gradient(180deg, #0a0a0a 0%, #2667ff 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+  html.dark #loader .num { background: linear-gradient(180deg, #fff 0%, #2667ff 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+
+  /* Typography */
+  .display { font-family: 'Inter Tight', system-ui, sans-serif; font-weight: 800; letter-spacing: -0.045em; line-height: 0.88; }
+  .display-hairline { font-family: 'Inter Tight'; font-weight: 300; letter-spacing: -0.02em; font-style: italic; }
+  .mono { font-family: 'JetBrains Mono', monospace; }
+  .meta-label { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.25em; text-transform: uppercase; }
+
+  /* Surface (theme-aware cards) */
+  .surface {
+    background: #ffffff;
+    border: 1px solid #e5e5e5;
+    transition: background 0.3s, border-color 0.3s;
+  }
+  html.dark .surface {
+    background: linear-gradient(180deg, #0d0d10 0%, #08080a 100%);
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+  .surface-soft {
+    background: #fafafa;
+    border: 1px solid #ededed;
+  }
+  html.dark .surface-soft {
+    background: #0a0a0a;
+    border: 1px solid rgba(255,255,255,0.05);
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 6px; }
+  html.dark ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); }
+  ::-webkit-scrollbar-thumb:hover { background: #2667ff; }
+
+  /* Pulse */
+  .pulse-dot { width: 6px; height: 6px; background: #2667ff; border-radius: 50%; box-shadow: 0 0 0 0 rgba(38,103,255,0.6); animation: pulse 2s infinite; }
+  @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(38,103,255,0.6); } 70% { box-shadow: 0 0 0 12px rgba(38,103,255,0); } 100% { box-shadow: 0 0 0 0 rgba(38,103,255,0); } }
+
+  /* Card image */
+  .card-img { position: relative; overflow: hidden; }
+
+  .h-scroll-track { display: flex; gap: 32px; padding-left: 8vw; padding-right: 8vw; }
+
+  /* Services hover preview */
+  .reveal-row { position: relative; }
+  .reveal-row .preview-img {
+    position: absolute; right: 4%; top: 50%; transform: translateY(-50%) scale(.85);
+    width: 280px; height: 200px; border-radius: 16px; overflow: hidden;
+    opacity: 0; pointer-events: none; transition: all .5s cubic-bezier(.2,.7,.2,1);
+    z-index: 2;
+  }
+  .reveal-row:hover .preview-img { opacity: 1; transform: translateY(-50%) scale(1); }
+  .reveal-row:hover .row-title { transform: translateX(20px); }
+  .reveal-row .row-title { transition: all .5s cubic-bezier(.2,.7,.2,1); }
+
+  /* Magnet */
+  .magnet { transition: transform .25s cubic-bezier(.2,.7,.2,1); }
+
+  /* PIN dots */
+  .pin-dot { width: 14px; height: 14px; border-radius: 50%; border: 1.5px solid rgba(0,0,0,0.2); transition: all .2s; }
+  html.dark .pin-dot { border-color: rgba(255,255,255,0.2); }
+  .pin-dot.filled { background: #2667ff; border-color: #2667ff; box-shadow: 0 0 14px #2667ff; }
+  .pin-dot.error { background: #ef4444; border-color: #ef4444; animation: shake .35s; }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-6px)} 75%{transform:translateX(6px)} }
+
+  .kanban-card { cursor: grab; transition: all .2s; }
+  .kanban-card.dragging { opacity: .4; transform: scale(0.97); }
+  .kanban-col.drag-over { border-color: #2667ff; }
+
+  /* SCROLL-EXPANSION HERO */
+  #intro-section { position: relative; min-height: 100dvh; overflow: hidden; }
+  #intro-bg {
+    position: absolute; inset: 0; z-index: 0;
+    background:
+      linear-gradient(180deg, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.65) 100%),
+      url('dinero-bg.jpg') center/cover no-repeat,
+      linear-gradient(135deg, #0d2818 0%, #0a1410 100%);
+    transition: opacity 0.1s;
+  }
+
+  /* Flow field background animation (cubre toda la página, debajo del contenido) */
+  #flow-canvas {
+    position: fixed; inset: 0; z-index: 0;
+    pointer-events: none;
+  }
+
+  /* Audio player widget */
+  #audio-player {
+    position: fixed; bottom: 24px; right: 24px; z-index: 45;
+    width: 260px;
+    padding: 12px;
+    border-radius: 24px;
+    background: rgba(17, 17, 17, 0.70);
+    backdrop-filter: blur(20px) saturate(140%);
+    -webkit-backdrop-filter: blur(20px) saturate(140%);
+    border: 1px solid rgba(255,255,255,0.08);
+    box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+    transition: opacity .35s, transform .35s cubic-bezier(.2,.7,.2,1);
+    color: #fff;
+  }
+  #audio-player.collapsed { opacity: 0; transform: translateY(20px) scale(.9); pointer-events: none; }
+  #audio-expand {
+    position: fixed; bottom: 24px; right: 24px; z-index: 45;
+    width: 48px; height: 48px;
+    border-radius: 50%;
+    background: rgba(17,17,17,0.85);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: #fff;
+    display: none; align-items: center; justify-content: center;
+    box-shadow: 0 6px 24px rgba(0,0,0,0.4);
+    transition: transform .25s;
+  }
+  #audio-expand:hover { transform: scale(1.08); }
+  #audio-expand.visible { display: flex; }
+
+  .audio-btn {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    color: #fff;
+    transition: all 0.2s;
+    flex-shrink: 0;
+  }
+  .audio-btn:hover { background: rgba(255,255,255,0.10); transform: scale(1.08); }
+  .audio-btn:active { transform: scale(0.92); }
+  .audio-btn.active { background: rgba(38,103,255,0.30); color: #5b9bff; }
+  #audio-slider {
+    position: relative; width: 100%; height: 4px;
+    background: rgba(255,255,255,0.18); border-radius: 999px;
+    cursor: pointer;
+  }
+  #audio-progress {
+    position: absolute; top: 0; left: 0; height: 100%;
+    background: #fff; border-radius: 999px;
+    transition: width 0.15s linear;
+  }
+  @media (max-width: 640px) {
+    #audio-player { width: 220px; right: 16px; bottom: 16px; }
+    #audio-expand { right: 16px; bottom: 16px; }
+  }
+  #intro-stage {
+    position: absolute; inset: 0;
+    isolation: isolate;
+    z-index: 5;
+  }
+  #intro-media {
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    border-radius: 24px;
+    overflow: hidden;
+    box-shadow: 0 30px 80px rgba(0,0,0,0.25);
+    transition: none;
+    will-change: width, height;
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    z-index: 1;
+  }
+  html.dark #intro-media { box-shadow: 0 30px 80px rgba(38,103,255,0.3); }
+  #intro-media video { width: 100%; height: 100%; object-fit: cover; display: block; }
+  #video-fallback {
+    position: absolute; inset: 0;
+    display: none; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; padding: 24px; color: white;
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  }
+  #video-fallback.visible { display: flex; }
+
+  #intro-title-wrap {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    pointer-events: none;
+    mix-blend-mode: difference;
+    z-index: 2;
+  }
+  .intro-title {
+    transition: none;
+    will-change: transform;
+    color: #ffffff;
+    display: block;
+  }
+
+  /* Theme toggle */
+  #theme-toggle {
+    display: flex; width: 64px; height: 32px; padding: 4px;
+    border-radius: 9999px; cursor: pointer;
+    background: #fff; border: 1px solid #e5e5e5;
+    transition: all 0.3s;
+  }
+  html.dark #theme-toggle { background: #09090b; border: 1px solid #27272a; }
+  #theme-toggle .knob {
+    width: 24px; height: 24px; border-radius: 50%;
+    background: #e5e7eb;
+    display: flex; align-items: center; justify-content: center;
+    transform: translateX(32px);
+    transition: transform 0.3s, background 0.3s;
+  }
+  html.dark #theme-toggle .knob {
+    background: #27272a;
+    transform: translateX(0);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+  }
+</style>
+</head>
+<body class="bg-white dark:bg-black text-neutral-900 dark:text-white transition-colors duration-300">
+
+<!-- LOADER -->
+<div id="loader">
+  <div class="num" id="load-num">00</div>
+</div>
+
+<div id="cursor"></div>
+<div id="cursor-dot"></div>
+
+<!-- Flow field animated background (cubre toda la página, debajo del contenido) -->
+<canvas id="flow-canvas"></canvas>
+
+<!-- ============================================================
+     AUDIO PLAYER WIDGET (flotante esquina inferior derecha)
+     Para poner tu propia canción: guarda 'music.mp3' y 'music-cover.jpg'
+     en la misma carpeta que index.html, o cambia las URLs abajo.
+     ============================================================ -->
+<div id="audio-player">
+  <audio id="audio-el" preload="metadata">
+    <!-- Cambia esta URL por tu canción. Si pones 'music.mp3' en la carpeta usa src="music.mp3" -->
+    <source src="https://ui.webmakers.studio/audio/ncs.mp3" type="audio/mpeg">
+  </audio>
+
+  <!-- Minimize button -->
+  <button id="audio-minimize" type="button" class="absolute -top-2 -right-2 z-10 w-6 h-6 rounded-full bg-white/90 text-black text-xs font-bold flex items-center justify-center hover:scale-110 transition shadow-lg" title="Minimizar">−</button>
+
+  <!-- Cover -->
+  <div class="relative bg-white/10 overflow-hidden rounded-2xl w-full" style="aspect-ratio: 1/1;">
+    <img id="audio-cover" src="music-cover.jpg" alt="cover"
+         class="absolute inset-0 w-full h-full object-cover"
+         onerror="this.style.display='none';document.getElementById('cover-fallback').style.display='flex'" />
+    <div id="cover-fallback" class="absolute inset-0 hidden flex-col items-center justify-center gap-2 text-white/30"
+         style="background: linear-gradient(135deg, #2667ff20, #11111180);">
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+        <path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>
+      </svg>
+      <span class="mono text-[10px] uppercase tracking-widest">no cover</span>
+    </div>
+  </div>
+
+  <!-- Title -->
+  <h3 class="font-display font-bold text-sm text-center mt-2.5 px-2 truncate" id="audio-title">Vibes mientras navegas</h3>
+
+  <!-- Slider -->
+  <div class="mt-2.5 px-1">
+    <div id="audio-slider">
+      <div id="audio-progress" style="width: 0%;"></div>
+    </div>
+    <div class="flex items-center justify-between mt-1.5">
+      <span class="mono text-[10px] text-white/70" id="audio-current">0:00</span>
+      <span class="mono text-[10px] text-white/70" id="audio-duration">0:00</span>
+    </div>
+  </div>
+
+  <!-- Controls -->
+  <div class="flex items-center justify-center mt-2.5">
+    <div class="flex items-center gap-0.5 bg-black/40 rounded-2xl px-1.5 py-1.5">
+      <button id="audio-shuffle" type="button" class="audio-btn" title="Aleatorio">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg>
+      </button>
+      <button id="audio-prev" type="button" class="audio-btn" title="Atrás">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="19,20 9,12 19,4"/><rect x="5" y="5" width="2" height="14" rx="0.5"/></svg>
+      </button>
+      <button id="audio-play" type="button" class="audio-btn" title="Play/Pause" style="width:36px;height:36px;background:rgba(255,255,255,0.10);">
+        <svg id="audio-play-icon" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><polygon points="6,4 20,12 6,20"/></svg>
+        <svg id="audio-pause-icon" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="display:none"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>
+      </button>
+      <button id="audio-next" type="button" class="audio-btn" title="Siguiente">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,4 15,12 5,20"/><rect x="17" y="5" width="2" height="14" rx="0.5"/></svg>
+      </button>
+      <button id="audio-repeat" type="button" class="audio-btn" title="Repetir">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 014-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Expand button (cuando el player está minimizado) -->
+<button id="audio-expand" type="button" title="Mostrar reproductor">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+</button>
+
+<!-- NAV -->
+<nav class="fixed top-6 left-6 right-6 z-50 flex items-center justify-between">
+  <a href="#about" class="flex items-center gap-3">
+    <div class="w-10 h-10 rounded-xl bg-accent text-white font-display font-bold text-xl flex items-center justify-center">J</div>
+    <div class="hidden sm:block">
+      <div class="font-display font-bold text-sm leading-none">Juan Diego H.</div>
+      <div class="mono text-[9px] text-neutral-500 dark:text-neutral-400 uppercase tracking-[0.25em] mt-1">Software Engineer</div>
+    </div>
+  </a>
+
+  <div class="hidden md:flex items-center gap-1 surface rounded-full px-2 py-1.5">
+    <a href="#about" class="nav-link px-4 py-2 rounded-full mono text-[10px] uppercase tracking-[0.25em] hover:bg-neutral-100 dark:hover:bg-white/5 transition">Sobre</a>
+    <a href="#stack" class="nav-link px-4 py-2 rounded-full mono text-[10px] uppercase tracking-[0.25em] hover:bg-neutral-100 dark:hover:bg-white/5 transition">Stack</a>
+    <a href="#work" class="nav-link px-4 py-2 rounded-full mono text-[10px] uppercase tracking-[0.25em] hover:bg-neutral-100 dark:hover:bg-white/5 transition">Trabajo</a>
+    <a href="#services" class="nav-link px-4 py-2 rounded-full mono text-[10px] uppercase tracking-[0.25em] hover:bg-neutral-100 dark:hover:bg-white/5 transition">Servicios</a>
+  </div>
+
+  <div class="flex items-center gap-3">
+    <!-- THEME TOGGLE -->
+    <div id="theme-toggle" role="button" tabindex="0" aria-label="Cambiar tema">
+      <div class="knob">
+        <svg id="theme-icon-sun" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="1.5" style="display:none">
+          <circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
+        </svg>
+        <svg id="theme-icon-moon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+        </svg>
+      </div>
+    </div>
+
+    <a href="#contact" class="magnet group px-5 py-2.5 rounded-full bg-neutral-900 dark:bg-white text-white dark:text-black hover:bg-accent dark:hover:bg-accent dark:hover:text-white transition-all mono text-[10px] uppercase tracking-[0.25em] font-bold flex items-center gap-2">
+      <span>Conversemos</span><span class="group-hover:translate-x-0.5 transition-transform">→</span>
+    </a>
+  </div>
+</nav>
+
+<!-- ============================================================
+     1 — SCROLL EXPANSION HERO (with video)
+     ============================================================ -->
+<section id="intro-section">
+  <div id="intro-bg"></div>
+
+  <div class="relative z-10 w-full h-[100dvh] flex flex-col items-center justify-center px-6">
+
+    <!-- Stage: aislado para que mix-blend-mode funcione entre video y título -->
+    <div id="intro-stage">
+      <!-- Media (capa de abajo) -->
+      <div id="intro-media">
+        <video id="intro-video" autoplay muted loop playsinline preload="auto" disablepictureinpicture>
+          <!-- ⚠ Copia tu archivo a esta carpeta como 'intro.mp4' -->
+          <source src="intro.mp4" type="video/mp4">
+        </video>
+        <div id="video-fallback">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.25em;text-transform:uppercase;color:#2667ff;margin-bottom:12px">// video no detectado</div>
+          <div style="font-family:'Inter Tight',sans-serif;font-weight:800;font-size:22px;letter-spacing:-0.03em">Coloca intro.mp4</div>
+          <div style="font-size:12px;color:rgba(255,255,255,0.6);margin-top:6px">en la misma carpeta que index.html</div>
+        </div>
+      </div>
+
+      <!-- Title con mix-blend-difference (encima del video, se invierte sobre él) -->
+      <div id="intro-title-wrap">
+        <h1 class="display text-[clamp(3rem,10vw,9rem)] text-center">
+          <span class="intro-title" id="title-left">JUAN</span>
+          <span class="intro-title" id="title-right">DIEGO</span>
+        </h1>
+      </div>
+    </div>
+
+    <!-- Bottom meta -->
+    <div class="absolute bottom-10 left-6 md:left-12 right-6 md:right-12 flex justify-between items-end mono text-[10px] uppercase tracking-[0.3em] text-neutral-600 dark:text-neutral-400 z-30">
+      <div class="hidden md:block">Portafolio · </div>
+      <div class="flex items-center gap-3 intro-hint">
+        <span class="pulse-dot"></span>
+        <span id="intro-hint-text">Scroll para expandir</span>
+      </div>
+      <div class="hidden md:block">N04° · W74° · CO</div>
+    </div>
+  </div>
+
+  <!-- Spacer that allows scroll continuation after expansion -->
+  <div id="intro-content-spacer" style="height: 0; opacity: 0;" class="px-6 md:px-12 py-20">
+    <div class="max-w-3xl mx-auto text-center">
+      <div class="meta-label text-accent mb-6">/ INTRO COMPLETE</div>
+      <h2 class="display text-4xl md:text-6xl mb-6">Continúa explorando</h2>
+      <p class="text-neutral-600 dark:text-neutral-400 text-lg">Sigue desplazándote para conocer mi trabajo.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     2 — ABOUT
+     ============================================================ -->
+<section id="about" class="relative py-32 px-6 md:px-12">
+  <div class="max-w-7xl mx-auto">
+    <div class="flex items-center gap-4 mb-16" data-anim="fade-up">
+      <div class="meta-label text-neutral-500">/ 01 — Sobre mí</div>
+      <div class="h-px flex-1 max-w-[120px] bg-neutral-300 dark:bg-neutral-700"></div>
+    </div>
+    <div class="grid md:grid-cols-12 gap-12 items-start">
+      <div class="md:col-span-7">
+        <h2 class="display text-[clamp(2.5rem,7vw,6rem)]" data-anim="rise">
+          No vendo <span class="text-neutral-400 dark:text-neutral-500">plantillas.</span><br>
+          Construyo <span class="text-accent">producto.</span>
+        </h2>
+        <p class="mt-10 text-neutral-600 dark:text-neutral-300 leading-relaxed text-lg max-w-xl" data-anim="fade-up" data-delay="0.2">
+          Soy <span class="text-neutral-900 dark:text-white font-semibold">Juan Diego Hernández</span>. Llevo tres años transformando ideas en interfaces. Tiendas online, portales corporativos, dashboards internos y herramientas a la medida. Cada línea de código se piensa, cada animación tiene un por qué.
+        </p>
+        <p class="mt-4 text-neutral-500 dark:text-neutral-400 leading-relaxed max-w-xl" data-anim="fade-up" data-delay="0.3">
+          Mi formación combina <span class="text-neutral-900 dark:text-white">técnico certificado en desarrollo de software</span> con el <span class="text-neutral-900 dark:text-white">pregrado en Ingeniería de Sistemas</span> que curso actualmente.
+        </p>
+      </div>
+      <div class="md:col-span-5 grid grid-cols-2 gap-4">
+        <div class="surface rounded-2xl p-6" data-anim="fade-up" data-delay="0.1">
+          <div class="meta-label text-neutral-500 mb-2">Años</div>
+          <div class="display text-5xl text-accent" data-counter="3">3</div>
+          <div class="text-neutral-500 dark:text-neutral-400 text-xs mt-1">codeando</div>
+        </div>
+        <div class="surface rounded-2xl p-6" data-anim="fade-up" data-delay="0.2">
+          <div class="meta-label text-neutral-500 mb-2">Proyectos</div>
+          <div class="display text-5xl" data-counter="15">4</div>
+          <div class="text-neutral-500 dark:text-neutral-400 text-xs mt-1">entregados</div>
+        </div>
+        <div class="surface rounded-2xl p-6" data-anim="fade-up" data-delay="0.3">
+          <div class="meta-label text-neutral-500 mb-2">Tecnologías</div>
+          <div class="display text-5xl text-accent" data-counter="12">12</div>
+          <div class="text-neutral-500 dark:text-neutral-400 text-xs mt-1">dominadas</div>
+        </div>
+        <div class="surface rounded-2xl p-6" data-anim="fade-up" data-delay="0.4">
+          <div class="meta-label text-neutral-500 mb-2">On-time</div>
+          <div class="display text-5xl" data-counter="100" data-suffix="%">100<span class="text-2xl">%</span></div>
+          <div class="text-neutral-500 dark:text-neutral-400 text-xs mt-1">entregas</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     3 — STACK
+     ============================================================ -->
+<section id="stack" class="relative h-[250vh]">
+  <div class="sticky top-0 h-screen overflow-hidden flex items-center px-6 md:px-12">
+    <div class="max-w-7xl mx-auto w-full">
+      <div class="flex items-center gap-4 mb-12">
+        <div class="meta-label text-neutral-500">/ 02 — Stack</div>
+        <div class="h-px flex-1 max-w-[120px] bg-neutral-300 dark:bg-neutral-700"></div>
+        <div class="meta-label text-neutral-500" id="stack-progress">01 / 12</div>
+      </div>
+      <div class="grid md:grid-cols-12 gap-8 items-center">
+        <div class="md:col-span-5">
+          <h2 class="display text-[clamp(2.5rem,6vw,5rem)] mb-6">
+            Las herramientas <span class="text-neutral-400 dark:text-neutral-500">que uso para</span> <span class="text-accent">crear</span>.
+          </h2>
+          <p class="text-neutral-600 dark:text-neutral-300 leading-relaxed">No me caso con una. Elijo la que mejor resuelve el problema.</p>
+        </div>
+        <div class="md:col-span-7">
+          <div class="grid grid-cols-2 md:grid-cols-3 gap-3" id="stack-grid">
+            <div class="stack-it surface rounded-2xl p-5 flex flex-col gap-3" data-idx="0">
+              <svg viewBox="0 0 128 128" class="w-10 h-10"><path fill="#E44D26" d="M19 113L9 1h110l-10 112-45 13z"/><path fill="#F16529" d="M64 117l36-10 8-96H64z"/><path fill="#fff" d="M64 52v14h17l-2 18-15 4v14l28-8 4-42h-32zm0-27v13h33l1-3 1-7v-3z"/></svg>
+              <div class="mono text-xs uppercase tracking-widest">HTML5</div>
+              <div class="text-neutral-500 dark:text-neutral-400 text-xs">Semantic markup</div>
+            </div>
+            <div class="stack-it surface rounded-2xl p-5 flex flex-col gap-3" data-idx="1">
+              <svg viewBox="0 0 128 128" class="w-10 h-10"><path fill="#1572B6" d="M19 114L9 1h110l-10 113-45 13z"/><path fill="#33A9DC" d="M64 117l36-10 9-96H64z"/><path fill="#fff" d="M81 65l-2 19-15 4v14l28-8 4-29z"/></svg>
+              <div class="mono text-xs uppercase tracking-widest">CSS3</div>
+              <div class="text-neutral-500 dark:text-neutral-400 text-xs">Modern layouts</div>
+            </div>
+            <div class="stack-it surface rounded-2xl p-5 flex flex-col gap-3" data-idx="2">
+              <svg viewBox="0 0 128 128" class="w-10 h-10"><path fill="#F0DB4F" d="M2 2h124v124H2z"/><path fill="#000" d="M69 59H58v30c0 6 0 12-1 14-2 4-6 3-8 2-2-1-3-2-4-4l-10 6c2 3 4 6 7 8 4 3 10 4 17 2 4-1 8-4 9-7 3-5 2-11 2-17V59z"/></svg>
+              <div class="mono text-xs uppercase tracking-widest">JavaScript</div>
+              <div class="text-neutral-500 dark:text-neutral-400 text-xs">ES6+ · Patterns</div>
+            </div>
+            <div class="stack-it surface rounded-2xl p-5 flex flex-col gap-3" data-idx="3">
+              <svg viewBox="0 0 128 128" class="w-10 h-10"><circle cx="64" cy="64" r="11" fill="#61DAFB"/><g fill="none" stroke="#61DAFB" stroke-width="5"><ellipse cx="64" cy="64" rx="56" ry="21"/><ellipse cx="64" cy="64" rx="56" ry="21" transform="rotate(60 64 64)"/><ellipse cx="64" cy="64" rx="56" ry="21" transform="rotate(120 64 64)"/></g></svg>
+              <div class="mono text-xs uppercase tracking-widest">React</div>
+              <div class="text-neutral-500 dark:text-neutral-400 text-xs">Hooks · State</div>
+            </div>
+            <div class="stack-it surface rounded-2xl p-5 flex flex-col gap-3" data-idx="4">
+              <svg viewBox="0 0 128 128" class="w-10 h-10"><path fill="#83CD29" d="M64 0L9 32v64l55 32 55-32V32zm-3 38h7v36h-7zm17 0c11 0 17 5 17 16h-7c0-7-3-10-10-10s-9 3-9 7c0 13 26 5 26 24 0 8-6 13-17 13s-17-5-17-14h7c0 6 4 9 11 9 7 0 10-3 10-8 0-10-26-2-26-22 0-9 6-15 15-15z"/></svg>
+              <div class="mono text-xs uppercase tracking-widest">Node.js</div>
+              <div class="text-neutral-500 dark:text-neutral-400 text-xs">Backend · APIs</div>
+            </div>
+            <div class="stack-it surface rounded-2xl p-5 flex flex-col gap-3" data-idx="5">
+              <svg viewBox="0 0 128 128" class="w-10 h-10"><path fill="#3776AB" d="M63 2c-31 0-29 14-29 14v14h30v4H22S2 33 2 64s17 30 17 30h11V79s0-17 17-17h30s16 0 16-15V18S95 2 63 2z"/><path fill="#FFD43B" d="M65 126c31 0 29-14 29-14v-14H64v-4h42s20 2 20-30S109 33 109 33H98v14s0 17-17 17H51s-16 0-16 15v22s-3 25 30 25z"/></svg>
+              <div class="mono text-xs uppercase tracking-widest">Python</div>
+              <div class="text-neutral-500 dark:text-neutral-400 text-xs">Scripts · Data</div>
+            </div>
+            <div class="stack-it surface rounded-2xl p-5 flex flex-col gap-3" data-idx="6">
+              <svg viewBox="0 0 128 128" class="w-10 h-10"><path fill="#0074BD" d="M48 98s-5 3 3 4c10 1 15 1 26-1 0 0 3 2 7 3-24 11-55 0-36-6z"/><path fill="#EA2D2E" d="M70 61c6 7-2 13-2 13s15-8 8-18c-7-9-12-14 16-30 0 0-43 11-22 35z"/><path fill="#0074BD" d="M76 2s13 13-12 33c-20 16-5 25-1 36-12-11-20-20-14-29 8-12 32-19 27-40z"/></svg>
+              <div class="mono text-xs uppercase tracking-widest">Java</div>
+              <div class="text-neutral-500 dark:text-neutral-400 text-xs">OOP · Systems</div>
+            </div>
+            <div class="stack-it surface rounded-2xl p-5 flex flex-col gap-3" data-idx="7">
+              <svg viewBox="0 0 128 128" class="w-10 h-10"><path fill="#00618A" d="M64 8c-30 0-56 25-56 56s26 56 56 56 56-25 56-56S94 8 64 8zm-16 80c-2 3-4 6-7 7-2-1-4-3-6-6 2 1 5 1 9 0 2-1 4-1 4-1zm32 0c1 1 3 1 5 1 4 1 7 1 9 0-2 3-4 5-6 6-3-1-6-4-8-7zm0-44c0-7-7-13-15-13s-15 6-15 13 7 13 15 13 15-6 15-13z"/></svg>
+              <div class="mono text-xs uppercase tracking-widest">MySQL</div>
+              <div class="text-neutral-500 dark:text-neutral-400 text-xs">Relational DBs</div>
+            </div>
+            <div class="stack-it surface rounded-2xl p-5 flex flex-col gap-3" data-idx="8">
+              <svg viewBox="0 0 128 128" class="w-10 h-10"><path fill="#F34F29" d="M125 58L70 3c-3-3-9-3-12 0L47 14l15 15c4-1 8 0 10 2 3 3 4 7 2 10l14 14c3-1 7 0 10 2 4 4 4 10 0 14-4 4-10 4-14 0-3-3-4-7-2-11L69 48v34c1 1 2 1 3 2 4 4 4 10 0 14s-10 4-14 0-4-10 0-14c1-1 2-2 3-2V47c-1 0-2-1-3-2-3-3-3-7-2-11L41 20 3 58c-3 3-3 9 0 12l55 55c3 3 9 3 12 0l55-55c3-3 3-9 0-12"/></svg>
+              <div class="mono text-xs uppercase tracking-widest">Git</div>
+              <div class="text-neutral-500 dark:text-neutral-400 text-xs">Version control</div>
+            </div>
+            <div class="stack-it surface rounded-2xl p-5 flex flex-col gap-3" data-idx="9">
+              <svg viewBox="0 0 128 128" class="w-10 h-10"><path fill="#38BDF8" d="M64 26c-17 0-28 9-32 26 6-8 14-12 22-10 5 1 8 5 12 9 7 6 14 13 30 13 17 0 28-9 32-26-6 8-14 12-22 10-5-1-8-5-12-9-7-6-14-13-30-13zM32 64C15 64 4 73 0 90c6-8 14-12 22-10 5 1 8 5 12 9 7 6 14 13 30 13 17 0 28-9 32-26-6 8-14 12-22 10-5-1-8-5-12-9-7-6-14-13-30-13z"/></svg>
+              <div class="mono text-xs uppercase tracking-widest">Tailwind</div>
+              <div class="text-neutral-500 dark:text-neutral-400 text-xs">Utility CSS</div>
+            </div>
+            <div class="stack-it surface rounded-2xl p-5 flex flex-col gap-3" data-idx="10">
+              <svg viewBox="0 0 128 128" class="w-10 h-10"><path fill="#0ACF83" d="M46 129c12 0 21-10 21-22V86H46c-12 0-21 10-21 22s9 21 21 21z"/><path fill="#A259FF" d="M25 64c0-12 9-21 21-21h21v43H46c-12 0-21-10-21-22z"/><path fill="#F24E1E" d="M25 21C25 10 34 0 46 0h21v43H46C34 43 25 33 25 21z"/><path fill="#FF7262" d="M67 0h22c11 0 21 10 21 21S100 43 89 43H67V0z"/><path fill="#1ABCFE" d="M110 64c0 12-10 22-21 22S67 76 67 64s10-21 22-21 21 9 21 21z"/></svg>
+              <div class="mono text-xs uppercase tracking-widest">Figma</div>
+              <div class="text-neutral-500 dark:text-neutral-400 text-xs">UI design</div>
+            </div>
+            <div class="stack-it surface rounded-2xl p-5 flex flex-col gap-3" data-idx="11">
+              <svg viewBox="0 0 128 128" class="w-10 h-10"><path fill="#2667ff" d="M64 8C32 8 8 32 8 64s24 56 56 56 56-24 56-56S96 8 64 8zm0 90L40 64l24-34 24 34z" opacity=".9"/></svg>
+              <div class="mono text-xs uppercase tracking-widest">Three.js</div>
+              <div class="text-neutral-500 dark:text-neutral-400 text-xs">3D Web</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     4 — WORK (horizontal scroll)
+     ============================================================ -->
+<section id="work" class="relative">
+  <div class="px-6 md:px-12 pt-32 pb-12">
+    <div class="max-w-7xl mx-auto flex items-end justify-between gap-6">
+      <div>
+        <div class="flex items-center gap-4 mb-6" data-anim="fade-up">
+          <div class="meta-label text-neutral-500">/ 03 — Trabajo</div>
+          <div class="h-px w-24 bg-neutral-300 dark:bg-neutral-700"></div>
+        </div>
+        <h2 class="display text-[clamp(2.5rem,7vw,6rem)]" data-anim="rise">
+          Proyectos <span class="display-hairline text-neutral-400 dark:text-neutral-500">recientes</span>
+        </h2>
+      </div>
+      <div class="hidden md:flex items-center gap-2 mono text-[10px] uppercase tracking-[0.3em] text-neutral-500">
+        <span>Desliza</span><span>→</span>
+      </div>
+    </div>
+  </div>
+
+  <div id="h-scroll" class="relative h-[90vh] overflow-hidden">
+    <div class="h-scroll-track absolute inset-0 items-center" id="h-scroll-track">
+
+      <!-- 01 — Predicción Global -->
+      <article class="proj-card shrink-0 w-[80vw] md:w-[60vw] lg:w-[42vw] h-[70vh]">
+        <div class="surface rounded-3xl h-full overflow-hidden flex flex-col">
+          <div class="card-img flex-1 relative" style="background: linear-gradient(135deg, #0d2a18 0%, #061107 100%);">
+            <!-- Imagen del proyecto: guarda el screenshot como 'prediccion-global.jpg' -->
+            <img src="prediccion-global.jpg" alt="Predicción Global"
+                 class="absolute inset-0 w-full h-full object-cover"
+                 onerror="this.style.display='none'" />
+            <div class="absolute inset-x-0 bottom-0 h-1/3 pointer-events-none" style="background: linear-gradient(0deg, rgba(0,0,0,0.85), transparent);"></div>
+          </div>
+          <div class="p-6 md:p-8 border-t border-neutral-200 dark:border-white/5">
+            <div class="flex items-center justify-between mb-3"><div class="meta-label text-neutral-500">/ 01 · Plataforma</div><div class="meta-label text-neutral-500">2026</div></div>
+            <h3 class="display text-3xl mb-2">Predicción Global</h3>
+            <p class="text-neutral-500 dark:text-neutral-400 text-sm leading-relaxed">Plataforma de gamificación y engagement para el Mundial 2026. Predicciones, rankings y competencia con premios entre empleados.</p>
+            <div class="mt-4 flex gap-2 flex-wrap">
+              <span class="surface-soft rounded-full px-3 py-1 mono text-[10px]">Web App</span>
+              <span class="surface-soft rounded-full px-3 py-1 mono text-[10px]">Gamification</span>
+              <span class="surface-soft rounded-full px-3 py-1 mono text-[10px]">Real-time</span>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- 02 — Interclases -->
+      <article class="proj-card shrink-0 w-[80vw] md:w-[60vw] lg:w-[42vw] h-[70vh]">
+        <div class="surface rounded-3xl h-full overflow-hidden flex flex-col">
+          <div class="card-img flex-1 relative" style="background: radial-gradient(circle at 30% 30%, rgba(38,103,255,0.22), transparent 55%), linear-gradient(135deg, #0e1422, #08101b);">
+            <!-- Imagen del proyecto: guarda la foto como 'interclases.jpg' -->
+            <img src="interclases.jpg" alt="Página Web Interclases"
+                 class="absolute inset-0 w-full h-full object-cover"
+                 onerror="this.style.display='none'" />
+            <div class="absolute inset-x-0 bottom-0 h-1/3 pointer-events-none" style="background: linear-gradient(0deg, rgba(0,0,0,0.85), transparent);"></div>
+          </div>
+          <div class="p-6 md:p-8 border-t border-neutral-200 dark:border-white/5">
+            <div class="flex items-center justify-between mb-3"><div class="meta-label text-neutral-500">/ 02 · Educativo</div><div class="meta-label text-neutral-500">2024</div></div>
+            <h3 class="display text-3xl mb-2">Página Web Interclases</h3>
+            <p class="text-neutral-500 dark:text-neutral-400 text-sm leading-relaxed">Sitio web para colegio con base de datos funcional. Gestión de inscripciones, actividades, grados y resultados en tiempo real.</p>
+            <div class="mt-4 flex gap-2 flex-wrap">
+              <span class="surface-soft rounded-full px-3 py-1 mono text-[10px]">PHP</span>
+              <span class="surface-soft rounded-full px-3 py-1 mono text-[10px]">MySQL</span>
+              <span class="surface-soft rounded-full px-3 py-1 mono text-[10px]">Education</span>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- 03 — Gestión de Torneos -->
+      <article class="proj-card shrink-0 w-[80vw] md:w-[60vw] lg:w-[42vw] h-[70vh]">
+        <div class="surface rounded-3xl h-full overflow-hidden flex flex-col">
+          <div class="card-img flex-1 relative" style="background: radial-gradient(circle at 70% 60%, rgba(38,103,255,0.3), transparent 55%), linear-gradient(135deg, #0e1422, #08101b);">
+            <!-- Imagen del proyecto: guarda la foto como 'torneos.jpg' -->
+            <img src="torneos.jpg" alt="Sitio Web de Gestión de Torneos"
+                 class="absolute inset-0 w-full h-full object-cover"
+                 onerror="this.style.display='none'" />
+            <div class="absolute inset-x-0 bottom-0 h-1/3 pointer-events-none" style="background: linear-gradient(0deg, rgba(0,0,0,0.85), transparent);"></div>
+          </div>
+          <div class="p-6 md:p-8 border-t border-neutral-200 dark:border-white/5">
+            <div class="flex items-center justify-between mb-3"><div class="meta-label text-neutral-500">/ 03 · Empresarial</div><div class="meta-label text-neutral-500">2025</div></div>
+            <h3 class="display text-3xl mb-2">Gestión de Torneos</h3>
+            <p class="text-neutral-500 dark:text-neutral-400 text-sm leading-relaxed">Sistema web para empresa: inscripciones, brackets automáticos, calendario, resultados en vivo y panel admin completo.</p>
+            <div class="mt-4 flex gap-2 flex-wrap">
+              <span class="surface-soft rounded-full px-3 py-1 mono text-[10px]">Full-stack</span>
+              <span class="surface-soft rounded-full px-3 py-1 mono text-[10px]">Admin Panel</span>
+              <span class="surface-soft rounded-full px-3 py-1 mono text-[10px]">Tournaments</span>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- CTA card al final -->
+      <article class="proj-card shrink-0 w-[80vw] md:w-[60vw] lg:w-[42vw] h-[70vh]">
+        <div class="rounded-3xl h-full bg-accent flex flex-col items-center justify-center text-center p-8 text-white">
+          <div class="meta-label mb-4 !text-white/70">/ ¿Tu proyecto?</div>
+          <h3 class="display text-4xl md:text-5xl mb-4">Sigue tú.</h3>
+          <p class="text-white/80 max-w-xs mb-6">El próximo proyecto en este carrusel podría ser el tuyo.</p>
+          <a href="#contact" class="magnet bg-white text-accent px-6 py-3 rounded-full mono text-[10px] uppercase tracking-[0.25em] font-bold">Conversemos →</a>
+        </div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     5 — MANIFESTO
+     ============================================================ -->
+<section class="relative py-32 px-6 md:px-12">
+  <div class="max-w-5xl mx-auto text-center">
+    <div class="meta-label text-neutral-500 mb-12" data-anim="fade-up">/ 04 — Manifiesto</div>
+    <h2 class="display text-[clamp(2.5rem,8vw,7rem)] leading-[0.92]">
+      <span class="block" data-anim="rise">El código bien</span>
+      <span class="block text-neutral-400 dark:text-neutral-500 display-hairline" data-anim="rise" data-delay="0.1">hecho se ve.</span>
+      <span class="block mt-4" data-anim="rise" data-delay="0.2">Se siente.</span>
+      <span class="block text-accent" data-anim="rise" data-delay="0.3">Se nota.</span>
+    </h2>
+    <div class="mt-16 flex items-center justify-center gap-4 mono text-[10px] uppercase tracking-[0.3em] text-neutral-500" data-anim="fade-up" data-delay="0.4">
+      <div class="w-16 h-px bg-neutral-300 dark:bg-neutral-700"></div><span>Juan Diego H. · 2026</span><div class="w-16 h-px bg-neutral-300 dark:bg-neutral-700"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     6 — SERVICES
+     ============================================================ -->
+<section id="services" class="relative py-32 px-6 md:px-12">
+  <div class="max-w-7xl mx-auto">
+    <div class="flex items-center gap-4 mb-16" data-anim="fade-up">
+      <div class="meta-label text-neutral-500">/ 05 — Servicios</div>
+      <div class="h-px flex-1 max-w-[120px] bg-neutral-300 dark:bg-neutral-700"></div>
+    </div>
+    <h2 class="display text-[clamp(2.5rem,7vw,6rem)] mb-16">
+      <span class="block" data-anim="rise">Lo que</span>
+      <span class="block text-neutral-400 dark:text-neutral-500 display-hairline" data-anim="rise" data-delay="0.1">construyo.</span>
+    </h2>
+
+    <div class="border-t border-neutral-200 dark:border-white/10">
+      <div class="reveal-row group border-b border-neutral-200 dark:border-white/10 py-8 md:py-10 cursor-pointer" data-anim="fade-up">
+        <div class="flex items-baseline justify-between gap-6">
+          <div class="flex items-baseline gap-6 md:gap-10"><span class="meta-label text-neutral-500">/01</span><span class="row-title display text-3xl md:text-6xl text-neutral-400 dark:text-neutral-500">Sitios web a la medida</span></div>
+          <span class="mono text-[10px] uppercase tracking-[0.25em] text-neutral-500 hidden md:inline">Diseño · Desarrollo · Deploy</span>
+        </div>
+        <div class="preview-img surface flex items-center justify-center">
+          <div class="surface-soft rounded-xl p-4 w-2/3"><div class="h-1 bg-neutral-300 dark:bg-white/20 rounded mb-2 w-1/2"></div><div class="h-1 bg-accent/50 rounded mb-1 w-3/4"></div><div class="grid grid-cols-3 gap-1 mt-2"><div class="h-6 bg-neutral-200 dark:bg-white/5 rounded"></div><div class="h-6 bg-accent/30 rounded"></div><div class="h-6 bg-neutral-200 dark:bg-white/5 rounded"></div></div></div>
+        </div>
+      </div>
+      <div class="reveal-row group border-b border-neutral-200 dark:border-white/10 py-8 md:py-10 cursor-pointer" data-anim="fade-up">
+        <div class="flex items-baseline justify-between gap-6">
+          <div class="flex items-baseline gap-6 md:gap-10"><span class="meta-label text-neutral-500">/02</span><span class="row-title display text-3xl md:text-6xl text-neutral-400 dark:text-neutral-500">Dashboards & sistemas</span></div>
+          <span class="mono text-[10px] uppercase tracking-[0.25em] text-neutral-500 hidden md:inline">CRMs · Paneles · Internos</span>
+        </div>
+        <div class="preview-img surface flex items-center justify-center">
+          <div class="surface-soft rounded-xl p-4 w-2/3"><div class="flex items-end gap-1 h-12"><div class="flex-1 bg-accent/40 h-1/3"></div><div class="flex-1 bg-accent/60 h-1/2"></div><div class="flex-1 bg-accent/80 h-3/4"></div><div class="flex-1 bg-accent h-full"></div></div></div>
+        </div>
+      </div>
+      <div class="reveal-row group border-b border-neutral-200 dark:border-white/10 py-8 md:py-10 cursor-pointer" data-anim="fade-up">
+        <div class="flex items-baseline justify-between gap-6">
+          <div class="flex items-baseline gap-6 md:gap-10"><span class="meta-label text-neutral-500">/03</span><span class="row-title display text-3xl md:text-6xl text-neutral-400 dark:text-neutral-500">E-commerce funcional</span></div>
+          <span class="mono text-[10px] uppercase tracking-[0.25em] text-neutral-500 hidden md:inline">Catálogo · Pagos · Admin</span>
+        </div>
+        <div class="preview-img surface flex items-center justify-center">
+          <div class="grid grid-cols-2 gap-2 p-3 w-2/3"><div class="surface-soft rounded-lg aspect-square"></div><div class="surface-soft rounded-lg aspect-square"></div><div class="surface-soft rounded-lg aspect-square"></div><div class="surface-soft rounded-lg aspect-square"></div></div>
+        </div>
+      </div>
+      <div class="reveal-row group border-b border-neutral-200 dark:border-white/10 py-8 md:py-10 cursor-pointer" data-anim="fade-up">
+        <div class="flex items-baseline justify-between gap-6">
+          <div class="flex items-baseline gap-6 md:gap-10"><span class="meta-label text-neutral-500">/04</span><span class="row-title display text-3xl md:text-6xl text-neutral-400 dark:text-neutral-500">Rediseño & auditoría</span></div>
+          <span class="mono text-[10px] uppercase tracking-[0.25em] text-neutral-500 hidden md:inline">UX · Performance · SEO</span>
+        </div>
+        <div class="preview-img surface flex items-center justify-center">
+          <div class="flex items-center gap-3 p-3"><div class="surface-soft rounded-lg w-16 h-20 opacity-50"></div><div class="text-accent">→</div><div class="surface-soft rounded-lg w-16 h-20 border-2 border-accent/40"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     7 — PROCESS
+     ============================================================ -->
+<section class="relative py-32 px-6 md:px-12">
+  <div class="max-w-7xl mx-auto">
+    <div class="flex items-center gap-4 mb-16" data-anim="fade-up">
+      <div class="meta-label text-neutral-500">/ 06 — Proceso</div>
+      <div class="h-px flex-1 max-w-[120px] bg-neutral-300 dark:bg-neutral-700"></div>
+    </div>
+    <h2 class="display text-[clamp(2.5rem,7vw,6rem)] mb-20">
+      <span class="block" data-anim="rise">Cuatro pasos.</span>
+      <span class="block text-neutral-400 dark:text-neutral-500 display-hairline" data-anim="rise" data-delay="0.1">Cero sorpresas.</span>
+    </h2>
+    <div class="grid md:grid-cols-4 gap-6">
+      <div data-anim="fade-up" data-delay="0.1">
+        <div class="flex items-center gap-3 mb-4"><div class="display text-6xl text-accent">01</div><div class="h-px flex-1 bg-neutral-300 dark:bg-neutral-700"></div></div>
+        <h3 class="font-display font-bold text-xl mb-2">Descubrimiento</h3>
+        <p class="text-neutral-500 dark:text-neutral-400 text-sm leading-relaxed">Una reunión para entender qué construimos y para quién.</p>
+      </div>
+      <div data-anim="fade-up" data-delay="0.2">
+        <div class="flex items-center gap-3 mb-4"><div class="display text-6xl text-accent">02</div><div class="h-px flex-1 bg-neutral-300 dark:bg-neutral-700"></div></div>
+        <h3 class="font-display font-bold text-xl mb-2">Diseño</h3>
+        <p class="text-neutral-500 dark:text-neutral-400 text-sm leading-relaxed">Maquetas en Figma antes de tocar una sola línea de código.</p>
+      </div>
+      <div data-anim="fade-up" data-delay="0.3">
+        <div class="flex items-center gap-3 mb-4"><div class="display text-6xl text-accent">03</div><div class="h-px flex-1 bg-neutral-300 dark:bg-neutral-700"></div></div>
+        <h3 class="font-display font-bold text-xl mb-2">Desarrollo</h3>
+        <p class="text-neutral-500 dark:text-neutral-400 text-sm leading-relaxed">Código limpio, optimizado y con la animación justa.</p>
+      </div>
+      <div data-anim="fade-up" data-delay="0.4">
+        <div class="flex items-center gap-3 mb-4"><div class="display text-6xl text-accent">04</div><div class="h-px flex-1 bg-neutral-300 dark:bg-neutral-700"></div></div>
+        <h3 class="font-display font-bold text-xl mb-2">Entrega</h3>
+        <p class="text-neutral-500 dark:text-neutral-400 text-sm leading-relaxed">Publicación, capacitación rápida y soporte para arrancar.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     8 — CONTACT
+     ============================================================ -->
+<section id="contact" class="relative py-32 px-6 md:px-12">
+  <div class="max-w-7xl mx-auto">
+    <div class="flex items-center gap-4 mb-16" data-anim="fade-up">
+      <div class="meta-label text-neutral-500">/ 07 — Contacto</div>
+      <div class="h-px flex-1 max-w-[120px] bg-neutral-300 dark:bg-neutral-700"></div>
+    </div>
+    <div class="grid md:grid-cols-12 gap-12 items-start">
+      <div class="md:col-span-7">
+        <h2 class="display text-[clamp(3rem,9vw,9rem)] leading-[0.9]">
+          <span class="block" data-anim="rise">Hagamos</span>
+          <span class="block text-accent" data-anim="rise" data-delay="0.1">algo grande.</span>
+        </h2>
+        <p class="mt-8 text-neutral-600 dark:text-neutral-300 text-lg max-w-lg" data-anim="fade-up" data-delay="0.2">Respondo en menos de 24 horas. Cuéntame qué necesitas y armamos un plan.</p>
+        <div class="mt-12 space-y-4 max-w-lg">
+          <a href="mailto:juandiegohernandezguiral@gmail.com" class="flex items-center gap-4 p-5 surface rounded-2xl hover:border-accent transition group" data-anim="fade-up" data-delay="0.3">
+            <div class="w-12 h-12 rounded-xl bg-accent/10 border border-accent/30 flex items-center justify-center group-hover:bg-accent/20 transition">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2667ff" stroke-width="1.5"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 5L2 7"/></svg>
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="meta-label text-neutral-500 mb-1">Email</div>
+              <div class="font-display font-semibold truncate">juandiegohernandezguiral@gmail.com</div>
+            </div>
+            <span class="text-neutral-400 group-hover:text-accent group-hover:translate-x-1 transition-all">→</span>
+          </a>
+          <div class="grid grid-cols-3 gap-3" data-anim="fade-up" data-delay="0.4">
+            <a href="#" class="surface rounded-2xl p-4 hover:border-accent transition flex flex-col items-center gap-2 text-center">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 .3a12 12 0 0 0-3.8 23.38c.6.12.83-.26.83-.57v-2c-3.33.72-4.03-1.6-4.03-1.6-.55-1.4-1.34-1.77-1.34-1.77-1.1-.74.08-.73.08-.73 1.2.08 1.83 1.24 1.83 1.24 1.07 1.83 2.8 1.3 3.48 1 .1-.78.42-1.3.76-1.6-2.66-.3-5.46-1.33-5.46-5.93 0-1.3.47-2.38 1.24-3.22-.13-.3-.54-1.52.1-3.18 0 0 1-.32 3.3 1.23a11.5 11.5 0 0 1 6 0c2.3-1.55 3.3-1.23 3.3-1.23.65 1.66.24 2.88.12 3.18.77.84 1.23 1.92 1.23 3.22 0 4.6-2.8 5.63-5.47 5.92.43.37.81 1.1.81 2.22v3.3c0 .32.22.7.83.58A12 12 0 0 0 12 .3"/></svg>
+              <span class="mono text-[10px] uppercase tracking-widest">GitHub</span>
+            </a>
+            <a href="#" class="surface rounded-2xl p-4 hover:border-accent transition flex flex-col items-center gap-2 text-center">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M20.45 20.45h-3.55v-5.57c0-1.33-.03-3.05-1.86-3.05-1.86 0-2.15 1.45-2.15 2.95v5.67H9.34V9h3.41v1.56h.04c.48-.9 1.64-1.86 3.37-1.86 3.6 0 4.27 2.37 4.27 5.45v6.3zM5.34 7.43c-1.14 0-2.06-.92-2.06-2.06s.92-2.06 2.06-2.06 2.06.92 2.06 2.06-.92 2.06-2.06 2.06zM7.12 20.45H3.56V9h3.56v11.45z"/></svg>
+              <span class="mono text-[10px] uppercase tracking-widest">LinkedIn</span>
+            </a>
+            <a href="#" class="surface rounded-2xl p-4 hover:border-accent transition flex flex-col items-center gap-2 text-center">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M.057 24l1.687-6.163a11.867 11.867 0 0 1-1.587-5.946C.16 5.335 5.495 0 12.05 0a11.817 11.817 0 0 1 8.413 3.488 11.824 11.824 0 0 1 3.48 8.414c-.003 6.557-5.338 11.892-11.893 11.892a11.9 11.9 0 0 1-5.688-1.448L.057 24zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981z"/></svg>
+              <span class="mono text-[10px] uppercase tracking-widest">WhatsApp</span>
+            </a>
+          </div>
+        </div>
+      </div>
+      <div class="md:col-span-5" data-anim="fade-up" data-delay="0.3">
+        <div class="surface rounded-3xl p-8">
+          <div class="mono text-[10px] uppercase tracking-[0.25em] text-accent mb-3">// nuevo proyecto</div>
+          <h3 class="font-display font-bold text-2xl mb-6">Empecemos</h3>
+          <form id="contact-form" class="space-y-4">
+            <div><label class="meta-label text-neutral-500 block mb-2">Tu nombre</label><input type="text" required class="w-full surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none transition" placeholder="¿Cómo te llamas?" /></div>
+            <div><label class="meta-label text-neutral-500 block mb-2">Email</label><input type="email" required class="w-full surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none transition" placeholder="tu@email.com" /></div>
+            <div><label class="meta-label text-neutral-500 block mb-2">Necesitas</label>
+              <select required class="w-full surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none transition">
+                <option value="">Elige tipo</option><option>Landing page</option><option>Sitio corporativo</option><option>E-commerce</option><option>Dashboard</option><option>Otro</option>
+              </select></div>
+            <div><label class="meta-label text-neutral-500 block mb-2">Cuéntame</label><textarea required rows="4" class="w-full surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none transition resize-none" placeholder="Describe tu proyecto..."></textarea></div>
+            <button type="submit" class="magnet w-full px-6 py-4 rounded-xl bg-neutral-900 dark:bg-white text-white dark:text-black hover:bg-accent dark:hover:bg-accent dark:hover:text-white transition-all font-bold mono text-[11px] uppercase tracking-[0.25em]">Enviar mensaje →</button>
+            <p id="form-msg" class="hidden mono text-xs text-center"></p>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     FOOTER
+     ============================================================ -->
+<footer class="relative border-t border-neutral-200 dark:border-white/5 pt-20 pb-12 px-6 md:px-12">
+  <div class="max-w-7xl mx-auto">
+    <div class="display text-[clamp(4rem,18vw,18rem)] leading-[0.85] mb-16 -tracking-tighter overflow-hidden" data-anim="fade-up">JUAN<br>DIEGO</div>
+    <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 pt-8 border-t border-neutral-200 dark:border-white/5">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-accent text-white flex items-center justify-center font-display font-bold">J</div>
+        <div>
+          <div class="font-display font-semibold">Juan Diego Hernández</div>
+          <div class="meta-label text-neutral-500">Software Engineer · 2026</div>
+        </div>
+      </div>
+      <nav class="flex items-center gap-6 mono text-[10px] uppercase tracking-[0.25em] text-neutral-500">
+        <a href="#work" class="hover:text-accent transition">Trabajo</a>
+        <a href="#stack" class="hover:text-accent transition">Stack</a>
+        <a href="#contact" class="hover:text-accent transition">Contacto</a>
+        <button id="open-dash" type="button" class="px-3 py-1.5 rounded-full surface hover:border-accent hover:text-accent transition flex items-center gap-1.5">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          <span>Panel privado</span>
+        </button>
+      </nav>
+    </div>
+    <div class="pt-8 mt-8 border-t border-neutral-200 dark:border-white/5 flex flex-col md:flex-row items-center justify-between gap-3 text-neutral-500 text-xs">
+      <div>© 2026 Juan Diego Hernández — All rights reserved.</div>
+      <div class="mono">Built with ◆ code & coffee · Colombia · Alt+P para entrar al panel</div>
+    </div>
+  </div>
+</footer>
+
+<!-- DASHBOARD -->
+<div id="dashboard" class="fixed inset-0 z-[60] hidden bg-white dark:bg-black">
+  <div id="pin-screen" class="absolute inset-0 flex items-center justify-center px-6">
+    <div class="absolute inset-0 opacity-40" style="background:radial-gradient(ellipse 80% 50% at 50% 50%, rgba(38,103,255,0.2), transparent 60%)"></div>
+    <div class="relative w-full max-w-sm">
+      <button id="close-pin" type="button" class="absolute -top-12 right-0 text-neutral-500 hover:text-accent mono text-[10px] uppercase tracking-[0.25em]">← Volver</button>
+      <div class="surface rounded-3xl p-8 text-center shadow-xl">
+        <div class="mx-auto w-14 h-14 mb-4 rounded-2xl bg-accent flex items-center justify-center">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        </div>
+        <h2 class="display text-2xl">Acceso restringido</h2>
+        <p class="text-neutral-500 dark:text-neutral-400 text-sm mt-2 mb-8">Ingresa tu PIN para continuar</p>
+        <div id="pin-dots" class="flex justify-center gap-3 mb-8">
+          <div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div>
+        </div>
+        <div class="grid grid-cols-3 gap-3" id="keypad">
+          <button type="button" class="key">1</button><button type="button" class="key">2</button><button type="button" class="key">3</button>
+          <button type="button" class="key">4</button><button type="button" class="key">5</button><button type="button" class="key">6</button>
+          <button type="button" class="key">7</button><button type="button" class="key">8</button><button type="button" class="key">9</button>
+          <button type="button" class="key opacity-0 pointer-events-none"></button><button type="button" class="key">0</button><button type="button" class="key" data-action="del">←</button>
+        </div>
+        <p class="mt-6 meta-label text-neutral-500">PIN por defecto: 2580 · cámbialo en el código</p>
+      </div>
+    </div>
+  </div>
+
+  <div id="dash-content" class="hidden absolute inset-0 flex">
+    <aside class="w-20 lg:w-64 surface-soft border-r flex flex-col">
+      <div class="p-4 lg:p-6 border-b border-neutral-200 dark:border-white/5 flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-accent flex items-center justify-center font-display font-bold text-white shrink-0">J</div>
+        <div class="hidden lg:block min-w-0">
+          <div class="font-display font-bold text-sm truncate">Juan Diego</div>
+          <div class="meta-label text-neutral-500">/ private panel</div>
+        </div>
+      </div>
+      <nav class="flex-1 p-3 lg:p-4 space-y-1">
+        <button type="button" class="dash-nav w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm hover:bg-neutral-100 dark:hover:bg-white/5 transition" data-view="overview">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="shrink-0"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
+          <span class="hidden lg:inline">Resumen</span>
+        </button>
+        <button type="button" class="dash-nav w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm hover:bg-neutral-100 dark:hover:bg-white/5 transition" data-view="agenda">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="shrink-0"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+          <span class="hidden lg:inline">Agenda</span>
+        </button>
+        <button type="button" class="dash-nav w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm hover:bg-neutral-100 dark:hover:bg-white/5 transition" data-view="tasks">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="shrink-0"><path d="M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          <span class="hidden lg:inline">Tareas</span>
+        </button>
+        <button type="button" class="dash-nav w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm hover:bg-neutral-100 dark:hover:bg-white/5 transition" data-view="projects">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="shrink-0"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+          <span class="hidden lg:inline">Proyectos</span>
+        </button>
+        <button type="button" class="dash-nav w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm hover:bg-neutral-100 dark:hover:bg-white/5 transition" data-view="notes">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="shrink-0"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>
+          <span class="hidden lg:inline">Notas</span>
+        </button>
+        <button type="button" class="dash-nav w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm hover:bg-neutral-100 dark:hover:bg-white/5 transition" data-view="data">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="shrink-0"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5M3 12a9 3 0 0 0 18 0"/></svg>
+          <span class="hidden lg:inline">Datos & Backup</span>
+        </button>
+      </nav>
+      <div class="p-3 lg:p-4 border-t border-neutral-200 dark:border-white/5">
+        <button id="dash-logout" type="button" class="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm text-neutral-500 hover:bg-red-500/10 hover:text-red-500 transition">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="shrink-0"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+          <span class="hidden lg:inline">Salir</span>
+        </button>
+      </div>
+    </aside>
+    <main class="flex-1 overflow-y-auto bg-white dark:bg-black">
+      <div class="p-6 md:p-10 max-w-6xl mx-auto">
+        <section class="dash-view" data-view="overview">
+          <div class="flex items-center justify-between mb-8">
+            <div>
+              <div class="meta-label text-neutral-500 mb-2">/ dashboard</div>
+              <h1 class="display text-3xl md:text-5xl">Hola, <span class="text-accent">Juan Diego</span></h1>
+              <p class="text-neutral-500 mt-2" id="today-date"></p>
+            </div>
+            <div class="hidden md:flex items-center gap-2 px-4 py-2 surface rounded-full">
+              <span class="pulse-dot"></span><span class="meta-label">All systems normal</span>
+            </div>
+          </div>
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+            <div class="surface rounded-2xl p-5"><div class="meta-label text-neutral-500 mb-2">Pendientes</div><div class="display text-4xl text-accent" id="stat-tasks">0</div></div>
+            <div class="surface rounded-2xl p-5"><div class="meta-label text-neutral-500 mb-2">En progreso</div><div class="display text-4xl" id="stat-progress">0</div></div>
+            <div class="surface rounded-2xl p-5"><div class="meta-label text-neutral-500 mb-2">Proyectos</div><div class="display text-4xl text-accent" id="stat-projects">0</div></div>
+            <div class="surface rounded-2xl p-5"><div class="meta-label text-neutral-500 mb-2">Notas</div><div class="display text-4xl" id="stat-notes">0</div></div>
+          </div>
+          <div class="grid md:grid-cols-2 gap-6">
+            <div class="surface rounded-2xl p-6">
+              <div class="flex items-center justify-between mb-4"><h3 class="font-display font-bold">Próximos eventos</h3><button type="button" class="meta-label !text-accent" data-jump="agenda">Ver →</button></div>
+              <div id="overview-events" class="space-y-2 text-sm"></div>
+            </div>
+            <div class="surface rounded-2xl p-6">
+              <div class="flex items-center justify-between mb-4"><h3 class="font-display font-bold">Tareas urgentes</h3><button type="button" class="meta-label !text-accent" data-jump="tasks">Ver →</button></div>
+              <div id="overview-tasks" class="space-y-2 text-sm"></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="dash-view hidden" data-view="agenda">
+          <div class="mb-8"><div class="meta-label text-neutral-500 mb-2">/ agenda</div><h1 class="display text-3xl md:text-5xl">Mi agenda</h1></div>
+          <div class="surface rounded-2xl p-6 mb-6">
+            <h3 class="font-display font-bold mb-4">Agregar evento</h3>
+            <form id="event-form" class="grid md:grid-cols-4 gap-3">
+              <input name="title" required placeholder="Título" class="md:col-span-2 surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none" />
+              <input name="date" type="datetime-local" required class="surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none" />
+              <button type="submit" class="rounded-xl bg-accent text-white font-bold mono text-[11px] uppercase tracking-[0.25em]">Añadir</button>
+            </form>
+          </div>
+          <div class="surface rounded-2xl p-6"><h3 class="font-display font-bold mb-4">Eventos programados</h3><div id="events-list" class="space-y-2"></div></div>
+        </section>
+
+        <section class="dash-view hidden" data-view="tasks">
+          <div class="flex items-center justify-between mb-8">
+            <div><div class="meta-label text-neutral-500 mb-2">/ kanban</div><h1 class="display text-3xl md:text-5xl">Tareas</h1></div>
+            <button id="add-task-btn" type="button" class="px-4 py-2 rounded-xl bg-accent text-white font-bold mono text-[11px] uppercase tracking-[0.25em] hover:bg-neutral-900 dark:hover:bg-white dark:hover:text-black transition">+ Nueva</button>
+          </div>
+          <div class="grid md:grid-cols-3 gap-4">
+            <div class="kanban-col surface rounded-2xl p-4 border-2 transition" data-status="todo">
+              <div class="flex items-center justify-between mb-4 px-2"><h3 class="font-display font-bold flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-neutral-400"></span> Por hacer</h3><span class="meta-label text-neutral-500" data-count="todo">0</span></div>
+              <div class="kanban-list space-y-2 min-h-[200px]" data-status="todo"></div>
+            </div>
+            <div class="kanban-col surface rounded-2xl p-4 border-2 transition" data-status="doing">
+              <div class="flex items-center justify-between mb-4 px-2"><h3 class="font-display font-bold flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-accent"></span> En progreso</h3><span class="meta-label text-neutral-500" data-count="doing">0</span></div>
+              <div class="kanban-list space-y-2 min-h-[200px]" data-status="doing"></div>
+            </div>
+            <div class="kanban-col surface rounded-2xl p-4 border-2 transition" data-status="done">
+              <div class="flex items-center justify-between mb-4 px-2"><h3 class="font-display font-bold flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-green-500"></span> Completadas</h3><span class="meta-label text-neutral-500" data-count="done">0</span></div>
+              <div class="kanban-list space-y-2 min-h-[200px]" data-status="done"></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="dash-view hidden" data-view="projects">
+          <div class="flex items-center justify-between mb-8">
+            <div>
+              <div class="meta-label text-neutral-500 mb-2">/ proyectos</div>
+              <h1 class="display text-3xl md:text-5xl">Mis proyectos</h1>
+              <p class="text-neutral-500 mt-2 text-sm">Planificación → Diseño → Desarrollo → Pruebas → Entrega</p>
+            </div>
+            <button id="add-project-btn" type="button" class="px-4 py-2 rounded-xl bg-accent text-white font-bold mono text-[11px] uppercase tracking-[0.25em] hover:bg-neutral-900 dark:hover:bg-white dark:hover:text-black transition">+ Nuevo</button>
+          </div>
+          <div id="projects-list" class="space-y-4"></div>
+        </section>
+
+        <section class="dash-view hidden" data-view="notes">
+          <div class="flex items-center justify-between mb-8">
+            <div><div class="meta-label text-neutral-500 mb-2">/ notas</div><h1 class="display text-3xl md:text-5xl">Mis notas</h1></div>
+            <button id="add-note-btn" type="button" class="px-4 py-2 rounded-xl bg-accent text-white font-bold mono text-[11px] uppercase tracking-[0.25em] hover:bg-neutral-900 dark:hover:bg-white dark:hover:text-black transition">+ Nueva</button>
+          </div>
+          <div id="notes-list" class="grid md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+        </section>
+
+        <section class="dash-view hidden" data-view="data">
+          <div class="mb-8">
+            <div class="meta-label text-neutral-500 mb-2">/ backups</div>
+            <h1 class="display text-3xl md:text-5xl">Datos &amp; Backup</h1>
+            <p class="text-neutral-500 dark:text-neutral-400 mt-2 max-w-2xl">Tus tareas, eventos, proyectos y notas se guardan en este navegador. Exporta periódicamente para respaldar y para llevarlos al sitio en Hostinger.</p>
+          </div>
+
+          <!-- Storage status -->
+          <div class="surface rounded-2xl p-6 mb-6">
+            <div class="grid md:grid-cols-4 gap-6">
+              <div>
+                <div class="meta-label text-neutral-500 mb-1">Ubicación</div>
+                <div class="font-display font-semibold text-sm">localStorage</div>
+                <div class="text-xs text-neutral-500 mt-1">de este navegador</div>
+              </div>
+              <div>
+                <div class="meta-label text-neutral-500 mb-1">Espacio usado</div>
+                <div class="font-display font-semibold text-sm" id="storage-size">— KB</div>
+                <div class="text-xs text-neutral-500 mt-1">de ~5 MB disponibles</div>
+              </div>
+              <div>
+                <div class="meta-label text-neutral-500 mb-1">Último backup</div>
+                <div class="font-display font-semibold text-sm" id="last-backup">Nunca</div>
+                <div class="text-xs text-neutral-500 mt-1" id="backup-status">Recuerda exportar</div>
+              </div>
+              <div>
+                <div class="meta-label text-neutral-500 mb-1">Total items</div>
+                <div class="font-display font-semibold text-sm" id="total-items">0</div>
+                <div class="text-xs text-neutral-500 mt-1">en todos los módulos</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Actions -->
+          <div class="grid md:grid-cols-2 gap-4 mb-6">
+            <div class="surface rounded-2xl p-6">
+              <div class="flex items-start gap-3 mb-3">
+                <div class="w-10 h-10 rounded-xl bg-accent/10 border border-accent/30 flex items-center justify-center shrink-0">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2667ff" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                </div>
+                <div>
+                  <h3 class="font-display font-bold">Exportar backup</h3>
+                  <p class="text-neutral-500 dark:text-neutral-400 text-sm mt-1">Descarga un archivo .json con TODOS tus datos. Guárdalo en Drive o donde quieras.</p>
+                </div>
+              </div>
+              <button id="export-btn" type="button" class="w-full mt-2 py-3 rounded-xl bg-accent text-white font-bold mono text-[11px] uppercase tracking-[0.25em] hover:opacity-90 transition">↓ Descargar backup ahora</button>
+            </div>
+
+            <div class="surface rounded-2xl p-6">
+              <div class="flex items-start gap-3 mb-3">
+                <div class="w-10 h-10 rounded-xl bg-accent/10 border border-accent/30 flex items-center justify-center shrink-0">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2667ff" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+                </div>
+                <div>
+                  <h3 class="font-display font-bold">Importar backup</h3>
+                  <p class="text-neutral-500 dark:text-neutral-400 text-sm mt-1">Restaura tus datos desde un archivo .json. Sobrescribe los datos actuales.</p>
+                </div>
+              </div>
+              <input type="file" id="import-file" accept=".json,application/json" class="hidden" />
+              <button id="import-btn" type="button" class="w-full mt-2 py-3 rounded-xl surface-soft hover:border-accent font-bold mono text-[11px] uppercase tracking-[0.25em] transition">↑ Cargar archivo .json</button>
+            </div>
+          </div>
+
+          <!-- Info box -->
+          <div class="surface rounded-2xl p-6" style="border-left: 3px solid #2667ff;">
+            <h3 class="font-display font-bold mb-3 flex items-center gap-2">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2667ff" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+              Lo que necesitas saber sobre tus datos
+            </h3>
+            <ul class="text-neutral-600 dark:text-neutral-400 text-sm space-y-2 leading-relaxed">
+              <li><strong class="text-green-600 dark:text-green-400">✓ Sí persisten:</strong> al recargar, cerrar el navegador, apagar la computadora o cuando actualice el código del sitio. Los datos viven en tu navegador, independientes del HTML.</li>
+              <li><strong class="text-yellow-600 dark:text-yellow-400">⚠ No transfieren automáticamente:</strong> cuando subas el sitio a Hostinger (otro dominio), los datos locales no aparecerán ahí. <em>Exporta antes de subir, Importa después.</em></li>
+              <li><strong class="text-red-600 dark:text-red-400">✕ Sí se pueden perder si:</strong> limpias caché/datos del navegador, usas modo incógnito, cambias de navegador (Chrome → Firefox), o formateas el equipo.</li>
+              <li><strong class="text-accent">💾 Recomendación:</strong> exporta una vez por semana y guarda el .json en Google Drive, OneDrive o similar.</li>
+            </ul>
+          </div>
+
+          <!-- Danger zone -->
+          <div class="mt-6 surface rounded-2xl p-6" style="border-left: 3px solid #ef4444;">
+            <h3 class="font-display font-bold mb-2 text-red-500">Zona peligrosa</h3>
+            <p class="text-neutral-500 dark:text-neutral-400 text-sm mb-4">Esto borra TODOS tus datos del navegador. No se puede deshacer (excepto importando un backup).</p>
+            <button id="wipe-btn" type="button" class="px-4 py-2 rounded-xl border border-red-500/40 text-red-500 hover:bg-red-500/10 transition mono text-[11px] uppercase tracking-[0.25em] font-bold">Borrar todos los datos</button>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- MODALS -->
+<div id="task-modal" class="fixed inset-0 z-[70] hidden items-center justify-center bg-black/60 backdrop-blur p-6">
+  <div class="surface rounded-2xl p-8 max-w-md w-full">
+    <h3 class="font-display font-bold text-xl mb-6">Nueva tarea</h3>
+    <form id="task-form" class="space-y-3">
+      <input name="title" required placeholder="¿Qué hay que hacer?" class="w-full surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none" />
+      <textarea name="desc" rows="3" placeholder="Detalles (opcional)" class="w-full surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none resize-none"></textarea>
+      <div class="grid grid-cols-2 gap-3">
+        <select name="priority" class="surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none"><option value="low">Prioridad baja</option><option value="med" selected>Media</option><option value="high">Alta</option></select>
+        <select name="status" class="surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none"><option value="todo">Por hacer</option><option value="doing">En progreso</option><option value="done">Completada</option></select>
+      </div>
+      <div class="flex gap-3 pt-3">
+        <button type="button" class="flex-1 py-3 rounded-xl surface-soft hover:border-accent" data-close-modal>Cancelar</button>
+        <button type="submit" class="flex-1 py-3 rounded-xl bg-accent text-white font-bold mono text-[11px] uppercase tracking-[0.25em]">Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="project-modal" class="fixed inset-0 z-[70] hidden items-center justify-center bg-black/60 backdrop-blur p-6">
+  <div class="surface rounded-2xl p-8 max-w-md w-full">
+    <h3 class="font-display font-bold text-xl mb-6">Nuevo proyecto</h3>
+    <form id="project-form" class="space-y-3">
+      <input name="name" required placeholder="Nombre del proyecto" class="w-full surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none" />
+      <input name="client" placeholder="Cliente (opcional)" class="w-full surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none" />
+      <textarea name="desc" rows="3" placeholder="Descripción" class="w-full surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none resize-none"></textarea>
+      <input name="deadline" type="date" class="w-full surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none" />
+      <div class="flex gap-3 pt-3">
+        <button type="button" class="flex-1 py-3 rounded-xl surface-soft hover:border-accent" data-close-modal>Cancelar</button>
+        <button type="submit" class="flex-1 py-3 rounded-xl bg-accent text-white font-bold mono text-[11px] uppercase tracking-[0.25em]">Crear</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="note-modal" class="fixed inset-0 z-[70] hidden items-center justify-center bg-black/60 backdrop-blur p-6">
+  <div class="surface rounded-2xl p-8 max-w-lg w-full">
+    <h3 class="font-display font-bold text-xl mb-6">Nueva nota</h3>
+    <form id="note-form" class="space-y-3">
+      <input name="title" required placeholder="Título" class="w-full surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none" />
+      <textarea name="content" required rows="8" placeholder="Escribe aquí..." class="w-full surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none resize-none mono text-sm"></textarea>
+      <div class="flex gap-3 pt-3">
+        <button type="button" class="flex-1 py-3 rounded-xl surface-soft hover:border-accent" data-close-modal>Cancelar</button>
+        <button type="submit" class="flex-1 py-3 rounded-xl bg-accent text-white font-bold mono text-[11px] uppercase tracking-[0.25em]">Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+const ACCESS_PIN = '1021';
+
+/* ============ THEME TOGGLE ============ */
+const themeToggle = document.getElementById('theme-toggle');
+const themeIconSun = document.getElementById('theme-icon-sun');
+const themeIconMoon = document.getElementById('theme-icon-moon');
+
+function applyTheme(isDark) {
+  document.documentElement.classList.toggle('dark', isDark);
+  themeIconSun.style.display = isDark ? 'none' : 'block';
+  themeIconMoon.style.display = isDark ? 'block' : 'none';
+  localStorage.setItem('theme', isDark ? 'dark' : 'light');
+}
+themeToggle.addEventListener('click', () => {
+  applyTheme(!document.documentElement.classList.contains('dark'));
+});
+themeToggle.addEventListener('keydown', e => {
+  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); themeToggle.click(); }
+});
+// Set initial icon state based on current theme
+applyTheme(document.documentElement.classList.contains('dark'));
+
+/* ============ LOADER ============ */
+const loadNum = document.getElementById('load-num');
+const loadStart = performance.now();
+function loadTick() {
+  const p = Math.min(1, (performance.now() - loadStart) / 1400);
+  loadNum.textContent = String(Math.round(p * 100)).padStart(2, '0');
+  if (p < 1) requestAnimationFrame(loadTick);
+}
+loadTick();
+window.addEventListener('load', () => {
+  setTimeout(() => {
+    document.getElementById('loader').classList.add('done');
+    initAnimations();
+  }, 1500);
+});
+
+/* ============ CURSOR ============ */
+(function() {
+  const c = document.getElementById('cursor');
+  const d = document.getElementById('cursor-dot');
+  if (!c) return;
+  let mx=0,my=0,cx=0,cy=0;
+  window.addEventListener('mousemove', e => {
+    mx=e.clientX; my=e.clientY;
+    d.style.transform=`translate(${mx}px,${my}px) translate(-50%,-50%)`;
+  });
+  function loop(){ cx+=(mx-cx)*0.2; cy+=(my-cy)*0.2; c.style.transform=`translate(${cx}px,${cy}px) translate(-50%,-50%)`; requestAnimationFrame(loop); }
+  loop();
+  function bindHover() {
+    document.querySelectorAll('a, button, input, select, textarea, .stack-it, .proj-card, .kanban-card, .reveal-row').forEach(el => {
+      if (el.dataset.hoverBound) return;
+      el.dataset.hoverBound = '1';
+      el.addEventListener('mouseenter', () => document.body.classList.add('cursor-hover'));
+      el.addEventListener('mouseleave', () => document.body.classList.remove('cursor-hover'));
+    });
+  }
+  bindHover();
+  window.bindHover = bindHover;
+})();
+
+/* ============ AUDIO PLAYER WIDGET ============ */
+(function() {
+  const player = document.getElementById('audio-player');
+  const audio = document.getElementById('audio-el');
+  const playBtn = document.getElementById('audio-play');
+  const playIcon = document.getElementById('audio-play-icon');
+  const pauseIcon = document.getElementById('audio-pause-icon');
+  const slider = document.getElementById('audio-slider');
+  const progress = document.getElementById('audio-progress');
+  const currentEl = document.getElementById('audio-current');
+  const durationEl = document.getElementById('audio-duration');
+  const shuffleBtn = document.getElementById('audio-shuffle');
+  const repeatBtn = document.getElementById('audio-repeat');
+  const minimizeBtn = document.getElementById('audio-minimize');
+  const expandBtn = document.getElementById('audio-expand');
+  if (!player || !audio) return;
+
+  let isPlaying = false;
+  let isShuffle = false;
+  let isRepeat = false;
+
+  // Restore preferences
+  const prefs = JSON.parse(localStorage.getItem('jdh_audioPrefs') || '{}');
+  if (prefs.minimized) {
+    player.classList.add('collapsed');
+    expandBtn.classList.add('visible');
+  }
+  if (prefs.shuffle) { isShuffle = true; shuffleBtn.classList.add('active'); }
+  if (prefs.repeat) { isRepeat = true; repeatBtn.classList.add('active'); }
+  audio.loop = isRepeat;
+
+  function savePrefs() {
+    localStorage.setItem('jdh_audioPrefs', JSON.stringify({
+      minimized: player.classList.contains('collapsed'),
+      shuffle: isShuffle, repeat: isRepeat
+    }));
+  }
+
+  function fmt(s) {
+    if (!isFinite(s)) return '0:00';
+    const m = Math.floor(s / 60), r = Math.floor(s % 60);
+    return `${m}:${r.toString().padStart(2,'0')}`;
+  }
+
+  function setPlaying(playing) {
+    isPlaying = playing;
+    playIcon.style.display = playing ? 'none' : '';
+    pauseIcon.style.display = playing ? '' : 'none';
+  }
+
+  playBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    if (isPlaying) {
+      audio.pause();
+    } else {
+      audio.play().catch(err => console.warn('[audio] play blocked:', err.name));
+    }
+  });
+  audio.addEventListener('play', () => setPlaying(true));
+  audio.addEventListener('pause', () => setPlaying(false));
+  audio.addEventListener('ended', () => { if (!isRepeat) setPlaying(false); });
+
+  audio.addEventListener('timeupdate', () => {
+    if (!audio.duration) return;
+    const pct = (audio.currentTime / audio.duration) * 100;
+    progress.style.width = pct + '%';
+    currentEl.textContent = fmt(audio.currentTime);
+  });
+  audio.addEventListener('loadedmetadata', () => {
+    durationEl.textContent = fmt(audio.duration);
+  });
+
+  slider.addEventListener('click', e => {
+    const rect = slider.getBoundingClientRect();
+    const pct = (e.clientX - rect.left) / rect.width;
+    if (audio.duration && isFinite(audio.duration)) {
+      audio.currentTime = pct * audio.duration;
+      progress.style.width = (pct * 100) + '%';
+    }
+  });
+
+  shuffleBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    isShuffle = !isShuffle;
+    shuffleBtn.classList.toggle('active', isShuffle);
+    savePrefs();
+  });
+  repeatBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    isRepeat = !isRepeat;
+    repeatBtn.classList.toggle('active', isRepeat);
+    audio.loop = isRepeat;
+    savePrefs();
+  });
+
+  minimizeBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    player.classList.add('collapsed');
+    expandBtn.classList.add('visible');
+    savePrefs();
+  });
+  expandBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    player.classList.remove('collapsed');
+    expandBtn.classList.remove('visible');
+    savePrefs();
+  });
+})();
+
+/* ============ FLOW FIELD BACKGROUND ANIMATION ============ */
+(function() {
+  const canvas = document.getElementById('flow-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+
+  let particles = [], width = 0, height = 0, dpr = 1;
+  let mouseX = -1000, mouseY = -1000;
+  let isDark = document.documentElement.classList.contains('dark');
+
+  function colors() {
+    return isDark
+      ? { dot: 'rgba(120, 165, 255, 0.75)', trail: 'rgba(0,0,0,0.07)' }
+      : { dot: 'rgba(38, 103, 255, 0.55)', trail: 'rgba(255,255,255,0.10)' };
+  }
+
+  function init() {
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    width = window.innerWidth;
+    height = window.innerHeight;
+    canvas.width = width * dpr;
+    canvas.height = height * dpr;
+    canvas.style.width = width + 'px';
+    canvas.style.height = height + 'px';
+    ctx.setTransform(1, 0, 0, 1, 0, 0); // reset before scaling
+    ctx.scale(dpr, dpr);
+
+    particles = [];
+    const count = window.innerWidth < 768 ? 220 : 520;
+    for (let i = 0; i < count; i++) {
+      particles.push({
+        x: Math.random() * width,
+        y: Math.random() * height,
+        vx: 0, vy: 0,
+        age: 0,
+        life: Math.random() * 200 + 100,
+      });
+    }
+  }
+
+  function step() {
+    const c = colors();
+    ctx.fillStyle = c.trail;
+    ctx.fillRect(0, 0, width, height);
+
+    ctx.fillStyle = c.dot;
+    particles.forEach(p => {
+      const angle = (Math.cos(p.x * 0.005) + Math.sin(p.y * 0.005)) * Math.PI;
+      p.vx += Math.cos(angle) * 0.16;
+      p.vy += Math.sin(angle) * 0.16;
+
+      const dx = mouseX - p.x;
+      const dy = mouseY - p.y;
+      const dist = Math.sqrt(dx*dx + dy*dy);
+      if (dist < 150) {
+        const f = (150 - dist) / 150;
+        p.vx -= dx * f * 0.04;
+        p.vy -= dy * f * 0.04;
+      }
+
+      p.x += p.vx; p.y += p.vy;
+      p.vx *= 0.95; p.vy *= 0.95;
+      p.age++;
+
+      if (p.age > p.life) {
+        p.x = Math.random() * width;
+        p.y = Math.random() * height;
+        p.vx = 0; p.vy = 0;
+        p.age = 0;
+        p.life = Math.random() * 200 + 100;
+      }
+      if (p.x < 0) p.x = width;
+      if (p.x > width) p.x = 0;
+      if (p.y < 0) p.y = height;
+      if (p.y > height) p.y = 0;
+
+      const alpha = 1 - Math.abs((p.age / p.life) - 0.5) * 2;
+      ctx.globalAlpha = alpha;
+      ctx.fillRect(p.x, p.y, 1.5, 1.5);
+    });
+    ctx.globalAlpha = 1;
+    requestAnimationFrame(step);
+  }
+
+  window.addEventListener('mousemove', e => { mouseX = e.clientX; mouseY = e.clientY; });
+  window.addEventListener('mouseleave', () => { mouseX = -1000; mouseY = -1000; });
+  window.addEventListener('resize', init);
+
+  // Detect theme changes
+  new MutationObserver(() => {
+    isDark = document.documentElement.classList.contains('dark');
+  }).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+
+  init();
+  step();
+})();
+
+/* ============ SCROLL-EXPANSION HERO ============ */
+const introSection = document.getElementById('intro-section');
+const introBg = document.getElementById('intro-bg');
+const introMedia = document.getElementById('intro-media');
+const titleLeft = document.getElementById('title-left');
+const titleRight = document.getElementById('title-right');
+const introHintText = document.getElementById('intro-hint-text');
+const contentSpacer = document.getElementById('intro-content-spacer');
+
+/* ============ VIDEO LOAD + AUTOPLAY GUARD ============ */
+(function() {
+  const video = document.getElementById('intro-video');
+  const fallback = document.getElementById('video-fallback');
+  if (!video) return;
+
+  video.muted = true;
+  video.playsInline = true;
+  video.removeAttribute('disablepictureinpicture');
+
+  function tryPlay() {
+    const p = video.play();
+    if (p !== undefined) {
+      p.catch(err => {
+        console.warn('[intro-video] autoplay blocked:', err.name, '— click anywhere to play');
+      });
+    }
+  }
+
+  function showFallback(reason) {
+    console.error('[intro-video] FAILED:', reason);
+    if (fallback) fallback.classList.add('visible');
+  }
+
+  // Detailed diagnostics
+  video.addEventListener('loadedmetadata', () => {
+    console.log('[intro-video] METADATA:', {
+      videoWidth: video.videoWidth,
+      videoHeight: video.videoHeight,
+      duration: video.duration + 's',
+      readyState: video.readyState
+    });
+    if (video.videoWidth === 0 || video.videoHeight === 0) {
+      console.error('[intro-video] ⚠ VIDEO HAS ZERO DIMENSIONS — codec is probably unsupported (likely HEVC/H.265). Re-encode the file as H.264 MP4.');
+      showFallback('codec unsupported (videoWidth=0)');
+    }
+  });
+
+  video.addEventListener('loadeddata', () => {
+    console.log('[intro-video] loaded ok, attempting play');
+    tryPlay();
+  });
+
+  video.addEventListener('playing', () => {
+    console.log('[intro-video] ▶ PLAYING NOW. currentTime:', video.currentTime);
+  });
+
+  video.addEventListener('error', () => {
+    const err = video.error;
+    showFallback('error code=' + (err ? err.code : '?') + ' message=' + (err ? err.message : '?'));
+  });
+  video.querySelector('source').addEventListener('error', () => showFallback('source 404 / unsupported'));
+
+  // Retry play on user interaction (autoplay policy fallback)
+  const retry = () => tryPlay();
+  document.addEventListener('click', retry);
+  document.addEventListener('wheel', retry, { passive: true });
+  document.addEventListener('touchstart', retry, { passive: true });
+
+  video.load();
+  tryPlay();
+
+  // 5s safety net
+  setTimeout(() => {
+    if (!video.duration || isNaN(video.duration)) {
+      showFallback('no metadata after 5s — file missing or unreadable');
+    } else if (video.videoWidth === 0) {
+      showFallback('codec unsupported');
+    } else if (video.paused) {
+      console.warn('[intro-video] still paused after 5s — autoplay blocked. Click anywhere to play.');
+    }
+  }, 5000);
+})();
+
+let scrollProgress = 0;
+let mediaFullyExpanded = false;
+let isMobile = window.innerWidth < 768;
+window.addEventListener('resize', () => { isMobile = window.innerWidth < 768; });
+
+function updateIntroVisuals() {
+  const baseW = 320;
+  const baseH = 400;
+  const addW = isMobile ? 700 : 1300;
+  const addH = isMobile ? 200 : 400;
+  const w = baseW + scrollProgress * addW;
+  const h = baseH + scrollProgress * addH;
+  introMedia.style.width = w + 'px';
+  introMedia.style.height = h + 'px';
+  introMedia.style.maxWidth = '95vw';
+  introMedia.style.maxHeight = '85vh';
+
+  const tx = scrollProgress * (isMobile ? 35 : 30);
+  if (titleLeft) titleLeft.style.transform = `translateX(-${tx}vw)`;
+  if (titleRight) titleRight.style.transform = `translateX(${tx}vw)`;
+
+  if (introBg) introBg.style.opacity = String(1 - scrollProgress * 0.6);
+
+  if (introHintText) {
+    introHintText.textContent = scrollProgress >= 1 ? 'Continúa explorando ↓' : 'Scroll para expandir';
+  }
+}
+updateIntroVisuals();
+
+function onWheel(e) {
+  if (mediaFullyExpanded) {
+    if (e.deltaY < 0 && window.scrollY <= 5) {
+      mediaFullyExpanded = false;
+      contentSpacer.style.height = '0';
+      contentSpacer.style.opacity = '0';
+      e.preventDefault();
+    }
+    return;
+  }
+  e.preventDefault();
+  const delta = e.deltaY * 0.0012;
+  scrollProgress = Math.min(Math.max(scrollProgress + delta, 0), 1);
+  updateIntroVisuals();
+  if (scrollProgress >= 1 && !mediaFullyExpanded) {
+    mediaFullyExpanded = true;
+    contentSpacer.style.height = 'auto';
+    contentSpacer.style.opacity = '1';
+  }
+}
+
+let touchY = 0;
+function onTouchStart(e) { touchY = e.touches[0].clientY; }
+function onTouchMove(e) {
+  if (!touchY) return;
+  const cy = e.touches[0].clientY;
+  const dy = touchY - cy;
+  if (mediaFullyExpanded) {
+    if (dy < -20 && window.scrollY <= 5) {
+      mediaFullyExpanded = false;
+      contentSpacer.style.height = '0';
+      contentSpacer.style.opacity = '0';
+      e.preventDefault();
+    }
+    return;
+  }
+  e.preventDefault();
+  scrollProgress = Math.min(Math.max(scrollProgress + dy * 0.005, 0), 1);
+  updateIntroVisuals();
+  if (scrollProgress >= 1) {
+    mediaFullyExpanded = true;
+    contentSpacer.style.height = 'auto';
+    contentSpacer.style.opacity = '1';
+  }
+  touchY = cy;
+}
+function onTouchEnd() { touchY = 0; }
+function lockScroll() {
+  if (!mediaFullyExpanded) window.scrollTo(0, 0);
+}
+
+window.addEventListener('wheel', onWheel, { passive: false });
+window.addEventListener('touchstart', onTouchStart, { passive: false });
+window.addEventListener('touchmove', onTouchMove, { passive: false });
+window.addEventListener('touchend', onTouchEnd);
+window.addEventListener('scroll', lockScroll);
+
+/* ============ LENIS smooth scroll (only when expanded) ============ */
+let lenis = null;
+function startLenis() {
+  if (lenis) return;
+  lenis = new Lenis({
+    duration: 1.2,
+    easing: t => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+    smoothWheel: true,
+  });
+  function raf(t) { lenis && lenis.raf(t); requestAnimationFrame(raf); }
+  requestAnimationFrame(raf);
+  gsap.registerPlugin(ScrollTrigger);
+  lenis.on('scroll', ScrollTrigger.update);
+}
+
+/* Wait until media expands to start GSAP/Lenis */
+const expandWatcher = setInterval(() => {
+  if (mediaFullyExpanded) {
+    clearInterval(expandWatcher);
+    startLenis();
+    setTimeout(() => ScrollTrigger.refresh(), 200);
+  }
+}, 200);
+
+/* ============ ANIMATIONS ============ */
+function initAnimations() {
+  gsap.registerPlugin(ScrollTrigger);
+  gsap.utils.toArray('[data-anim]').forEach(el => {
+    const type = el.dataset.anim;
+    const delay = parseFloat(el.dataset.delay || 0);
+    let from = {};
+    if (type === 'rise') from = { y: 80, opacity: 0 };
+    else if (type === 'fade-up') from = { y: 30, opacity: 0 };
+    else from = { opacity: 0 };
+    gsap.from(el, {
+      ...from, duration: 1.1, delay, ease: 'power3.out',
+      scrollTrigger: { trigger: el, start: 'top 88%', toggleActions: 'play none none none' }
+    });
+  });
+
+  setupStackReveal();
+  setupHorizontalScroll();
+  setupCounters();
+  if (window.bindHover) window.bindHover();
+}
+
+function setupCounters() {
+  document.querySelectorAll('[data-counter]').forEach(el => {
+    const target = parseInt(el.dataset.counter);
+    const suffix = el.dataset.suffix || '';
+    el.textContent = '0';
+    ScrollTrigger.create({
+      trigger: el, start: 'top 90%', once: true,
+      onEnter: () => {
+        const obj = { v: 0 };
+        gsap.to(obj, { v: target, duration: 1.8, ease: 'power3.out', onUpdate: () => {
+          el.innerHTML = Math.round(obj.v) + (suffix ? `<span class="text-2xl">${suffix}</span>` : '');
+        }});
+      }
+    });
+  });
+}
+
+function setupStackReveal() {
+  const items = document.querySelectorAll('.stack-it');
+  const progress = document.getElementById('stack-progress');
+  if (!items.length) return;
+  gsap.set(items, { opacity: 0, y: 40 });
+  ScrollTrigger.create({
+    trigger: '#stack', start: 'top top', end: 'bottom bottom', scrub: 0.5,
+    onUpdate: self => {
+      const visible = Math.ceil(self.progress * items.length);
+      items.forEach((it, i) => gsap.to(it, { opacity: i < visible ? 1 : 0.15, y: i < visible ? 0 : 30, duration: 0.4 }));
+      if (progress) progress.textContent = `${String(Math.min(visible, items.length)).padStart(2,'0')} / ${items.length}`;
+    }
+  });
+}
+
+function setupHorizontalScroll() {
+  const hTrack = document.getElementById('h-scroll-track');
+  const hSec = document.getElementById('h-scroll');
+  if (!hTrack || !hSec || window.innerWidth <= 768) return;
+  const totalWidth = () => hTrack.scrollWidth - window.innerWidth;
+  gsap.to(hTrack, {
+    x: () => -totalWidth(), ease: 'none',
+    scrollTrigger: {
+      trigger: hSec, start: 'top top', end: () => `+=${totalWidth()}`,
+      pin: true, scrub: 0.5, invalidateOnRefresh: true
+    }
+  });
+}
+
+/* ============ MAGNETIC BUTTONS ============ */
+document.querySelectorAll('.magnet').forEach(b => {
+  b.addEventListener('mousemove', e => {
+    const r = b.getBoundingClientRect();
+    b.style.transform = `translate(${(e.clientX - r.left - r.width/2) * 0.2}px, ${(e.clientY - r.top - r.height/2) * 0.2}px)`;
+  });
+  b.addEventListener('mouseleave', () => b.style.transform = '');
+});
+
+/* ============ CONTACT FORM ============ */
+document.getElementById('contact-form')?.addEventListener('submit', e => {
+  e.preventDefault();
+  const msg = document.getElementById('form-msg');
+  msg.classList.remove('hidden');
+  msg.className = 'mono text-xs text-center text-accent';
+  msg.textContent = '// mensaje enviado · respondo en menos de 24h ✓';
+  e.target.reset();
+  setTimeout(() => msg.classList.add('hidden'), 5000);
+});
+
+/* ============ DASHBOARD PIN ============ */
+const dashboard = document.getElementById('dashboard');
+const pinScreen = document.getElementById('pin-screen');
+const dashContent = document.getElementById('dash-content');
+const pinDots = document.querySelectorAll('.pin-dot');
+let pinInput = '';
+
+function openDashboard() {
+  console.log('Opening dashboard');
+  dashboard.classList.remove('hidden');
+  pinScreen.classList.remove('hidden');
+  dashContent.classList.add('hidden');
+  pinInput = '';
+  updateDots();
+  if (lenis) lenis.stop();
+  document.body.style.overflow = 'hidden';
+}
+function closeDashboard() {
+  dashboard.classList.add('hidden');
+  pinInput = '';
+  if (lenis) lenis.start();
+  document.body.style.overflow = '';
+}
+function updateDots() {
+  pinDots.forEach((d, i) => { d.classList.toggle('filled', i < pinInput.length); d.classList.remove('error'); });
+}
+function checkPin() {
+  if (pinInput === ACCESS_PIN) {
+    pinScreen.classList.add('hidden');
+    dashContent.classList.remove('hidden');
+    dashContent.classList.add('flex');
+    initDashboard();
+  } else {
+    pinDots.forEach(d => d.classList.add('error'));
+    setTimeout(() => { pinInput = ''; updateDots(); }, 600);
+  }
+}
+
+document.getElementById('open-dash').addEventListener('click', e => { e.preventDefault(); openDashboard(); });
+document.getElementById('close-pin').addEventListener('click', e => { e.preventDefault(); closeDashboard(); });
+document.getElementById('dash-logout').addEventListener('click', e => { e.preventDefault(); closeDashboard(); });
+
+document.querySelectorAll('#keypad .key').forEach(k => {
+  k.className = 'key surface rounded-xl py-4 font-display font-bold text-xl hover:bg-accent/10 hover:border-accent transition';
+  k.addEventListener('click', () => {
+    if (k.dataset.action === 'del') pinInput = pinInput.slice(0, -1);
+    else if (pinInput.length < 4) pinInput += k.textContent.trim();
+    updateDots();
+    if (pinInput.length === 4) setTimeout(checkPin, 200);
+  });
+});
+
+document.addEventListener('keydown', e => {
+  // Alt+P abre el panel (no entra en conflicto con shortcuts del navegador)
+  if (e.altKey && (e.key === 'p' || e.key === 'P')) {
+    e.preventDefault();
+    openDashboard();
+    return;
+  }
+  if (e.key === 'Escape' && !dashboard.classList.contains('hidden')) {
+    closeDashboard();
+    return;
+  }
+  if (!pinScreen.classList.contains('hidden') && !dashboard.classList.contains('hidden')) {
+    if (/^[0-9]$/.test(e.key) && pinInput.length < 4) { pinInput += e.key; updateDots(); if (pinInput.length === 4) setTimeout(checkPin, 200); }
+    else if (e.key === 'Backspace') { pinInput = pinInput.slice(0, -1); updateDots(); }
+  }
+});
+
+/* ============ DASHBOARD DATA ============ */
+const store = {
+  get(k, d) { try { return JSON.parse(localStorage.getItem('jdh_'+k)) ?? d; } catch { return d; } },
+  set(k, v) { localStorage.setItem('jdh_'+k, JSON.stringify(v)); },
+};
+let tasks = store.get('tasks', []); let events = store.get('events', []);
+let projects = store.get('projects', []); let notes = store.get('notes', []);
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+function saveAll() { store.set('tasks', tasks); store.set('events', events); store.set('projects', projects); store.set('notes', notes); }
+
+function showView(name) {
+  document.querySelectorAll('.dash-view').forEach(v => v.classList.toggle('hidden', v.dataset.view !== name));
+  document.querySelectorAll('.dash-nav').forEach(n => {
+    const active = n.dataset.view === name;
+    n.classList.toggle('bg-accent/10', active);
+    n.classList.toggle('text-accent', active);
+  });
+  if (name === 'overview') renderOverview();
+  if (name === 'agenda') renderEvents();
+  if (name === 'tasks') renderTasks();
+  if (name === 'projects') renderProjects();
+  if (name === 'notes') renderNotes();
+  if (name === 'data') renderDataView();
+}
+
+/* ============ DATA BACKUP / EXPORT / IMPORT / WIPE ============ */
+function renderDataView() {
+  const blob = JSON.stringify({ tasks, events, projects, notes });
+  const bytes = new Blob([blob]).size;
+  const sizeKB = (bytes / 1024).toFixed(2);
+  const sizeEl = document.getElementById('storage-size');
+  if (sizeEl) sizeEl.textContent = sizeKB + ' KB';
+
+  const lastBackup = localStorage.getItem('jdh_lastBackup');
+  const lastEl = document.getElementById('last-backup');
+  const statusEl = document.getElementById('backup-status');
+  if (lastEl) {
+    if (lastBackup) {
+      const d = new Date(lastBackup);
+      lastEl.textContent = d.toLocaleDateString('es-CO', { day:'numeric', month:'short', year:'numeric' });
+      const daysAgo = Math.floor((Date.now() - d.getTime()) / 86400000);
+      if (statusEl) {
+        if (daysAgo === 0) { statusEl.textContent = 'Hace unas horas ✓'; statusEl.className = 'text-xs mt-1 text-green-600 dark:text-green-400'; }
+        else if (daysAgo < 7) { statusEl.textContent = `Hace ${daysAgo} día${daysAgo>1?'s':''} ✓`; statusEl.className = 'text-xs mt-1 text-green-600 dark:text-green-400'; }
+        else if (daysAgo < 30) { statusEl.textContent = `Hace ${daysAgo} días — exporta pronto`; statusEl.className = 'text-xs mt-1 text-yellow-600 dark:text-yellow-400'; }
+        else { statusEl.textContent = `Hace ${daysAgo} días — ¡expórtalo ya!`; statusEl.className = 'text-xs mt-1 text-red-500'; }
+      }
+    } else {
+      lastEl.textContent = 'Nunca';
+      if (statusEl) { statusEl.textContent = 'Recuerda exportar'; statusEl.className = 'text-xs mt-1 text-yellow-600 dark:text-yellow-400'; }
+    }
+  }
+
+  const totalEl = document.getElementById('total-items');
+  if (totalEl) totalEl.textContent = (tasks.length + events.length + projects.length + notes.length) + ' items';
+}
+
+document.getElementById('export-btn')?.addEventListener('click', () => {
+  const payload = {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    owner: 'Juan Diego Hernández',
+    counts: {
+      tasks: tasks.length, events: events.length,
+      projects: projects.length, notes: notes.length,
+    },
+    data: { tasks, events, projects, notes },
+  };
+  const json = JSON.stringify(payload, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const ts = new Date().toISOString().slice(0,10);
+  a.download = `jdh-backup-${ts}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  localStorage.setItem('jdh_lastBackup', new Date().toISOString());
+  renderDataView();
+});
+
+document.getElementById('import-btn')?.addEventListener('click', () => {
+  document.getElementById('import-file').click();
+});
+document.getElementById('import-file')?.addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const parsed = JSON.parse(ev.target.result);
+      // Soporta tanto el formato nuevo (envuelto en {data:...}) como uno plano
+      const d = parsed.data || parsed;
+      if (!d || (typeof d !== 'object')) throw new Error('Formato no válido');
+      if (!confirm('Esto sobrescribirá tus datos actuales. ¿Continuar?')) return;
+      tasks = Array.isArray(d.tasks) ? d.tasks : [];
+      events = Array.isArray(d.events) ? d.events : [];
+      projects = Array.isArray(d.projects) ? d.projects : [];
+      notes = Array.isArray(d.notes) ? d.notes : [];
+      saveAll();
+      alert('✓ Datos restaurados: ' + (tasks.length+events.length+projects.length+notes.length) + ' items.');
+      showView('overview');
+    } catch (err) {
+      alert('Archivo no válido: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+});
+
+document.getElementById('wipe-btn')?.addEventListener('click', () => {
+  if (!confirm('⚠ Esto borrará TODOS tus datos del navegador. ¿Estás seguro?')) return;
+  if (!confirm('Última confirmación: este paso es irreversible (a menos que tengas un backup). ¿Continuar?')) return;
+  tasks = []; events = []; projects = []; notes = [];
+  saveAll();
+  localStorage.removeItem('jdh_seeded');
+  alert('Datos borrados.');
+  showView('overview');
+});
+document.querySelectorAll('.dash-nav').forEach(n => n.addEventListener('click', () => showView(n.dataset.view)));
+document.querySelectorAll('[data-jump]').forEach(b => b.addEventListener('click', () => showView(b.dataset.jump)));
+function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+function renderOverview() {
+  document.getElementById('stat-tasks').textContent = tasks.filter(t => t.status === 'todo').length;
+  document.getElementById('stat-progress').textContent = tasks.filter(t => t.status === 'doing').length;
+  document.getElementById('stat-projects').textContent = projects.length;
+  document.getElementById('stat-notes').textContent = notes.length;
+  const now = new Date();
+  document.getElementById('today-date').textContent = now.toLocaleDateString('es-CO', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+  const upcoming = events.filter(e => new Date(e.date) > now).sort((a,b) => new Date(a.date) - new Date(b.date)).slice(0, 4);
+  document.getElementById('overview-events').innerHTML = upcoming.length ? upcoming.map(e => `
+    <div class="flex items-center gap-3 p-3 rounded-xl surface-soft">
+      <div class="w-10 h-10 rounded-lg bg-accent/10 border border-accent/30 flex flex-col items-center justify-center mono text-[10px] text-accent">
+        <span class="font-bold">${new Date(e.date).getDate()}</span>
+        <span>${new Date(e.date).toLocaleDateString('es-CO',{month:'short'}).toUpperCase()}</span>
+      </div>
+      <div class="min-w-0 flex-1">
+        <div class="font-semibold text-sm truncate">${escapeHtml(e.title)}</div>
+        <div class="text-neutral-500 text-xs">${new Date(e.date).toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'})}</div>
+      </div>
+    </div>`).join('') : '<div class="text-neutral-500 text-sm">Sin eventos próximos.</div>';
+  const urgent = tasks.filter(t => t.status !== 'done' && (t.priority === 'high' || t.status === 'doing')).slice(0, 4);
+  document.getElementById('overview-tasks').innerHTML = urgent.length ? urgent.map(t => `
+    <div class="flex items-center gap-3 p-3 rounded-xl surface-soft">
+      <span class="w-2 h-2 rounded-full ${t.priority === 'high' ? 'bg-red-500' : 'bg-accent'}"></span>
+      <div class="flex-1 min-w-0">
+        <div class="font-semibold text-sm truncate">${escapeHtml(t.title)}</div>
+        <div class="text-neutral-500 text-xs mono uppercase">${t.status === 'doing' ? 'en progreso' : 'pendiente'}</div>
+      </div>
+    </div>`).join('') : '<div class="text-neutral-500 text-sm">Nada urgente.</div>';
+}
+
+document.getElementById('event-form').addEventListener('submit', e => {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  events.push({ id: uid(), title: fd.get('title'), date: fd.get('date') });
+  saveAll(); e.target.reset(); renderEvents();
+});
+function renderEvents() {
+  const sorted = [...events].sort((a,b) => new Date(a.date) - new Date(b.date));
+  document.getElementById('events-list').innerHTML = sorted.length ? sorted.map(e => `
+    <div class="flex items-center gap-4 p-4 rounded-xl surface-soft">
+      <div class="w-12 h-12 rounded-xl bg-accent/10 border border-accent/30 flex flex-col items-center justify-center mono text-xs text-accent">
+        <span class="font-bold">${new Date(e.date).getDate()}</span>
+        <span class="text-[9px]">${new Date(e.date).toLocaleDateString('es-CO',{month:'short'}).toUpperCase()}</span>
+      </div>
+      <div class="flex-1 min-w-0">
+        <div class="font-semibold">${escapeHtml(e.title)}</div>
+        <div class="text-neutral-500 text-xs">${new Date(e.date).toLocaleString('es-CO', { dateStyle:'medium', timeStyle:'short' })}</div>
+      </div>
+      <button data-del-event="${e.id}" type="button" class="text-neutral-400 hover:text-red-500 text-sm">✕</button>
+    </div>`).join('') : '<div class="text-neutral-500">No hay eventos.</div>';
+  document.querySelectorAll('[data-del-event]').forEach(b => b.addEventListener('click', () => {
+    events = events.filter(e => e.id !== b.dataset.delEvent); saveAll(); renderEvents();
+  }));
+}
+
+const taskModal = document.getElementById('task-modal');
+document.getElementById('add-task-btn').addEventListener('click', () => { taskModal.classList.remove('hidden'); taskModal.classList.add('flex'); });
+document.getElementById('task-form').addEventListener('submit', e => {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  tasks.push({ id: uid(), title: fd.get('title'), desc: fd.get('desc'), priority: fd.get('priority'), status: fd.get('status'), createdAt: Date.now() });
+  saveAll(); e.target.reset();
+  taskModal.classList.add('hidden'); taskModal.classList.remove('flex');
+  renderTasks();
+});
+function renderTasks() {
+  ['todo','doing','done'].forEach(status => {
+    const list = document.querySelector(`.kanban-list[data-status="${status}"]`);
+    const filtered = tasks.filter(t => t.status === status);
+    document.querySelector(`[data-count="${status}"]`).textContent = filtered.length;
+    list.innerHTML = filtered.map(t => `
+      <div draggable="true" data-task-id="${t.id}" class="kanban-card p-3 rounded-xl surface-soft hover:border-accent transition">
+        <div class="flex items-start justify-between gap-2 mb-1">
+          <div class="font-semibold text-sm">${escapeHtml(t.title)}</div>
+          <button data-del-task="${t.id}" type="button" class="text-neutral-400 hover:text-red-500 text-xs shrink-0">✕</button>
+        </div>
+        ${t.desc ? `<div class="text-neutral-500 text-xs leading-relaxed">${escapeHtml(t.desc)}</div>` : ''}
+        <div class="mt-2"><span class="mono text-[10px] uppercase tracking-widest px-2 py-0.5 rounded-full ${
+          t.priority === 'high' ? 'bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400' :
+          t.priority === 'med' ? 'bg-accent/15 text-accent' : 'bg-neutral-100 dark:bg-white/10 text-neutral-500'
+        }">${t.priority === 'high' ? 'Alta' : t.priority === 'med' ? 'Media' : 'Baja'}</span></div>
+      </div>`).join('');
+  });
+  document.querySelectorAll('[data-del-task]').forEach(b => b.addEventListener('click', () => {
+    tasks = tasks.filter(t => t.id !== b.dataset.delTask); saveAll(); renderTasks();
+  }));
+  document.querySelectorAll('.kanban-card').forEach(c => {
+    c.addEventListener('dragstart', e => { e.dataTransfer.setData('text/plain', c.dataset.taskId); c.classList.add('dragging'); });
+    c.addEventListener('dragend', () => c.classList.remove('dragging'));
+  });
+  document.querySelectorAll('.kanban-col').forEach(col => {
+    col.addEventListener('dragover', e => { e.preventDefault(); col.classList.add('drag-over'); });
+    col.addEventListener('dragleave', () => col.classList.remove('drag-over'));
+    col.addEventListener('drop', e => {
+      e.preventDefault(); col.classList.remove('drag-over');
+      const id = e.dataTransfer.getData('text/plain');
+      const t = tasks.find(t => t.id === id);
+      if (t) { t.status = col.dataset.status; saveAll(); renderTasks(); }
+    });
+  });
+}
+
+const projModal = document.getElementById('project-modal');
+document.getElementById('add-project-btn').addEventListener('click', () => { projModal.classList.remove('hidden'); projModal.classList.add('flex'); });
+const STAGES = ['Planificación', 'Diseño', 'Desarrollo', 'Pruebas', 'Entrega'];
+document.getElementById('project-form').addEventListener('submit', e => {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  projects.push({ id: uid(), name: fd.get('name'), client: fd.get('client') || '', desc: fd.get('desc') || '', deadline: fd.get('deadline') || '', stages: STAGES.map(s => ({ name: s, done: false })) });
+  saveAll(); e.target.reset();
+  projModal.classList.add('hidden'); projModal.classList.remove('flex');
+  renderProjects();
+});
+function renderProjects() {
+  const box = document.getElementById('projects-list');
+  box.innerHTML = projects.length ? projects.map(p => {
+    const completed = p.stages.filter(s => s.done).length;
+    const progress = Math.round((completed / p.stages.length) * 100);
+    return `
+      <div class="surface rounded-2xl p-6">
+        <div class="flex items-start justify-between gap-4 mb-4">
+          <div>
+            <h3 class="font-display font-bold text-xl">${escapeHtml(p.name)}</h3>
+            ${p.client ? `<div class="text-neutral-500 text-sm mono">para ${escapeHtml(p.client)}</div>` : ''}
+            ${p.desc ? `<p class="text-neutral-600 dark:text-neutral-400 text-sm mt-2 max-w-2xl">${escapeHtml(p.desc)}</p>` : ''}
+            ${p.deadline ? `<div class="text-accent text-xs mono mt-2">▸ Entrega: ${new Date(p.deadline).toLocaleDateString('es-CO',{day:'numeric',month:'long',year:'numeric'})}</div>` : ''}
+          </div>
+          <button type="button" data-del-project="${p.id}" class="text-neutral-400 hover:text-red-500">✕</button>
+        </div>
+        <div class="mb-3">
+          <div class="flex items-center justify-between mb-2"><span class="meta-label text-neutral-500">Progreso</span><span class="mono text-xs text-accent">${progress}%</span></div>
+          <div class="h-1.5 rounded-full bg-neutral-200 dark:bg-white/5 overflow-hidden"><div class="h-full bg-accent transition-all" style="width:${progress}%"></div></div>
+        </div>
+        <div class="grid grid-cols-5 gap-2 mt-4">
+          ${p.stages.map((s, i) => `
+            <button type="button" data-toggle-stage="${p.id}:${i}" class="p-3 rounded-xl border ${s.done ? 'bg-accent/10 border-accent/50' : 'surface-soft hover:border-neutral-400'} transition text-left">
+              <div class="mono text-[10px] text-neutral-500 mb-1">/0${i+1}</div>
+              <div class="font-semibold text-xs ${s.done ? 'text-accent' : ''}">${s.name}</div>
+              <div class="mt-2 text-[10px] ${s.done ? 'text-accent' : 'text-neutral-500'}">${s.done ? '✓ Hecho' : 'Pendiente'}</div>
+            </button>`).join('')}
+        </div>
+      </div>`;
+  }).join('') : '<div class="surface rounded-2xl p-12 text-center text-neutral-500">Sin proyectos aún.</div>';
+  box.querySelectorAll('[data-del-project]').forEach(b => b.addEventListener('click', () => {
+    projects = projects.filter(p => p.id !== b.dataset.delProject); saveAll(); renderProjects();
+  }));
+  box.querySelectorAll('[data-toggle-stage]').forEach(b => b.addEventListener('click', () => {
+    const [pid, idx] = b.dataset.toggleStage.split(':');
+    const p = projects.find(p => p.id === pid);
+    if (p) { p.stages[+idx].done = !p.stages[+idx].done; saveAll(); renderProjects(); }
+  }));
+}
+
+const noteModal = document.getElementById('note-modal');
+document.getElementById('add-note-btn').addEventListener('click', () => { noteModal.classList.remove('hidden'); noteModal.classList.add('flex'); });
+document.getElementById('note-form').addEventListener('submit', e => {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  notes.unshift({ id: uid(), title: fd.get('title'), content: fd.get('content'), createdAt: Date.now() });
+  saveAll(); e.target.reset();
+  noteModal.classList.add('hidden'); noteModal.classList.remove('flex');
+  renderNotes();
+});
+function renderNotes() {
+  const box = document.getElementById('notes-list');
+  box.innerHTML = notes.length ? notes.map(n => `
+    <div class="relative p-5 surface rounded-2xl hover:border-accent transition">
+      <button data-del-note="${n.id}" type="button" class="absolute top-3 right-3 text-neutral-400 hover:text-red-500 text-sm">✕</button>
+      <div class="meta-label text-neutral-500 mb-2">${new Date(n.createdAt).toLocaleDateString('es-CO',{day:'numeric',month:'short'})}</div>
+      <h3 class="font-display font-bold text-lg mb-2">${escapeHtml(n.title)}</h3>
+      <p class="text-neutral-600 dark:text-neutral-400 text-sm whitespace-pre-wrap leading-relaxed">${escapeHtml(n.content)}</p>
+    </div>`).join('') : '<div class="surface rounded-2xl p-12 text-center text-neutral-500 col-span-full">Sin notas.</div>';
+  box.querySelectorAll('[data-del-note]').forEach(b => b.addEventListener('click', () => {
+    notes = notes.filter(n => n.id !== b.dataset.delNote); saveAll(); renderNotes();
+  }));
+}
+
+document.querySelectorAll('[data-close-modal]').forEach(b => b.addEventListener('click', () => {
+  ['task-modal','project-modal','note-modal'].forEach(id => {
+    const m = document.getElementById(id); m.classList.add('hidden'); m.classList.remove('flex');
+  });
+}));
+
+function initDashboard() {
+  if (!localStorage.getItem('jdh_seeded')) {
+    tasks = [
+      { id: uid(), title: 'Diseñar wireframes para cliente', desc: 'Reunión inicial completada', priority: 'high', status: 'todo' },
+      { id: uid(), title: 'Subir portafolio a Hostinger', priority: 'high', status: 'doing' },
+      { id: uid(), title: 'Estudiar para parcial de algoritmos', priority: 'med', status: 'todo' },
+    ];
+    projects = [{ id: uid(), name: 'Portafolio personal', client: '', desc: 'Sitio cinematográfico con dashboard privado.', deadline: '', stages: STAGES.map((s, i) => ({ name: s, done: i < 3 })) }];
+    notes = [{ id: uid(), title: 'Ideas para próximos proyectos', content: '- App de gestión de tareas\n- Tienda online emprendimiento local\n- Sistema de turnos para barberías', createdAt: Date.now() }];
+    saveAll();
+    localStorage.setItem('jdh_seeded', '1');
+  }
+  showView('overview');
+}
+
+/* Nav highlight */
+const navLinks = document.querySelectorAll('.nav-link');
+window.addEventListener('scroll', () => {
+  const sections = ['about','stack','work','services','contact'].map(id => document.getElementById(id)).filter(Boolean);
+  const y = window.scrollY + 200; let current = 'about';
+  sections.forEach(s => { if (s.offsetTop <= y) current = s.id; });
+  navLinks.forEach(l => l.classList.toggle('text-accent', l.getAttribute('href') === '#' + current));
+});
+</script>
+</body>
+</html>
