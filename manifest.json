@@ -1,0 +1,21 @@
+{
+  "name": "Juan Diego Hernández — Panel privado",
+  "short_name": "JDH Panel",
+  "description": "Panel privado de Juan Diego Hernández: agenda, tareas (Trello/Outlook/Notion), proyectos y notas.",
+  "start_url": "/index.html",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#ffffff",
+  "theme_color": "#2667ff",
+  "lang": "es",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "_note": "icon.svg is a placeholder reusing the site's existing favicon mark ('J' on accent background). Swap for a dedicated PNG/maskable icon set (e.g. 192x192 and 512x512) when one is designed — see docs/customization.md."
+}

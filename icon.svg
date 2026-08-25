@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Placeholder app icon: reuses the same mark as the inline favicon in index.html
+       (accent-colored rounded square + "J" monogram). Replace with a dedicated
+       PNG/maskable icon set once one is designed — see docs/customization.md. -->
+  <rect width="100" height="100" rx="22" fill="#2667ff"/>
+  <text x="50" y="68" font-family="monospace" font-size="56" font-weight="800" text-anchor="middle" fill="#fff">J</text>
+</svg>

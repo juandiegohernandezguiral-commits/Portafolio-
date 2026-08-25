@@ -9,6 +9,15 @@
 
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%232667ff'/%3E%3Ctext x='50' y='68' font-family='monospace' font-size='56' font-weight='800' text-anchor='middle' fill='%23fff'%3EJ%3C/text%3E%3C/svg%3E" />
 
+<!-- PWA: manifest + iOS/Android install meta.
+     icon.svg reuses the same "J" mark as the favicon above (placeholder — swap for a
+     dedicated PNG/maskable icon set whenever one is designed; see docs/customization.md). -->
+<link rel="manifest" href="manifest.json" />
+<link rel="apple-touch-icon" href="icon.svg" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="JDH Panel" />
+
 <!-- Apply theme BEFORE render to prevent flash -->
 <script>
   (function() {
@@ -43,6 +52,9 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
 <script src="https://unpkg.com/lenis@1.0.42/dist/lenis.min.js"></script>
+<!-- MSAL.js (public client, no secret) — used only by the private dashboard's Outlook/To Do
+     integration (Agenda → Centro de tareas). Exposes a global `msal` object. -->
+<script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.24.0/lib/msal-browser.min.js"></script>
 
 <style>
   :root { --accent: #2667ff; }
@@ -456,7 +468,7 @@
           No vendo <span class="text-neutral-400 dark:text-neutral-500">plantillas.</span><br>
           Construyo <span class="text-accent">producto.</span>
         </h2>
-        <p class="mt-10 text-neutral-600 dark:text-neutral-300 leading-relaxed text-lg max-w-xl" data-anim="fade-up" data-delay="0.2">
+        <p class="mt-10 text-red-600 dark:text-red-400 leading-relaxed text-lg max-w-xl" data-anim="fade-up" data-delay="0.2">
           Soy <span class="text-neutral-900 dark:text-white font-semibold">Juan Diego Hernández</span>. Llevo tres años transformando ideas en interfaces. Tiendas online, portales corporativos, dashboards internos y herramientas a la medida. Cada línea de código se piensa, cada animación tiene un por qué.
         </p>
         <p class="mt-4 text-neutral-500 dark:text-neutral-400 leading-relaxed max-w-xl" data-anim="fade-up" data-delay="0.3">
@@ -498,7 +510,7 @@
       <div class="flex items-center gap-4 mb-12">
         <div class="meta-label text-neutral-500">/ 02 — Stack</div>
         <div class="h-px flex-1 max-w-[120px] bg-neutral-300 dark:bg-neutral-700"></div>
-        <div class="meta-label text-neutral-500" id="stack-progress">01 / 12</div>
+        <div class="meta-label text-neutral-500" id="stack-progress">01 / 05</div>
       </div>
       <div class="grid md:grid-cols-12 gap-8 items-center">
         <div class="md:col-span-5">
@@ -515,59 +527,24 @@
               <div class="text-neutral-500 dark:text-neutral-400 text-xs">Semantic markup</div>
             </div>
             <div class="stack-it surface rounded-2xl p-5 flex flex-col gap-3" data-idx="1">
-              <svg viewBox="0 0 128 128" class="w-10 h-10"><path fill="#1572B6" d="M19 114L9 1h110l-10 113-45 13z"/><path fill="#33A9DC" d="M64 117l36-10 9-96H64z"/><path fill="#fff" d="M81 65l-2 19-15 4v14l28-8 4-29z"/></svg>
-              <div class="mono text-xs uppercase tracking-widest">CSS3</div>
-              <div class="text-neutral-500 dark:text-neutral-400 text-xs">Modern layouts</div>
-            </div>
-            <div class="stack-it surface rounded-2xl p-5 flex flex-col gap-3" data-idx="2">
-              <svg viewBox="0 0 128 128" class="w-10 h-10"><path fill="#F0DB4F" d="M2 2h124v124H2z"/><path fill="#000" d="M69 59H58v30c0 6 0 12-1 14-2 4-6 3-8 2-2-1-3-2-4-4l-10 6c2 3 4 6 7 8 4 3 10 4 17 2 4-1 8-4 9-7 3-5 2-11 2-17V59z"/></svg>
-              <div class="mono text-xs uppercase tracking-widest">JavaScript</div>
-              <div class="text-neutral-500 dark:text-neutral-400 text-xs">ES6+ · Patterns</div>
-            </div>
-            <div class="stack-it surface rounded-2xl p-5 flex flex-col gap-3" data-idx="3">
-              <svg viewBox="0 0 128 128" class="w-10 h-10"><circle cx="64" cy="64" r="11" fill="#61DAFB"/><g fill="none" stroke="#61DAFB" stroke-width="5"><ellipse cx="64" cy="64" rx="56" ry="21"/><ellipse cx="64" cy="64" rx="56" ry="21" transform="rotate(60 64 64)"/><ellipse cx="64" cy="64" rx="56" ry="21" transform="rotate(120 64 64)"/></g></svg>
-              <div class="mono text-xs uppercase tracking-widest">React</div>
-              <div class="text-neutral-500 dark:text-neutral-400 text-xs">Hooks · State</div>
-            </div>
-            <div class="stack-it surface rounded-2xl p-5 flex flex-col gap-3" data-idx="4">
-              <svg viewBox="0 0 128 128" class="w-10 h-10"><path fill="#83CD29" d="M64 0L9 32v64l55 32 55-32V32zm-3 38h7v36h-7zm17 0c11 0 17 5 17 16h-7c0-7-3-10-10-10s-9 3-9 7c0 13 26 5 26 24 0 8-6 13-17 13s-17-5-17-14h7c0 6 4 9 11 9 7 0 10-3 10-8 0-10-26-2-26-22 0-9 6-15 15-15z"/></svg>
-              <div class="mono text-xs uppercase tracking-widest">Node.js</div>
-              <div class="text-neutral-500 dark:text-neutral-400 text-xs">Backend · APIs</div>
-            </div>
-            <div class="stack-it surface rounded-2xl p-5 flex flex-col gap-3" data-idx="5">
-              <svg viewBox="0 0 128 128" class="w-10 h-10"><path fill="#3776AB" d="M63 2c-31 0-29 14-29 14v14h30v4H22S2 33 2 64s17 30 17 30h11V79s0-17 17-17h30s16 0 16-15V18S95 2 63 2z"/><path fill="#FFD43B" d="M65 126c31 0 29-14 29-14v-14H64v-4h42s20 2 20-30S109 33 109 33H98v14s0 17-17 17H51s-16 0-16 15v22s-3 25 30 25z"/></svg>
-              <div class="mono text-xs uppercase tracking-widest">Python</div>
-              <div class="text-neutral-500 dark:text-neutral-400 text-xs">Scripts · Data</div>
-            </div>
-            <div class="stack-it surface rounded-2xl p-5 flex flex-col gap-3" data-idx="6">
-              <svg viewBox="0 0 128 128" class="w-10 h-10"><path fill="#0074BD" d="M48 98s-5 3 3 4c10 1 15 1 26-1 0 0 3 2 7 3-24 11-55 0-36-6z"/><path fill="#EA2D2E" d="M70 61c6 7-2 13-2 13s15-8 8-18c-7-9-12-14 16-30 0 0-43 11-22 35z"/><path fill="#0074BD" d="M76 2s13 13-12 33c-20 16-5 25-1 36-12-11-20-20-14-29 8-12 32-19 27-40z"/></svg>
-              <div class="mono text-xs uppercase tracking-widest">Java</div>
-              <div class="text-neutral-500 dark:text-neutral-400 text-xs">OOP · Systems</div>
-            </div>
-            <div class="stack-it surface rounded-2xl p-5 flex flex-col gap-3" data-idx="7">
               <svg viewBox="0 0 128 128" class="w-10 h-10"><path fill="#00618A" d="M64 8c-30 0-56 25-56 56s26 56 56 56 56-25 56-56S94 8 64 8zm-16 80c-2 3-4 6-7 7-2-1-4-3-6-6 2 1 5 1 9 0 2-1 4-1 4-1zm32 0c1 1 3 1 5 1 4 1 7 1 9 0-2 3-4 5-6 6-3-1-6-4-8-7zm0-44c0-7-7-13-15-13s-15 6-15 13 7 13 15 13 15-6 15-13z"/></svg>
               <div class="mono text-xs uppercase tracking-widest">MySQL</div>
               <div class="text-neutral-500 dark:text-neutral-400 text-xs">Relational DBs</div>
             </div>
-            <div class="stack-it surface rounded-2xl p-5 flex flex-col gap-3" data-idx="8">
-              <svg viewBox="0 0 128 128" class="w-10 h-10"><path fill="#F34F29" d="M125 58L70 3c-3-3-9-3-12 0L47 14l15 15c4-1 8 0 10 2 3 3 4 7 2 10l14 14c3-1 7 0 10 2 4 4 4 10 0 14-4 4-10 4-14 0-3-3-4-7-2-11L69 48v34c1 1 2 1 3 2 4 4 4 10 0 14s-10 4-14 0-4-10 0-14c1-1 2-2 3-2V47c-1 0-2-1-3-2-3-3-3-7-2-11L41 20 3 58c-3 3-3 9 0 12l55 55c3 3 9 3 12 0l55-55c3-3 3-9 0-12"/></svg>
-              <div class="mono text-xs uppercase tracking-widest">Git</div>
-              <div class="text-neutral-500 dark:text-neutral-400 text-xs">Version control</div>
+            <div class="stack-it surface rounded-2xl p-5 flex flex-col gap-3" data-idx="2">
+              <svg viewBox="0 0 128 128" class="w-10 h-10" fill="#10A37F"><circle cx="64" cy="32" r="17" opacity=".85"/><circle cx="92" cy="48" r="17" opacity=".85"/><circle cx="92" cy="80" r="17" opacity=".85"/><circle cx="64" cy="96" r="17" opacity=".85"/><circle cx="36" cy="80" r="17" opacity=".85"/><circle cx="36" cy="48" r="17" opacity=".85"/></svg>
+              <div class="mono text-xs uppercase tracking-widest">ChatGPT</div>
+              <div class="text-neutral-500 dark:text-neutral-400 text-xs">Research · Prototipado</div>
             </div>
-            <div class="stack-it surface rounded-2xl p-5 flex flex-col gap-3" data-idx="9">
-              <svg viewBox="0 0 128 128" class="w-10 h-10"><path fill="#38BDF8" d="M64 26c-17 0-28 9-32 26 6-8 14-12 22-10 5 1 8 5 12 9 7 6 14 13 30 13 17 0 28-9 32-26-6 8-14 12-22 10-5-1-8-5-12-9-7-6-14-13-30-13zM32 64C15 64 4 73 0 90c6-8 14-12 22-10 5 1 8 5 12 9 7 6 14 13 30 13 17 0 28-9 32-26-6 8-14 12-22 10-5-1-8-5-12-9-7-6-14-13-30-13z"/></svg>
-              <div class="mono text-xs uppercase tracking-widest">Tailwind</div>
-              <div class="text-neutral-500 dark:text-neutral-400 text-xs">Utility CSS</div>
+            <div class="stack-it surface rounded-2xl p-5 flex flex-col gap-3" data-idx="3">
+              <svg viewBox="0 0 128 128" class="w-10 h-10"><g fill="#D97757"><rect x="60" y="12" width="8" height="104" rx="4" transform="rotate(0 64 64)"/><rect x="60" y="12" width="8" height="104" rx="4" transform="rotate(30 64 64)"/><rect x="60" y="12" width="8" height="104" rx="4" transform="rotate(60 64 64)"/><rect x="60" y="12" width="8" height="104" rx="4" transform="rotate(90 64 64)"/><rect x="60" y="12" width="8" height="104" rx="4" transform="rotate(120 64 64)"/><rect x="60" y="12" width="8" height="104" rx="4" transform="rotate(150 64 64)"/></g></svg>
+              <div class="mono text-xs uppercase tracking-widest">Claude</div>
+              <div class="text-neutral-500 dark:text-neutral-400 text-xs">Pair programming</div>
             </div>
-            <div class="stack-it surface rounded-2xl p-5 flex flex-col gap-3" data-idx="10">
-              <svg viewBox="0 0 128 128" class="w-10 h-10"><path fill="#0ACF83" d="M46 129c12 0 21-10 21-22V86H46c-12 0-21 10-21 22s9 21 21 21z"/><path fill="#A259FF" d="M25 64c0-12 9-21 21-21h21v43H46c-12 0-21-10-21-22z"/><path fill="#F24E1E" d="M25 21C25 10 34 0 46 0h21v43H46C34 43 25 33 25 21z"/><path fill="#FF7262" d="M67 0h22c11 0 21 10 21 21S100 43 89 43H67V0z"/><path fill="#1ABCFE" d="M110 64c0 12-10 22-21 22S67 76 67 64s10-21 22-21 21 9 21 21z"/></svg>
-              <div class="mono text-xs uppercase tracking-widest">Figma</div>
-              <div class="text-neutral-500 dark:text-neutral-400 text-xs">UI design</div>
-            </div>
-            <div class="stack-it surface rounded-2xl p-5 flex flex-col gap-3" data-idx="11">
-              <svg viewBox="0 0 128 128" class="w-10 h-10"><path fill="#2667ff" d="M64 8C32 8 8 32 8 64s24 56 56 56 56-24 56-56S96 8 64 8zm0 90L40 64l24-34 24 34z" opacity=".9"/></svg>
-              <div class="mono text-xs uppercase tracking-widest">Three.js</div>
-              <div class="text-neutral-500 dark:text-neutral-400 text-xs">3D Web</div>
+            <div class="stack-it surface rounded-2xl p-5 flex flex-col gap-3" data-idx="4">
+              <svg viewBox="0 0 128 128" class="w-10 h-10"><defs><linearGradient id="gem-grad" x1="10" y1="118" x2="118" y2="10" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#1C69FF"/><stop offset=".55" stop-color="#8C5CF5"/><stop offset="1" stop-color="#FF6F61"/></linearGradient></defs><path fill="url(#gem-grad)" d="M64 8c3 30 22 49 52 52-30 3-49 22-52 52-3-30-22-49-52-52 30-3 49-22 52-52z"/></svg>
+              <div class="mono text-xs uppercase tracking-widest">Gemini</div>
+              <div class="text-neutral-500 dark:text-neutral-400 text-xs">Ideación</div>
             </div>
           </div>
         </div>
@@ -988,16 +965,125 @@
         </section>
 
         <section class="dash-view hidden" data-view="agenda">
-          <div class="mb-8"><div class="meta-label text-neutral-500 mb-2">/ agenda</div><h1 class="display text-3xl md:text-5xl">Mi agenda</h1></div>
-          <div class="surface rounded-2xl p-6 mb-6">
-            <h3 class="font-display font-bold mb-4">Agregar evento</h3>
-            <form id="event-form" class="grid md:grid-cols-4 gap-3">
-              <input name="title" required placeholder="Título" class="md:col-span-2 surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none" />
-              <input name="date" type="datetime-local" required class="surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none" />
-              <button type="submit" class="rounded-xl bg-accent text-white font-bold mono text-[11px] uppercase tracking-[0.25em]">Añadir</button>
-            </form>
+          <div class="flex items-center justify-between mb-8 flex-wrap gap-4">
+            <div><div class="meta-label text-neutral-500 mb-2">/ agenda</div><h1 class="display text-3xl md:text-5xl">Mi agenda</h1></div>
+            <div class="inline-flex p-1 rounded-full surface-soft" role="tablist">
+              <button type="button" class="agenda-tab-btn bg-accent text-white px-4 py-2 rounded-full text-xs font-bold mono uppercase tracking-[0.15em] transition" data-agenda-tab="calendar">Calendario</button>
+              <button type="button" class="agenda-tab-btn text-neutral-500 px-4 py-2 rounded-full text-xs font-bold mono uppercase tracking-[0.15em] transition" data-agenda-tab="hub">Centro de tareas</button>
+            </div>
           </div>
-          <div class="surface rounded-2xl p-6"><h3 class="font-display font-bold mb-4">Eventos programados</h3><div id="events-list" class="space-y-2"></div></div>
+
+          <!-- Calendar tab -->
+          <div data-agenda-panel="calendar">
+            <div class="surface rounded-2xl p-6 mb-6">
+              <h3 class="font-display font-bold mb-4">Agregar evento</h3>
+              <form id="event-form" class="grid md:grid-cols-4 gap-3">
+                <input name="title" required placeholder="Título" class="md:col-span-2 surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none" />
+                <input name="date" type="datetime-local" required class="surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none" />
+                <button type="submit" class="rounded-xl bg-accent text-white font-bold mono text-[11px] uppercase tracking-[0.25em]">Añadir</button>
+              </form>
+            </div>
+            <div class="surface rounded-2xl p-6"><h3 class="font-display font-bold mb-4">Eventos programados</h3><div id="events-list" class="space-y-2"></div></div>
+          </div>
+
+          <!-- Task hub tab: Trello / Outlook / Notion aggregation + push notifications -->
+          <div data-agenda-panel="hub" class="hidden">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 auto-rows-[minmax(170px,auto)]">
+
+              <!-- BIG: combined upcoming-tasks summary -->
+              <div class="md:col-span-2 lg:col-span-2 lg:row-span-2 surface rounded-2xl p-6 flex flex-col">
+                <div class="flex items-start justify-between mb-4 gap-3">
+                  <div>
+                    <div class="meta-label text-neutral-500 mb-1">/ resumen</div>
+                    <h3 class="font-display font-bold text-xl">Próximas tareas</h3>
+                  </div>
+                  <div class="flex items-center gap-2 px-3 py-1.5 rounded-full surface-soft shrink-0">
+                    <span id="agenda-sources-dot" class="w-1.5 h-1.5 rounded-full bg-neutral-400"></span>
+                    <span class="meta-label text-neutral-500" id="agenda-sources-count">0/3 conectadas</span>
+                  </div>
+                </div>
+                <div id="agenda-hub-summary" class="flex-1 space-y-2 overflow-y-auto"></div>
+              </div>
+
+              <!-- MEDIUM: Trello -->
+              <div class="surface rounded-2xl p-6">
+                <div class="flex items-center justify-between mb-4 gap-2">
+                  <div class="flex items-center gap-2 min-w-0">
+                    <div class="w-8 h-8 rounded-lg bg-[#0052CC]/10 border border-[#0052CC]/30 flex items-center justify-center shrink-0">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0052CC" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><rect x="6.5" y="6.5" width="4.5" height="8" rx="1"/><rect x="13" y="6.5" width="4.5" height="5" rx="1"/></svg>
+                    </div>
+                    <h3 class="font-display font-bold truncate">Trello</h3>
+                  </div>
+                  <span class="meta-label px-2.5 py-1 rounded-full surface-soft text-neutral-500 shrink-0" data-status-pill="trello">No conectado</span>
+                </div>
+                <div id="trello-tasks-list" class="text-sm"></div>
+              </div>
+
+              <!-- MEDIUM: Outlook / Microsoft To Do -->
+              <div class="surface rounded-2xl p-6">
+                <div class="flex items-center justify-between mb-4 gap-2">
+                  <div class="flex items-center gap-2 min-w-0">
+                    <div class="w-8 h-8 rounded-lg bg-[#0078D4]/10 border border-[#0078D4]/30 flex items-center justify-center shrink-0">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0078D4" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 6l-10 7L2 6"/></svg>
+                    </div>
+                    <h3 class="font-display font-bold truncate">Outlook</h3>
+                  </div>
+                  <span class="meta-label px-2.5 py-1 rounded-full surface-soft text-neutral-500 shrink-0" data-status-pill="microsoft">No conectado</span>
+                </div>
+                <div id="outlook-tasks-list" class="text-sm"></div>
+              </div>
+
+              <!-- MEDIUM: Notion -->
+              <div class="surface rounded-2xl p-6">
+                <div class="flex items-center justify-between mb-4 gap-2">
+                  <div class="flex items-center gap-2 min-w-0">
+                    <div class="w-8 h-8 rounded-lg bg-neutral-500/10 border border-neutral-400/30 flex items-center justify-center shrink-0">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 8v8M8 8l8 8M16 8v8"/></svg>
+                    </div>
+                    <h3 class="font-display font-bold truncate">Notion</h3>
+                  </div>
+                  <span class="meta-label px-2.5 py-1 rounded-full surface-soft text-neutral-500 shrink-0" data-status-pill="notion">No conectado</span>
+                </div>
+                <div id="notion-tasks-list" class="text-sm"></div>
+              </div>
+
+              <!-- SMALL: connect accounts -->
+              <button type="button" id="open-integrations-btn" class="surface rounded-2xl p-5 text-left hover:border-accent transition group">
+                <div class="w-9 h-9 rounded-xl bg-accent/10 border border-accent/30 flex items-center justify-center mb-3 group-hover:bg-accent transition">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2667ff" stroke-width="2" class="group-hover:stroke-white transition"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                </div>
+                <div class="font-display font-bold text-sm mb-1">Conectar cuentas</div>
+                <div class="text-neutral-500 text-xs">Trello · Outlook · Notion</div>
+              </button>
+
+              <!-- SMALL: push notifications -->
+              <div class="surface rounded-2xl p-5">
+                <div class="w-9 h-9 rounded-xl bg-accent/10 border border-accent/30 flex items-center justify-center mb-3">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2667ff" stroke-width="2"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                </div>
+                <div class="font-display font-bold text-sm mb-1">Notificaciones</div>
+                <div class="text-neutral-500 text-xs mb-3" id="notif-status-label">No activadas</div>
+                <button type="button" id="enable-notifications-btn" class="w-full py-2 rounded-lg surface-soft hover:border-accent transition mono text-[10px] uppercase tracking-[0.2em]">Activar</button>
+              </div>
+
+              <!-- SMALL: sync now -->
+              <div class="surface rounded-2xl p-5">
+                <div class="w-9 h-9 rounded-xl bg-accent/10 border border-accent/30 flex items-center justify-center mb-3">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2667ff" stroke-width="2"><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/><path d="M3 21v-5h5"/></svg>
+                </div>
+                <div class="font-display font-bold text-sm mb-1">Sincronizar</div>
+                <div class="text-neutral-500 text-xs mb-3" id="last-sync-label">Nunca</div>
+                <button type="button" id="sync-now-btn" class="w-full py-2 rounded-lg surface-soft hover:border-accent transition mono text-[10px] uppercase tracking-[0.2em]">Sincronizar ahora</button>
+              </div>
+
+              <!-- SMALL: connection status + phase note -->
+              <div class="surface rounded-2xl p-5">
+                <div class="meta-label text-neutral-500 mb-3">Fase 2 de conexión</div>
+                <p class="text-neutral-500 text-xs leading-relaxed">Trello y Microsoft (Outlook / To Do) ya sincronizan en tiempo real. Notion y las notificaciones push llegan en una fase posterior.</p>
+              </div>
+
+            </div>
+          </div>
         </section>
 
         <section class="dash-view hidden" data-view="tasks">
@@ -1179,6 +1265,75 @@
   </div>
 </div>
 
+<div id="integrations-modal" class="fixed inset-0 z-[70] hidden items-center justify-center bg-black/60 backdrop-blur p-6 overflow-y-auto">
+  <div class="surface rounded-2xl p-8 max-w-2xl w-full my-8">
+    <div class="flex items-start justify-between mb-2 gap-4">
+      <h3 class="font-display font-bold text-xl">Conectar cuentas</h3>
+      <button type="button" data-close-modal class="text-neutral-400 hover:text-red-500 text-xl leading-none shrink-0">✕</button>
+    </div>
+    <p class="text-neutral-500 text-sm mb-6">Tus credenciales se guardan únicamente en este navegador (localStorage). No se envían a ningún servidor en esta fase.</p>
+
+    <div class="space-y-6">
+      <!-- Trello -->
+      <div data-integration-section="trello" class="pb-6 border-b border-neutral-200 dark:border-white/5">
+        <div class="flex items-center justify-between mb-3 gap-2">
+          <h4 class="font-display font-bold flex items-center gap-2">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0052CC" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><rect x="6.5" y="6.5" width="4.5" height="8" rx="1"/><rect x="13" y="6.5" width="4.5" height="5" rx="1"/></svg>
+            Trello
+          </h4>
+          <span class="meta-label px-2.5 py-1 rounded-full surface-soft text-neutral-500" data-status-pill="trello">No conectado</span>
+        </div>
+        <form id="trello-form" class="grid sm:grid-cols-2 gap-3">
+          <input name="apiKey" placeholder="API Key" autocomplete="off" class="surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none" />
+          <input name="token" placeholder="Token" autocomplete="off" class="surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none" />
+          <input name="boardId" placeholder="ID del tablero" autocomplete="off" class="sm:col-span-2 surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none" />
+          <div class="sm:col-span-2 flex gap-3 pt-1">
+            <button type="submit" class="flex-1 py-2.5 rounded-xl bg-accent text-white font-bold mono text-[10px] uppercase tracking-[0.2em]">Guardar</button>
+            <button type="button" data-disconnect="trello" class="px-4 py-2.5 rounded-xl surface-soft hover:border-red-400 hover:text-red-500 mono text-[10px] uppercase tracking-[0.2em]">Desconectar</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Microsoft (Outlook / To Do) -->
+      <div data-integration-section="microsoft" class="pb-6 border-b border-neutral-200 dark:border-white/5">
+        <div class="flex items-center justify-between mb-3 gap-2">
+          <h4 class="font-display font-bold flex items-center gap-2">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0078D4" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 6l-10 7L2 6"/></svg>
+            Microsoft (Outlook / To Do)
+          </h4>
+          <span class="meta-label px-2.5 py-1 rounded-full surface-soft text-neutral-500" data-status-pill="microsoft">No conectado</span>
+        </div>
+        <form id="microsoft-form" class="grid gap-3">
+          <input name="clientId" placeholder="Client ID (Azure AD)" autocomplete="off" class="surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none" />
+          <div class="flex gap-3 pt-1">
+            <button type="submit" class="flex-1 py-2.5 rounded-xl bg-accent text-white font-bold mono text-[10px] uppercase tracking-[0.2em]">Guardar</button>
+            <button type="button" data-disconnect="microsoft" class="px-4 py-2.5 rounded-xl surface-soft hover:border-red-400 hover:text-red-500 mono text-[10px] uppercase tracking-[0.2em]">Desconectar</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Notion -->
+      <div data-integration-section="notion">
+        <div class="flex items-center justify-between mb-3 gap-2">
+          <h4 class="font-display font-bold flex items-center gap-2">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 8v8M8 8l8 8M16 8v8"/></svg>
+            Notion
+          </h4>
+          <span class="meta-label px-2.5 py-1 rounded-full surface-soft text-neutral-500" data-status-pill="notion">No conectado</span>
+        </div>
+        <p class="text-neutral-500 text-xs mb-3">Notion se conecta a través de una función serverless (proxy) que se implementará en una fase posterior. Por ahora solo se guarda la URL del endpoint.</p>
+        <form id="notion-form" class="grid gap-3">
+          <input name="proxyUrl" type="url" placeholder="https://tu-proxy.example.com/notion" autocomplete="off" class="surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none" />
+          <div class="flex gap-3 pt-1">
+            <button type="submit" class="flex-1 py-2.5 rounded-xl bg-accent text-white font-bold mono text-[10px] uppercase tracking-[0.2em]">Guardar</button>
+            <button type="button" data-disconnect="notion" class="px-4 py-2.5 rounded-xl surface-soft hover:border-red-400 hover:text-red-500 mono text-[10px] uppercase tracking-[0.2em]">Desconectar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 const ACCESS_PIN = '1021';
 
@@ -1217,6 +1372,16 @@ window.addEventListener('load', () => {
     initAnimations();
   }, 1500);
 });
+
+/* ============ PWA: SERVICE WORKER ============
+   Registro básico — sw.js ya trae los listeners de 'push' y 'notificationclick' preparados.
+   La suscripción real contra un backend (VAPID keys) se conecta en una fase posterior desde
+   el botón "Activar notificaciones" del panel privado (sección Agenda → Centro de tareas). */
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(err => console.warn('[sw] registration failed:', err));
+  });
+}
 
 /* ============ CURSOR ============ */
 (function() {
@@ -1816,7 +1981,7 @@ function showView(name) {
     n.classList.toggle('text-accent', active);
   });
   if (name === 'overview') renderOverview();
-  if (name === 'agenda') renderEvents();
+  if (name === 'agenda') { renderEvents(); showAgendaTab(localStorage.getItem('jdh_agendaTab') || 'calendar'); }
   if (name === 'tasks') renderTasks();
   if (name === 'projects') renderProjects();
   if (name === 'notes') renderNotes();
@@ -2101,10 +2266,513 @@ function renderNotes() {
 }
 
 document.querySelectorAll('[data-close-modal]').forEach(b => b.addEventListener('click', () => {
-  ['task-modal','project-modal','note-modal'].forEach(id => {
+  ['task-modal','project-modal','note-modal','integrations-modal'].forEach(id => {
     const m = document.getElementById(id); m.classList.add('hidden'); m.classList.remove('flex');
   });
 }));
+
+/* ============ AGENDA HUB — Trello / Outlook / Notion + push notifications ============
+   Fase 2: Trello y Microsoft Graph (Outlook / To Do) ya hacen llamadas reales a sus APIs usando
+   las credenciales guardadas en localStorage (jdh_integrations). Notion sigue como placeholder:
+   depende de un backend/proxy serverless que se construirá en una fase posterior. */
+
+const integrationsDefault = {
+  trello: { apiKey: '', token: '', boardId: '', verified: false },
+  microsoft: { clientId: '', verified: false },
+  notion: { proxyUrl: '' },
+};
+let integrations = store.get('integrations', integrationsDefault);
+// Backfill in case a saved object predates one of the keys (e.g. `verified` added in Fase 2)
+integrations = {
+  ...integrationsDefault,
+  ...integrations,
+  trello: { ...integrationsDefault.trello, ...integrations.trello },
+  microsoft: { ...integrationsDefault.microsoft, ...integrations.microsoft },
+};
+function saveIntegrations() { store.set('integrations', integrations); }
+
+function isTrelloConnected() { return !!(integrations.trello.apiKey && integrations.trello.token && integrations.trello.boardId); }
+function isMicrosoftConnected() { return !!(integrations.microsoft.clientId); }
+function isNotionConnected() { return !!(integrations.notion.proxyUrl); }
+
+// Runtime (non-persisted) state of the last fetch per source, used to render the tile + combine
+// results in the big summary tile. `status`: 'idle' | 'loading' | 'ready' | 'error'.
+const hubState = {
+  trello: { status: 'idle', items: [], error: null },
+  outlook: { status: 'idle', items: [], error: null },
+};
+
+function sourceEmptyState(key, connectedMsg, disconnectedMsg) {
+  const connected = { trello: isTrelloConnected(), microsoft: isMicrosoftConnected(), notion: isNotionConnected() }[key];
+  if (!connected) {
+    return `
+      <div class="text-center py-6">
+        <p class="text-neutral-500 text-xs leading-relaxed mb-3">${disconnectedMsg}</p>
+        <button type="button" class="meta-label !text-accent" data-open-integrations="${key}">Conectar →</button>
+      </div>`;
+  }
+  return `
+    <div class="text-center py-6">
+      <div class="w-8 h-8 mx-auto mb-2 rounded-full bg-accent/10 flex items-center justify-center">
+        <span class="w-1.5 h-1.5 rounded-full bg-accent"></span>
+      </div>
+      <p class="text-neutral-500 text-xs leading-relaxed">${connectedMsg}</p>
+    </div>`;
+}
+function sourceLoadingState() {
+  return `<div class="flex items-center justify-center py-8"><span class="w-5 h-5 rounded-full border-2 border-accent/30 border-t-accent animate-spin"></span></div>`;
+}
+function sourceErrorState(msg) {
+  return `
+    <div class="text-center py-6">
+      <div class="w-8 h-8 mx-auto mb-2 rounded-full bg-red-500/10 flex items-center justify-center">
+        <span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>
+      </div>
+      <p class="text-red-500 text-xs leading-relaxed">${msg}</p>
+    </div>`;
+}
+function formatDue(d) {
+  if (!d) return '';
+  const datePart = d.toLocaleDateString('es-CO', { day: 'numeric', month: 'short' });
+  const timePart = d.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
+  return `${datePart} · ${timePart}`;
+}
+function renderTaskItems(items, emptyMsg) {
+  if (!items.length) {
+    return `<div class="text-center py-6"><p class="text-neutral-500 text-xs leading-relaxed">${emptyMsg}</p></div>`;
+  }
+  const now = Date.now();
+  return `
+    <div class="space-y-2 max-h-56 overflow-y-auto pr-1">
+      ${items.slice(0, 8).map(it => {
+        const overdue = it.due && it.due.getTime() < now;
+        return `
+        <div class="flex items-start gap-2 p-2.5 rounded-lg surface-soft">
+          <span class="w-1.5 h-1.5 rounded-full mt-1.5 shrink-0 ${overdue ? 'bg-red-500' : 'bg-accent'}"></span>
+          <div class="min-w-0 flex-1">
+            <p class="text-sm font-medium truncate">${escapeHtml(it.title || 'Sin título')}</p>
+            ${it.due ? `<p class="meta-label ${overdue ? 'text-red-500' : 'text-neutral-500'}">${formatDue(it.due)}${overdue ? ' · vencida' : ''}</p>` : ''}
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`;
+}
+
+/* ---- Trello: fetch directo, sin backend (key + token en query params, solo lectura) ---- */
+async function fetchTrelloCards() {
+  const { apiKey, token, boardId } = integrations.trello;
+  const url = `https://api.trello.com/1/boards/${encodeURIComponent(boardId)}/cards`
+    + `?key=${encodeURIComponent(apiKey)}&token=${encodeURIComponent(token)}&fields=name,due,idList&filter=open`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Trello API respondió ${res.status}`);
+  const cards = await res.json();
+  return cards
+    .map(c => ({ id: c.id, title: c.name, due: c.due ? new Date(c.due) : null }))
+    .sort((a, b) => (a.due?.getTime() ?? Infinity) - (b.due?.getTime() ?? Infinity));
+}
+
+async function renderTrelloTasks() {
+  const el = document.getElementById('trello-tasks-list');
+  if (!el) return;
+  if (!isTrelloConnected()) {
+    hubState.trello = { status: 'idle', items: [], error: null };
+    el.innerHTML = sourceEmptyState('trello', '', 'Conecta tu tablero de Trello para ver tus tarjetas aquí.');
+    renderAgendaSummary();
+    return;
+  }
+  hubState.trello.status = 'loading';
+  el.innerHTML = sourceLoadingState();
+  try {
+    const items = await fetchTrelloCards();
+    hubState.trello = { status: 'ready', items, error: null };
+    if (!integrations.trello.verified) { integrations.trello.verified = true; saveIntegrations(); }
+    renderIntegrationsStatus();
+    el.innerHTML = renderTaskItems(items, 'No tienes tarjetas pendientes en este tablero.');
+  } catch (err) {
+    console.warn('[trello] fetch failed:', err);
+    hubState.trello = { status: 'error', items: [], error: err };
+    el.innerHTML = sourceErrorState('No se pudo conectar con Trello. Revisa tu API key, token e ID de tablero.');
+  }
+  renderAgendaSummary();
+}
+
+/* ---- Microsoft Graph (Outlook / To Do) vía MSAL.js — aplicación pública (SPA), sin backend ----
+   El usuario debe registrar su propia app en https://portal.azure.com → App registrations:
+     - Tipo de plataforma: "Single-page application (SPA)"
+     - Redirect URI: el origin EXACTO donde sirvas este sitio (ej. https://tudominio.com o
+       http://localhost:8080 en desarrollo). MSAL usa window.location.origin dinámicamente, así
+       que hay que registrar cada origen que se use (local + producción) en el portal de Azure.
+     - Cuentas admitidas: "Cuentas en cualquier directorio organizativo y cuentas Microsoft
+       personales" (multi-tenant + personal), para no limitar a un solo tenant.
+     - Permisos de API (delegados, consentimiento del propio usuario): Tasks.Read, Calendars.Read
+   El Client ID resultante se pega en el modal "Conectar cuentas" → Microsoft. */
+const MSAL_SCOPES = ['Tasks.Read', 'Calendars.Read'];
+let msalInstance = null;
+let msalReadyPromise = null;
+function getMsalInstance() {
+  if (!window.msal || !integrations.microsoft.clientId) return null;
+  if (!msalInstance || msalInstance.__clientId !== integrations.microsoft.clientId) {
+    msalInstance = new msal.PublicClientApplication({
+      auth: {
+        clientId: integrations.microsoft.clientId,
+        authority: 'https://login.microsoftonline.com/common',
+        redirectUri: window.location.origin,
+      },
+      cache: { cacheLocation: 'localStorage' },
+    });
+    msalInstance.__clientId = integrations.microsoft.clientId;
+    msalReadyPromise = msalInstance.initialize ? msalInstance.initialize() : Promise.resolve();
+  }
+  return msalInstance;
+}
+async function ensureMsalReady() {
+  const instance = getMsalInstance();
+  if (!instance) return null;
+  await msalReadyPromise;
+  return instance;
+}
+
+async function connectMicrosoft() {
+  const instance = await ensureMsalReady();
+  if (!instance) { alert('No se pudo cargar la librería de Microsoft (MSAL). Revisa tu conexión a internet.'); return; }
+  try {
+    const result = await instance.loginPopup({ scopes: MSAL_SCOPES });
+    instance.setActiveAccount(result.account);
+    integrations.microsoft.verified = true;
+    saveIntegrations();
+    renderIntegrationsStatus();
+    renderOutlookTasks();
+  } catch (err) {
+    console.warn('[microsoft] login failed:', err);
+    alert('No se pudo iniciar sesión con Microsoft. Revisa el Client ID configurado en "Conectar cuentas".');
+  }
+}
+
+async function fetchOutlookItems(token) {
+  const headers = { Authorization: `Bearer ${token}` };
+  const [listsRes, eventsRes] = await Promise.all([
+    fetch('https://graph.microsoft.com/v1.0/me/todo/lists', { headers }),
+    fetch('https://graph.microsoft.com/v1.0/me/events?$select=subject,start&$orderby=start/dateTime&$top=15', { headers }),
+  ]);
+  if (!listsRes.ok) throw new Error(`Graph /todo/lists respondió ${listsRes.status}`);
+  if (!eventsRes.ok) throw new Error(`Graph /events respondió ${eventsRes.status}`);
+  const listsData = await listsRes.json();
+  const eventsData = await eventsRes.json();
+
+  let taskItems = [];
+  const lists = listsData.value || [];
+  const defaultList = lists.find(l => l.wellknownListName === 'defaultList') || lists[0];
+  if (defaultList) {
+    const tasksRes = await fetch(`https://graph.microsoft.com/v1.0/me/todo/lists/${defaultList.id}/tasks?$top=25`, { headers });
+    if (tasksRes.ok) {
+      const tasksData = await tasksRes.json();
+      taskItems = (tasksData.value || [])
+        .filter(t => t.status !== 'completed')
+        .map(t => ({ id: t.id, title: t.title, due: t.dueDateTime?.dateTime ? new Date(t.dueDateTime.dateTime + 'Z') : null }));
+    }
+  }
+  const nowMs = Date.now();
+  const eventItems = (eventsData.value || [])
+    .map(e => ({ id: e.id, title: e.subject, due: e.start?.dateTime ? new Date(e.start.dateTime + 'Z') : null }))
+    .filter(e => !e.due || e.due.getTime() >= nowMs - 60 * 60 * 1000);
+
+  return [...taskItems, ...eventItems].sort((a, b) => (a.due?.getTime() ?? Infinity) - (b.due?.getTime() ?? Infinity));
+}
+
+async function renderOutlookTasks() {
+  const el = document.getElementById('outlook-tasks-list');
+  if (!el) return;
+  if (!isMicrosoftConnected()) {
+    hubState.outlook = { status: 'idle', items: [], error: null };
+    el.innerHTML = sourceEmptyState('microsoft', '', 'Conecta tu cuenta de Microsoft para ver tus tareas y eventos aquí.');
+    renderAgendaSummary();
+    return;
+  }
+  const instance = await ensureMsalReady();
+  if (!instance) {
+    el.innerHTML = sourceErrorState('No se pudo cargar la librería de Microsoft (MSAL.js). Revisa tu conexión a internet.');
+    renderAgendaSummary();
+    return;
+  }
+  const account = instance.getActiveAccount() || instance.getAllAccounts()[0];
+  if (!account) {
+    // Sin sesión iniciada todavía: nunca disparar el popup solo — requiere clic explícito del usuario.
+    el.innerHTML = `
+      <div class="text-center py-6">
+        <p class="text-neutral-500 text-xs leading-relaxed mb-3">Client ID guardado. Conecta tu cuenta para ver tus tareas y eventos.</p>
+        <button type="button" id="ms-connect-btn" class="px-4 py-2 rounded-full bg-accent text-white font-bold mono text-[10px] uppercase tracking-[0.2em]">Conectar con Microsoft</button>
+      </div>`;
+    document.getElementById('ms-connect-btn')?.addEventListener('click', connectMicrosoft);
+    renderAgendaSummary();
+    return;
+  }
+  hubState.outlook.status = 'loading';
+  el.innerHTML = sourceLoadingState();
+  let token;
+  try {
+    const tokenRes = await instance.acquireTokenSilent({ scopes: MSAL_SCOPES, account });
+    token = tokenRes.accessToken;
+  } catch (err) {
+    console.warn('[outlook] silent token acquisition failed:', err);
+    hubState.outlook = { status: 'error', items: [], error: err };
+    el.innerHTML = `
+      <div class="text-center py-6">
+        <p class="text-neutral-500 text-xs leading-relaxed mb-3">Tu sesión de Microsoft expiró o necesita confirmación.</p>
+        <button type="button" id="ms-reconnect-btn" class="px-4 py-2 rounded-full bg-accent text-white font-bold mono text-[10px] uppercase tracking-[0.2em]">Reconectar</button>
+      </div>`;
+    document.getElementById('ms-reconnect-btn')?.addEventListener('click', connectMicrosoft);
+    renderAgendaSummary();
+    return;
+  }
+  try {
+    const items = await fetchOutlookItems(token);
+    hubState.outlook = { status: 'ready', items, error: null };
+    if (!integrations.microsoft.verified) { integrations.microsoft.verified = true; saveIntegrations(); }
+    renderIntegrationsStatus();
+    el.innerHTML = renderTaskItems(items, 'No tienes tareas ni eventos próximos.');
+  } catch (err) {
+    console.warn('[outlook] Graph fetch failed:', err);
+    hubState.outlook = { status: 'error', items: [], error: err };
+    el.innerHTML = sourceErrorState('No se pudo obtener tus datos de Microsoft Graph. Verifica los permisos concedidos.');
+  }
+  renderAgendaSummary();
+}
+
+/* ---- Notion: placeholder — depende del proxy serverless (fase posterior) ---- */
+function renderNotionTasks() {
+  const el = document.getElementById('notion-tasks-list');
+  if (!el) return;
+  // FASE 3 (pendiente): reemplazar por fetch al endpoint del proxy serverless configurado abajo
+  el.innerHTML = sourceEmptyState('notion',
+    'Endpoint configurado. La sincronización real vía backend llega en una fase posterior.',
+    'Configura el endpoint del proxy para ver tus páginas de Notion aquí.');
+}
+
+function renderAgendaSummary() {
+  const el = document.getElementById('agenda-hub-summary');
+  if (!el) return;
+  const sources = [
+    { key: 'trello', name: 'Trello', color: '#0052CC', connected: isTrelloConnected() },
+    { key: 'microsoft', name: 'Outlook', color: '#0078D4', connected: isMicrosoftConnected() },
+    { key: 'notion', name: 'Notion', color: '#525252', connected: isNotionConnected() },
+  ];
+  const connected = sources.filter(s => s.connected);
+  if (!connected.length) {
+    el.innerHTML = `
+      <div class="h-full flex flex-col items-center justify-center text-center py-6">
+        <div class="w-12 h-12 rounded-2xl bg-accent/10 border border-accent/30 flex items-center justify-center mb-4">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2667ff" stroke-width="1.5"><path d="M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        </div>
+        <p class="text-neutral-500 text-sm max-w-xs mb-4">Conecta Trello, Outlook o Notion para ver aquí todas tus tareas combinadas, en un solo lugar.</p>
+        <button type="button" data-open-integrations class="px-5 py-2.5 rounded-full bg-accent text-white font-bold mono text-[10px] uppercase tracking-[0.2em]">Conectar cuentas</button>
+      </div>`;
+    return;
+  }
+
+  // Combina resultados reales de Trello + Outlook. Notion aún no aporta datos (fase posterior).
+  const combined = [];
+  if (isTrelloConnected()) hubState.trello.items.forEach(it => combined.push({ ...it, sourceName: 'Trello', color: '#0052CC' }));
+  if (isMicrosoftConnected()) hubState.outlook.items.forEach(it => combined.push({ ...it, sourceName: 'Outlook', color: '#0078D4' }));
+  combined.sort((a, b) => (a.due?.getTime() ?? Infinity) - (b.due?.getTime() ?? Infinity));
+
+  const anyLoading = (isTrelloConnected() && hubState.trello.status === 'loading') || (isMicrosoftConnected() && hubState.outlook.status === 'loading');
+  if (!combined.length && anyLoading) { el.innerHTML = sourceLoadingState(); return; }
+
+  const anyError = (isTrelloConnected() && hubState.trello.status === 'error') || (isMicrosoftConnected() && hubState.outlook.status === 'error');
+  const errorNote = anyError ? `<p class="meta-label text-red-500 mb-2">Una o más fuentes no pudieron sincronizarse — revisa su tile para más detalle.</p>` : '';
+  const notionNote = isNotionConnected() ? `<p class="text-neutral-500 text-xs mb-2">Notion conectado — la sincronización real vía backend llega en una fase posterior.</p>` : '';
+
+  if (!combined.length) {
+    el.innerHTML = `${errorNote}${notionNote}<div class="text-center py-6 text-neutral-500 text-sm">No tienes tareas ni eventos próximos.</div>`;
+    return;
+  }
+
+  const now = Date.now();
+  el.innerHTML = `${errorNote}${notionNote}
+    <div class="space-y-2">
+      ${combined.slice(0, 10).map(it => {
+        const overdue = it.due && it.due.getTime() < now;
+        return `
+        <div class="flex items-center gap-3 p-3 rounded-xl surface-soft">
+          <span class="w-2 h-2 rounded-full shrink-0" style="background:${it.color}"></span>
+          <div class="min-w-0 flex-1">
+            <p class="text-sm font-semibold truncate">${escapeHtml(it.title || 'Sin título')}</p>
+            <p class="meta-label text-neutral-400">${it.sourceName}${it.due ? ' · ' + formatDue(it.due) : ''}</p>
+          </div>
+          ${overdue ? '<span class="meta-label text-red-500 shrink-0">Vencida</span>' : ''}
+        </div>`;
+      }).join('')}
+    </div>`;
+}
+
+function renderIntegrationsStatus() {
+  const map = {
+    trello: { connected: isTrelloConnected(), verified: !!integrations.trello.verified },
+    microsoft: { connected: isMicrosoftConnected(), verified: !!integrations.microsoft.verified },
+    notion: { connected: isNotionConnected(), verified: false },
+  };
+  Object.entries(map).forEach(([key, { connected, verified }]) => {
+    document.querySelectorAll(`[data-status-pill="${key}"]`).forEach(el => {
+      el.classList.remove('text-accent', 'text-neutral-500', 'text-amber-500');
+      if (!connected) {
+        el.textContent = 'No conectado';
+        el.classList.add('text-neutral-500');
+      } else if (verified) {
+        el.textContent = 'Conectado ✓';
+        el.classList.add('text-accent');
+      } else {
+        el.textContent = 'Guardado, sin verificar';
+        el.classList.add('text-amber-500');
+      }
+    });
+  });
+  const connectedCount = Object.values(map).filter(m => m.connected).length;
+  const countEl = document.getElementById('agenda-sources-count');
+  if (countEl) countEl.textContent = `${connectedCount}/3 conectadas`;
+  const dotEl = document.getElementById('agenda-sources-dot');
+  if (dotEl) dotEl.classList.toggle('bg-accent', connectedCount > 0);
+  if (dotEl) dotEl.classList.toggle('bg-neutral-400', connectedCount === 0);
+}
+
+function renderIntegrationsForm() {
+  const tf = document.getElementById('trello-form');
+  if (tf) { tf.apiKey.value = integrations.trello.apiKey; tf.token.value = integrations.trello.token; tf.boardId.value = integrations.trello.boardId; }
+  const mf = document.getElementById('microsoft-form');
+  if (mf) { mf.clientId.value = integrations.microsoft.clientId; }
+  const nf = document.getElementById('notion-form');
+  if (nf) { nf.proxyUrl.value = integrations.notion.proxyUrl; }
+}
+
+function renderNotifStatus() {
+  const label = document.getElementById('notif-status-label');
+  const btn = document.getElementById('enable-notifications-btn');
+  if (!label || !btn) return;
+  if (!('Notification' in window)) {
+    label.textContent = 'No soportadas en este navegador';
+    label.className = 'text-neutral-500 text-xs mb-3';
+    btn.disabled = true; btn.classList.add('opacity-40', 'cursor-not-allowed');
+    return;
+  }
+  const perm = Notification.permission;
+  btn.disabled = false; btn.classList.remove('opacity-40', 'opacity-60', 'cursor-not-allowed');
+  if (perm === 'granted') {
+    label.textContent = 'Activadas ✓'; label.className = 'text-accent text-xs mb-3';
+    btn.textContent = 'Activadas'; btn.disabled = true; btn.classList.add('opacity-60');
+  } else if (perm === 'denied') {
+    label.textContent = 'Bloqueadas por el navegador'; label.className = 'text-red-500 text-xs mb-3';
+    btn.textContent = 'Bloqueadas'; btn.disabled = true; btn.classList.add('opacity-40', 'cursor-not-allowed');
+  } else {
+    label.textContent = 'No activadas'; label.className = 'text-neutral-500 text-xs mb-3';
+    btn.textContent = 'Activar';
+  }
+}
+
+function renderAgendaHub() {
+  renderIntegrationsStatus();
+  renderIntegrationsForm();
+  renderTrelloTasks();
+  renderOutlookTasks();
+  renderNotionTasks();
+  renderAgendaSummary();
+  renderNotifStatus();
+}
+
+function showAgendaTab(name) {
+  document.querySelectorAll('[data-agenda-panel]').forEach(p => p.classList.toggle('hidden', p.dataset.agendaPanel !== name));
+  document.querySelectorAll('.agenda-tab-btn').forEach(b => {
+    const active = b.dataset.agendaTab === name;
+    b.classList.toggle('bg-accent', active);
+    b.classList.toggle('text-white', active);
+    b.classList.toggle('text-neutral-500', !active);
+  });
+  if (name === 'hub') renderAgendaHub();
+  localStorage.setItem('jdh_agendaTab', name);
+}
+document.querySelectorAll('.agenda-tab-btn').forEach(b => b.addEventListener('click', () => showAgendaTab(b.dataset.agendaTab)));
+
+const integrationsModal = document.getElementById('integrations-modal');
+function openIntegrationsModal(focusKey) {
+  renderIntegrationsForm();
+  renderIntegrationsStatus();
+  integrationsModal.classList.remove('hidden'); integrationsModal.classList.add('flex');
+  if (focusKey) {
+    const section = integrationsModal.querySelector(`[data-integration-section="${focusKey}"]`);
+    section?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+}
+document.getElementById('open-integrations-btn')?.addEventListener('click', () => openIntegrationsModal());
+document.addEventListener('click', e => {
+  const trigger = e.target.closest('[data-open-integrations]');
+  if (trigger) openIntegrationsModal(trigger.dataset.openIntegrations || null);
+});
+
+document.getElementById('trello-form')?.addEventListener('submit', e => {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  // Nuevas credenciales pegadas por el usuario: se marcan como "sin verificar" hasta el próximo fetch exitoso.
+  integrations.trello = { apiKey: (fd.get('apiKey') || '').trim(), token: (fd.get('token') || '').trim(), boardId: (fd.get('boardId') || '').trim(), verified: false };
+  hubState.trello = { status: 'idle', items: [], error: null };
+  saveIntegrations(); renderAgendaHub();
+});
+document.getElementById('microsoft-form')?.addEventListener('submit', e => {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  const newClientId = (fd.get('clientId') || '').trim();
+  if (newClientId !== integrations.microsoft.clientId) { msalInstance = null; msalReadyPromise = null; }
+  integrations.microsoft = { clientId: newClientId, verified: false };
+  hubState.outlook = { status: 'idle', items: [], error: null };
+  saveIntegrations(); renderAgendaHub();
+});
+document.getElementById('notion-form')?.addEventListener('submit', e => {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  integrations.notion = { proxyUrl: (fd.get('proxyUrl') || '').trim() };
+  saveIntegrations(); renderAgendaHub();
+});
+document.querySelectorAll('[data-disconnect]').forEach(b => b.addEventListener('click', async () => {
+  const key = b.dataset.disconnect;
+  if (!confirm(`¿Desconectar ${key}? Se borrarán las credenciales guardadas en este navegador.`)) return;
+  if (key === 'microsoft' && msalInstance) {
+    // Limpia la cuenta cacheada por MSAL para que el próximo fetch pida reconexión explícita.
+    try {
+      const accounts = msalInstance.getAllAccounts();
+      for (const acc of accounts) { await msalInstance.getTokenCache().removeAccount(acc); }
+      msalInstance.setActiveAccount(null);
+    } catch (err) { console.warn('[microsoft] cleanup on disconnect failed:', err); }
+    msalInstance = null; msalReadyPromise = null;
+  }
+  if (key === 'trello') hubState.trello = { status: 'idle', items: [], error: null };
+  if (key === 'microsoft') hubState.outlook = { status: 'idle', items: [], error: null };
+  integrations[key] = { ...integrationsDefault[key] };
+  saveIntegrations();
+  renderAgendaHub();
+}));
+
+document.getElementById('sync-now-btn')?.addEventListener('click', async () => {
+  const anyConnected = isTrelloConnected() || isMicrosoftConnected() || isNotionConnected();
+  if (!anyConnected) { alert('Conecta al menos una cuenta antes de sincronizar.'); return; }
+  await Promise.all([renderTrelloTasks(), renderOutlookTasks(), renderNotionTasks()]);
+  renderAgendaSummary();
+  const label = document.getElementById('last-sync-label');
+  if (label) label.textContent = new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
+});
+
+document.getElementById('enable-notifications-btn')?.addEventListener('click', async () => {
+  if (!('Notification' in window)) return;
+  try {
+    const perm = await Notification.requestPermission();
+    renderNotifStatus();
+    if (perm === 'granted' && 'serviceWorker' in navigator) {
+      // FASE 2: aquí se registrará la suscripción push real contra el backend serverless, p.ej.:
+      //   const reg = await navigator.serviceWorker.ready;
+      //   const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: VAPID_PUBLIC_KEY });
+      //   await fetch(PUSH_BACKEND_URL, { method: 'POST', body: JSON.stringify(sub) });
+      navigator.serviceWorker.ready.catch(() => {});
+    }
+  } catch (err) {
+    console.warn('[notifications] permission request failed:', err);
+  }
+});
 
 function initDashboard() {
   if (!localStorage.getItem('jdh_seeded')) {
