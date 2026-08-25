@@ -1,0 +1,22 @@
+{
+  "agent": "orchestrator",
+  "permissions": {
+    "allow": [
+      "Read",
+      "Grep",
+      "Glob",
+      "Edit",
+      "Write",
+      "Bash(git status)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git branch*)",
+      "Bash(git checkout -b *)",
+      "Bash(git switch*)",
+      "Bash(python -m http.server*)",
+      "Bash(npx serve*)"
+    ]
+  }
+}
