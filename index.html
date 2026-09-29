@@ -1078,8 +1078,8 @@
 
               <!-- SMALL: connection status + phase note -->
               <div class="surface rounded-2xl p-5">
-                <div class="meta-label text-neutral-500 mb-3">Fase 2 de conexión</div>
-                <p class="text-neutral-500 text-xs leading-relaxed">Trello y Microsoft (Outlook / To Do) ya sincronizan en tiempo real. Notion y las notificaciones push llegan en una fase posterior.</p>
+                <div class="meta-label text-neutral-500 mb-3">Estado de conexión</div>
+                <p class="text-neutral-500 text-xs leading-relaxed">Trello y Microsoft sincronizan directo desde el navegador. Notion y las notificaciones push requieren desplegar el backend serverless (ver /netlify/functions) y pegar su URL + VAPID key en "Conectar cuentas".</p>
               </div>
 
             </div>
@@ -1271,7 +1271,7 @@
       <h3 class="font-display font-bold text-xl">Conectar cuentas</h3>
       <button type="button" data-close-modal class="text-neutral-400 hover:text-red-500 text-xl leading-none shrink-0">✕</button>
     </div>
-    <p class="text-neutral-500 text-sm mb-6">Tus credenciales se guardan únicamente en este navegador (localStorage). No se envían a ningún servidor en esta fase.</p>
+    <p class="text-neutral-500 text-sm mb-6">Tus credenciales de Trello y Microsoft se guardan únicamente en este navegador (localStorage) y nunca salen de él. Notion usa un backend propio que tú despliegas — el navegador solo conoce su URL, nunca el token de Notion. Ese mismo backend registra tu suscripción a notificaciones push.</p>
 
     <div class="space-y-6">
       <!-- Trello -->
@@ -1313,7 +1313,7 @@
       </div>
 
       <!-- Notion -->
-      <div data-integration-section="notion">
+      <div data-integration-section="notion" class="pb-6 border-b border-neutral-200 dark:border-white/5">
         <div class="flex items-center justify-between mb-3 gap-2">
           <h4 class="font-display font-bold flex items-center gap-2">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 8v8M8 8l8 8M16 8v8"/></svg>
@@ -1321,12 +1321,30 @@
           </h4>
           <span class="meta-label px-2.5 py-1 rounded-full surface-soft text-neutral-500" data-status-pill="notion">No conectado</span>
         </div>
-        <p class="text-neutral-500 text-xs mb-3">Notion se conecta a través de una función serverless (proxy) que se implementará en una fase posterior. Por ahora solo se guarda la URL del endpoint.</p>
+        <p class="text-neutral-500 text-xs mb-3">Notion se conecta a través de una función serverless propia (proxy) — el token de Notion vive solo como variable de entorno del backend, nunca en el navegador. Pega aquí la URL base de ese backend una vez desplegado (ver /netlify/functions). El mismo backend también recibe el registro de notificaciones push de la sección de abajo.</p>
         <form id="notion-form" class="grid gap-3">
-          <input name="proxyUrl" type="url" placeholder="https://tu-proxy.example.com/notion" autocomplete="off" class="surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none" />
+          <input name="proxyUrl" type="url" placeholder="https://tu-backend.netlify.app" autocomplete="off" class="surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none" />
           <div class="flex gap-3 pt-1">
             <button type="submit" class="flex-1 py-2.5 rounded-xl bg-accent text-white font-bold mono text-[10px] uppercase tracking-[0.2em]">Guardar</button>
             <button type="button" data-disconnect="notion" class="px-4 py-2.5 rounded-xl surface-soft hover:border-red-400 hover:text-red-500 mono text-[10px] uppercase tracking-[0.2em]">Desconectar</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Push notifications (VAPID) -->
+      <div data-integration-section="push">
+        <div class="flex items-center justify-between mb-3 gap-2">
+          <h4 class="font-display font-bold flex items-center gap-2">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+            Notificaciones push
+          </h4>
+        </div>
+        <p class="text-neutral-500 text-xs mb-3">Clave pública VAPID generada al desplegar el backend (no es secreta). Se usa junto con la URL de Notion/proxy de arriba para registrar la suscripción del navegador cuando pulsas "Activar" en el Centro de tareas.</p>
+        <form id="push-form" class="grid gap-3">
+          <input name="vapidPublicKey" placeholder="VAPID Public Key" autocomplete="off" class="surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none" />
+          <div class="flex gap-3 pt-1">
+            <button type="submit" class="flex-1 py-2.5 rounded-xl bg-accent text-white font-bold mono text-[10px] uppercase tracking-[0.2em]">Guardar</button>
+            <button type="button" data-disconnect="push" class="px-4 py-2.5 rounded-xl surface-soft hover:border-red-400 hover:text-red-500 mono text-[10px] uppercase tracking-[0.2em]">Borrar</button>
           </div>
         </form>
       </div>
@@ -1374,9 +1392,10 @@ window.addEventListener('load', () => {
 });
 
 /* ============ PWA: SERVICE WORKER ============
-   Registro básico — sw.js ya trae los listeners de 'push' y 'notificationclick' preparados.
-   La suscripción real contra un backend (VAPID keys) se conecta en una fase posterior desde
-   el botón "Activar notificaciones" del panel privado (sección Agenda → Centro de tareas). */
+   Registro básico — sw.js trae los listeners de 'push' y 'notificationclick' que renderizan
+   las notificaciones reales enviadas por el backend serverless (ver /netlify/functions). El
+   registro de la suscripción (VAPID) ocurre al pulsar "Activar notificaciones" en el panel
+   privado (sección Agenda → Centro de tareas) — ver el handler de #enable-notifications-btn. */
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('sw.js').catch(err => console.warn('[sw] registration failed:', err));
@@ -2272,22 +2291,30 @@ document.querySelectorAll('[data-close-modal]').forEach(b => b.addEventListener(
 }));
 
 /* ============ AGENDA HUB — Trello / Outlook / Notion + push notifications ============
-   Fase 2: Trello y Microsoft Graph (Outlook / To Do) ya hacen llamadas reales a sus APIs usando
-   las credenciales guardadas en localStorage (jdh_integrations). Notion sigue como placeholder:
-   depende de un backend/proxy serverless que se construirá en una fase posterior. */
+   Fase 2: Trello y Microsoft Graph (Outlook / To Do) hacen llamadas reales a sus APIs directo
+   desde el navegador usando las credenciales guardadas en localStorage (jdh_integrations).
+   Fase 3: Notion ya es una integración real también, pero vía un proxy serverless (no puede
+   llamarse directo desde el navegador sin exponer el token de Notion) — ver /netlify/functions.
+   El mismo proxy expone además el registro de suscripciones push y el endpoint de sincronización
+   ligera de Trello/Outlook que usa el cron para poder notificar también sobre esas fuentes
+   (ver docs/architecture.md → "Backend serverless"). */
 
 const integrationsDefault = {
   trello: { apiKey: '', token: '', boardId: '', verified: false },
   microsoft: { clientId: '', verified: false },
-  notion: { proxyUrl: '' },
+  notion: { proxyUrl: '', verified: false }, // proxyUrl also hosts /push/subscribe and /sync/external-summary
+  push: { vapidPublicKey: '' },
 };
 let integrations = store.get('integrations', integrationsDefault);
-// Backfill in case a saved object predates one of the keys (e.g. `verified` added in Fase 2)
+// Backfill in case a saved object predates one of the keys (e.g. `verified` added in Fase 2,
+// `push` and `notion.verified` added in Fase 3)
 integrations = {
   ...integrationsDefault,
   ...integrations,
   trello: { ...integrationsDefault.trello, ...integrations.trello },
   microsoft: { ...integrationsDefault.microsoft, ...integrations.microsoft },
+  notion: { ...integrationsDefault.notion, ...integrations.notion },
+  push: { ...integrationsDefault.push, ...integrations.push },
 };
 function saveIntegrations() { store.set('integrations', integrations); }
 
@@ -2300,6 +2327,7 @@ function isNotionConnected() { return !!(integrations.notion.proxyUrl); }
 const hubState = {
   trello: { status: 'idle', items: [], error: null },
   outlook: { status: 'idle', items: [], error: null },
+  notion: { status: 'idle', items: [], error: null },
 };
 
 function sourceEmptyState(key, connectedMsg, disconnectedMsg) {
@@ -2538,14 +2566,74 @@ async function renderOutlookTasks() {
   renderAgendaSummary();
 }
 
-/* ---- Notion: placeholder — depende del proxy serverless (fase posterior) ---- */
-function renderNotionTasks() {
+/* ---- Notion: vía proxy serverless propio (el token de Notion nunca llega al navegador) ----
+   El cliente solo conoce la URL base del proxy (integrations.notion.proxyUrl), guardada en
+   "Conectar cuentas". El proxy real vive en /netlify/functions/notion-tasks.js — ver
+   docs/architecture.md para el contrato completo. */
+async function fetchNotionTasks() {
+  const proxyUrl = integrations.notion.proxyUrl.replace(/\/$/, '');
+  const res = await fetch(`${proxyUrl}/notion/tasks`);
+  if (!res.ok) throw new Error(`Proxy de Notion respondió ${res.status}`);
+  const data = await res.json();
+  return (data.items || [])
+    .map(it => ({ id: it.id, title: it.title, due: it.due ? new Date(it.due) : null }))
+    .sort((a, b) => (a.due?.getTime() ?? Infinity) - (b.due?.getTime() ?? Infinity));
+}
+
+async function renderNotionTasks() {
   const el = document.getElementById('notion-tasks-list');
   if (!el) return;
-  // FASE 3 (pendiente): reemplazar por fetch al endpoint del proxy serverless configurado abajo
-  el.innerHTML = sourceEmptyState('notion',
-    'Endpoint configurado. La sincronización real vía backend llega en una fase posterior.',
-    'Configura el endpoint del proxy para ver tus páginas de Notion aquí.');
+  if (!isNotionConnected()) {
+    hubState.notion = { status: 'idle', items: [], error: null };
+    el.innerHTML = sourceEmptyState('notion', '', 'Configura el endpoint del proxy para ver tus páginas de Notion aquí.');
+    renderAgendaSummary();
+    return;
+  }
+  hubState.notion.status = 'loading';
+  el.innerHTML = sourceLoadingState();
+  try {
+    const items = await fetchNotionTasks();
+    hubState.notion = { status: 'ready', items, error: null };
+    if (!integrations.notion.verified) { integrations.notion.verified = true; saveIntegrations(); }
+    renderIntegrationsStatus();
+    el.innerHTML = renderTaskItems(items, 'No tienes páginas pendientes en esta base de datos.');
+  } catch (err) {
+    console.warn('[notion] fetch failed:', err);
+    hubState.notion = { status: 'error', items: [], error: err };
+    el.innerHTML = sourceErrorState('No se pudo conectar con el proxy de Notion. Revisa la URL configurada y que la función esté desplegada.');
+  }
+  renderAgendaSummary();
+}
+
+/* ---- Sincronización ligera de Trello/Outlook hacia el backend (para el cron de push) ----
+   Trello/Outlook solo tienen credenciales en el navegador (Fase 2, por diseño, para no requerir
+   infraestructura extra). El backend serverless nunca puede llamarlos directamente. Como
+   solución pragmática, cada vez que el dashboard combina resultados reales aquí, le manda al
+   proxy un resumen mínimo (id, título, fecha de vencimiento, fuente — nunca credenciales) para
+   que el cron pueda incluir vencimientos de Trello/Outlook en sus notificaciones push, además
+   de Notion (que sí consulta en vivo desde el servidor). Ver /netlify/functions/sync-external-
+   summary.js. Es best-effort: si falla, no rompe la UI; si el proxy no está configurado, no se
+   intenta. Se limita a una vez cada 5 minutos para no saturar el backend en cada render. */
+let lastExternalSyncAt = 0;
+async function syncExternalSummaryToBackend(combinedItems) {
+  const proxyUrl = (integrations.notion.proxyUrl || '').trim();
+  if (!proxyUrl) return;
+  const now = Date.now();
+  if (now - lastExternalSyncAt < 5 * 60 * 1000) return;
+  lastExternalSyncAt = now;
+  const items = combinedItems
+    .filter(it => it.sourceName === 'Trello' || it.sourceName === 'Outlook')
+    .slice(0, 50)
+    .map(it => ({ id: it.id, title: it.title, due: it.due ? it.due.toISOString() : null, source: it.sourceName.toLowerCase() }));
+  try {
+    await fetch(`${proxyUrl.replace(/\/$/, '')}/sync/external-summary`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ items }),
+    });
+  } catch (err) {
+    console.warn('[sync] external summary sync failed (non-blocking):', err);
+  }
 }
 
 function renderAgendaSummary() {
@@ -2569,26 +2657,31 @@ function renderAgendaSummary() {
     return;
   }
 
-  // Combina resultados reales de Trello + Outlook. Notion aún no aporta datos (fase posterior).
+  // Combina resultados reales de Trello + Outlook + Notion.
   const combined = [];
   if (isTrelloConnected()) hubState.trello.items.forEach(it => combined.push({ ...it, sourceName: 'Trello', color: '#0052CC' }));
   if (isMicrosoftConnected()) hubState.outlook.items.forEach(it => combined.push({ ...it, sourceName: 'Outlook', color: '#0078D4' }));
+  if (isNotionConnected()) hubState.notion.items.forEach(it => combined.push({ ...it, sourceName: 'Notion', color: '#525252' }));
   combined.sort((a, b) => (a.due?.getTime() ?? Infinity) - (b.due?.getTime() ?? Infinity));
 
-  const anyLoading = (isTrelloConnected() && hubState.trello.status === 'loading') || (isMicrosoftConnected() && hubState.outlook.status === 'loading');
+  // Envío best-effort al backend (no bloqueante) de un resumen ligero de Trello/Outlook, para
+  // que el cron de notificaciones push pueda cubrir esas fuentes además de Notion (ver
+  // docs/architecture.md → "Limitación conocida" en la sección del backend serverless).
+  syncExternalSummaryToBackend(combined);
+
+  const anyLoading = (isTrelloConnected() && hubState.trello.status === 'loading') || (isMicrosoftConnected() && hubState.outlook.status === 'loading') || (isNotionConnected() && hubState.notion.status === 'loading');
   if (!combined.length && anyLoading) { el.innerHTML = sourceLoadingState(); return; }
 
-  const anyError = (isTrelloConnected() && hubState.trello.status === 'error') || (isMicrosoftConnected() && hubState.outlook.status === 'error');
+  const anyError = (isTrelloConnected() && hubState.trello.status === 'error') || (isMicrosoftConnected() && hubState.outlook.status === 'error') || (isNotionConnected() && hubState.notion.status === 'error');
   const errorNote = anyError ? `<p class="meta-label text-red-500 mb-2">Una o más fuentes no pudieron sincronizarse — revisa su tile para más detalle.</p>` : '';
-  const notionNote = isNotionConnected() ? `<p class="text-neutral-500 text-xs mb-2">Notion conectado — la sincronización real vía backend llega en una fase posterior.</p>` : '';
 
   if (!combined.length) {
-    el.innerHTML = `${errorNote}${notionNote}<div class="text-center py-6 text-neutral-500 text-sm">No tienes tareas ni eventos próximos.</div>`;
+    el.innerHTML = `${errorNote}<div class="text-center py-6 text-neutral-500 text-sm">No tienes tareas ni eventos próximos.</div>`;
     return;
   }
 
   const now = Date.now();
-  el.innerHTML = `${errorNote}${notionNote}
+  el.innerHTML = `${errorNote}
     <div class="space-y-2">
       ${combined.slice(0, 10).map(it => {
         const overdue = it.due && it.due.getTime() < now;
@@ -2609,7 +2702,7 @@ function renderIntegrationsStatus() {
   const map = {
     trello: { connected: isTrelloConnected(), verified: !!integrations.trello.verified },
     microsoft: { connected: isMicrosoftConnected(), verified: !!integrations.microsoft.verified },
-    notion: { connected: isNotionConnected(), verified: false },
+    notion: { connected: isNotionConnected(), verified: !!integrations.notion.verified },
   };
   Object.entries(map).forEach(([key, { connected, verified }]) => {
     document.querySelectorAll(`[data-status-pill="${key}"]`).forEach(el => {
@@ -2641,6 +2734,8 @@ function renderIntegrationsForm() {
   if (mf) { mf.clientId.value = integrations.microsoft.clientId; }
   const nf = document.getElementById('notion-form');
   if (nf) { nf.proxyUrl.value = integrations.notion.proxyUrl; }
+  const pf = document.getElementById('push-form');
+  if (pf) { pf.vapidPublicKey.value = integrations.push.vapidPublicKey; }
 }
 
 function renderNotifStatus() {
@@ -2726,12 +2821,20 @@ document.getElementById('microsoft-form')?.addEventListener('submit', e => {
 document.getElementById('notion-form')?.addEventListener('submit', e => {
   e.preventDefault();
   const fd = new FormData(e.target);
-  integrations.notion = { proxyUrl: (fd.get('proxyUrl') || '').trim() };
+  integrations.notion = { proxyUrl: (fd.get('proxyUrl') || '').trim(), verified: false };
+  hubState.notion = { status: 'idle', items: [], error: null };
   saveIntegrations(); renderAgendaHub();
 });
+document.getElementById('push-form')?.addEventListener('submit', e => {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  integrations.push = { vapidPublicKey: (fd.get('vapidPublicKey') || '').trim() };
+  saveIntegrations(); renderAgendaHub();
+});
+const disconnectLabels = { trello: 'Trello', microsoft: 'Microsoft', notion: 'Notion', push: 'la clave VAPID de notificaciones push' };
 document.querySelectorAll('[data-disconnect]').forEach(b => b.addEventListener('click', async () => {
   const key = b.dataset.disconnect;
-  if (!confirm(`¿Desconectar ${key}? Se borrarán las credenciales guardadas en este navegador.`)) return;
+  if (!confirm(`¿Desconectar ${disconnectLabels[key] || key}? Se borrará lo guardado en este navegador.`)) return;
   if (key === 'microsoft' && msalInstance) {
     // Limpia la cuenta cacheada por MSAL para que el próximo fetch pida reconexión explícita.
     try {
@@ -2743,6 +2846,7 @@ document.querySelectorAll('[data-disconnect]').forEach(b => b.addEventListener('
   }
   if (key === 'trello') hubState.trello = { status: 'idle', items: [], error: null };
   if (key === 'microsoft') hubState.outlook = { status: 'idle', items: [], error: null };
+  if (key === 'notion') hubState.notion = { status: 'idle', items: [], error: null };
   integrations[key] = { ...integrationsDefault[key] };
   saveIntegrations();
   renderAgendaHub();
@@ -2757,20 +2861,49 @@ document.getElementById('sync-now-btn')?.addEventListener('click', async () => {
   if (label) label.textContent = new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
 });
 
+// Convierte la VAPID public key (base64url, formato estándar de `web-push generate-vapid-keys`)
+// al Uint8Array que pide pushManager.subscribe({ applicationServerKey }).
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = atob(base64);
+  const output = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; i++) output[i] = rawData.charCodeAt(i);
+  return output;
+}
+
 document.getElementById('enable-notifications-btn')?.addEventListener('click', async () => {
   if (!('Notification' in window)) return;
   try {
     const perm = await Notification.requestPermission();
     renderNotifStatus();
-    if (perm === 'granted' && 'serviceWorker' in navigator) {
-      // FASE 2: aquí se registrará la suscripción push real contra el backend serverless, p.ej.:
-      //   const reg = await navigator.serviceWorker.ready;
-      //   const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: VAPID_PUBLIC_KEY });
-      //   await fetch(PUSH_BACKEND_URL, { method: 'POST', body: JSON.stringify(sub) });
-      navigator.serviceWorker.ready.catch(() => {});
+    if (perm !== 'granted' || !('serviceWorker' in navigator) || !('PushManager' in window)) return;
+
+    const vapidPublicKey = (integrations.push.vapidPublicKey || '').trim();
+    const proxyUrl = (integrations.notion.proxyUrl || '').trim();
+    if (!vapidPublicKey || !proxyUrl) {
+      alert('Faltan datos: configura la VAPID Public Key y la URL del proxy (backend) en "Conectar cuentas" → Notion / Notificaciones push antes de activar.');
+      return;
     }
+
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
+      });
+    }
+    // Registra la suscripción real en el backend (Netlify Blobs, ver /netlify/functions/push-subscribe.js).
+    // La suscripción no contiene credenciales de nada — solo el endpoint push del navegador.
+    await fetch(`${proxyUrl.replace(/\/$/, '')}/push/subscribe`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(sub),
+    });
   } catch (err) {
-    console.warn('[notifications] permission request failed:', err);
+    console.warn('[notifications] subscription failed:', err);
+    alert('No se pudo completar la suscripción a notificaciones push. Revisa la consola para más detalle.');
   }
 });
 

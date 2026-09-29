@@ -1,11 +1,12 @@
 /*
  * Service worker — Juan Diego Hernández portfolio
- * Fase 1: solo registra el worker y deja preparados los listeners de push notifications.
- * No hay estrategia de caché offline todavía ni backend de push conectado.
+ * Fase 1: registro básico del worker (sin estrategia de caché offline).
+ * Fase 3: el backend serverless (/netlify/functions/scheduled-check-deadlines.js) envía pushes
+ * reales vía VAPID cuando una tarea de Notion (y, si el resumen ligero está fresco, de Trello/
+ * Outlook) está por vencer. El registro de la suscripción ocurre desde el botón "Activar
+ * notificaciones" del panel privado (index.html → Agenda → Centro de tareas).
  *
- * Fase posterior (fuera de este archivo): función serverless que envíe pushes reales vía
- * VAPID keys, y el registro de la suscripción real desde el botón "Activar notificaciones"
- * del panel privado (index.html → Agenda → Centro de tareas).
+ * Payload esperado en cada push (ver docs/architecture.md): { title, body, url, tag }.
  */
 
 const SW_VERSION = 'jdh-sw-v1';
@@ -18,8 +19,6 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(self.clients.claim());
 });
 
-// FASE 2: aquí se procesará el payload real enviado por el backend serverless
-// (Notion + notificaciones push), usando event.data.json() para título/cuerpo/URL.
 self.addEventListener('push', (event) => {
   let data = {};
   try { data = event.data ? event.data.json() : {}; } catch { data = {}; }
@@ -29,6 +28,7 @@ self.addEventListener('push', (event) => {
     body: data.body || 'Tienes una actualización en tu agenda.',
     icon: 'icon.svg',
     badge: 'icon.svg',
+    tag: data.tag || undefined, // agrupa/reemplaza notificaciones de la misma tarea (id de Notion/Trello/Outlook)
     data: { url: data.url || '/' },
   };
 

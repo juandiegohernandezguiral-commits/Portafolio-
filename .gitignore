@@ -1,0 +1,10 @@
+# Dependencies installed locally while testing the Netlify functions backend
+# (Netlify installs these itself at deploy time from netlify/functions/package.json)
+node_modules/
+
+# Netlify CLI local dev/cache artifacts (`netlify dev`)
+.netlify/
+
+# Never commit real secrets if you test locally with a .env file
+.env
+.env.local

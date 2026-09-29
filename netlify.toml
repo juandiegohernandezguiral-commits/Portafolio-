@@ -1,0 +1,89 @@
+# ============================================================================
+# Netlify config — backend serverless de Juan Diego Hernández (Fase 3)
+# ============================================================================
+# IMPORTANTE: este archivo NO despliega el portafolio (index.html). El sitio
+# principal se sube aparte (p. ej. a Hostinger, vía FTP/panel de hosting) y no
+# necesita build step ni Netlify para nada.
+#
+# Este netlify.toml define un sitio Netlify DISTINTO y separado, cuyo único
+# trabajo es alojar:
+#   - las funciones serverless en /netlify/functions (proxy de Notion, registro
+#     de suscripciones push, sincronización ligera de Trello/Outlook)
+#   - el cron/scheduled function que revisa vencimientos y dispara los pushes
+#
+# Cómo desplegar (resumen — ver docs/architecture.md y el resumen final del
+# agente para la lista completa de pasos):
+#   1. Crea una cuenta gratuita en https://app.netlify.com
+#   2. "Add new site" → "Import an existing project" → conecta este repo de Git
+#   3. Cuando te pida el "Base directory" / "Publish directory", déjalo como
+#      está definido en este archivo (no hace falta tocarlo desde la UI)
+#   4. Configura las variables de entorno de la sección [functions] más abajo
+#      en Netlify → Site configuration → Environment variables
+#   5. Deploy. Netlify te dará una URL tipo https://tu-sitio.netlify.app —
+#      esa es la "URL del proxy" que se pega en el dashboard del portafolio.
+
+[build]
+  # No hay HTML/CSS/JS de frontend que compilar aquí — solo funciones.
+  # "publish" apunta a una carpeta placeholder (ver netlify/public/index.html)
+  # porque Netlify exige que el campo exista, aunque no sirva contenido real.
+  publish = "netlify/public"
+  functions = "netlify/functions"
+
+[functions]
+  node_bundler = "esbuild"
+  # Variables de entorno que este backend necesita (configúralas en el panel de
+  # Netlify, NUNCA las escribas aquí ni en el código fuente):
+  #
+  #   NOTION_TOKEN              — Internal Integration Secret de tu integración
+  #                                de Notion (Settings → Connections → Develop
+  #                                or manage integrations → crea una integración
+  #                                interna, y comparte tu base de datos con ella)
+  #   NOTION_DATABASE_ID        — ID de la base de datos de Notion (de su URL).
+  #                                El proxy resuelve el data_source_id a partir
+  #                                de este ID automáticamente. Alternativamente,
+  #                                si ya conoces el data_source_id exacto, puedes
+  #                                usar NOTION_DATA_SOURCE_ID en su lugar y te
+  #                                ahorras una llamada extra por invocación.
+  #   NOTION_DATA_SOURCE_ID     — (opcional) ID del data source, si lo prefieres
+  #                                sobre NOTION_DATABASE_ID.
+  #   NOTION_PROP_NAME          — (opcional) nombre de la propiedad "título" en
+  #                                tu base de datos, si no es la única de tipo
+  #                                title (se autodetecta por tipo si se omite)
+  #   NOTION_PROP_DUE           — (opcional) nombre de la propiedad de fecha de
+  #                                vencimiento (se autodetecta por tipo "date")
+  #   NOTION_PROP_DONE          — (opcional) nombre de la propiedad de estado/
+  #                                completado (checkbox, status o select — se
+  #                                autodetecta por tipo si se omite)
+  #   VAPID_PUBLIC_KEY          — clave pública VAPID (la misma que se pega en
+  #                                el dashboard, en "Conectar cuentas" → Push)
+  #   VAPID_PRIVATE_KEY         — clave privada VAPID — NUNCA debe salir de aquí
+  #   VAPID_SUBJECT             — "mailto:tu-correo@ejemplo.com" (requerido por
+  #                                el estándar web-push, identifica al remitente)
+  #   PUSH_DUE_SOON_HOURS       — (opcional, default 24) horas antes del
+  #                                vencimiento a partir de las cuales se notifica
+  #
+  # Cómo generar las VAPID keys (no las inventes, corre esto tú mismo):
+  #   npx web-push generate-vapid-keys
+  # Te da un par { publicKey, privateKey } — la pública va también en el cliente
+  # (no es secreta), la privada SOLO como variable de entorno aquí.
+
+# Rutas "limpias" para que el cliente pueda hacer fetch a {proxyUrl}/notion/tasks
+# en vez de {proxyUrl}/.netlify/functions/notion-tasks.
+[[redirects]]
+  from = "/notion/tasks"
+  to = "/.netlify/functions/notion-tasks"
+  status = 200
+
+[[redirects]]
+  from = "/push/subscribe"
+  to = "/.netlify/functions/push-subscribe"
+  status = 200
+
+[[redirects]]
+  from = "/sync/external-summary"
+  to = "/.netlify/functions/sync-external-summary"
+  status = 200
+
+# Nota: scheduled-check-deadlines.js NO necesita redirect — no es accesible por
+# HTTP desde el cliente, Netlify lo invoca internamente según el cron definido
+# en el propio archivo (ver @netlify/functions `schedule()`).

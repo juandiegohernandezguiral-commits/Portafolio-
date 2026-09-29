@@ -1,0 +1,11 @@
+{
+  "name": "jdh-agenda-backend-functions",
+  "private": true,
+  "description": "Dependencias de las funciones serverless del panel privado (proxy de Notion + push). No es el portafolio en sí — ver /netlify.toml y docs/architecture.md.",
+  "dependencies": {
+    "web-push": "^3.6.7",
+    "@netlify/blobs": "^8.1.0",
+    "@netlify/functions": "^2.8.2"
+  },
+  "_note": "Fija estas versiones a las más recientes disponibles al momento de desplegar (`npm outdated` o revisa npmjs.com) — se documentan aquí como punto de partida razonable, no como versiones verificadas en producción."
+}

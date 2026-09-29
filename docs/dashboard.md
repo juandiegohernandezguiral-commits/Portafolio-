@@ -24,32 +24,37 @@ quick-action tiles (connect accounts, notifications, sync, phase status).
   ```js
   {
     trello: { apiKey: '', token: '', boardId: '', verified: false },
-    microsoft: { clientId: '', verified: false }, // Azure AD app Client ID
-    notion: { proxyUrl: '' },                     // serverless proxy endpoint (Phase 3, not built yet)
+    microsoft: { clientId: '', verified: false },  // Azure AD app Client ID
+    notion: { proxyUrl: '', verified: false },     // Netlify Functions backend base URL (Phase 3)
+    push: { vapidPublicKey: '' },                  // VAPID public key (not secret) for Web Push
   }
   ```
-  `verified` is set to `true` the first time a real fetch (Trello) or login (Microsoft) succeeds,
-  and reset to `false` whenever the form for that source is re-submitted with new values or the
-  source is disconnected.
-- **Trello and Microsoft (Outlook / To Do) are real integrations as of Phase 2** — both call their
-  APIs directly from the browser using the credentials saved above; there is no backend involved
-  for these two. **Notion is still a placeholder** pending the serverless proxy planned for a
-  later phase.
+  `verified` is set to `true` the first time a real fetch (Trello/Notion) or login (Microsoft)
+  succeeds, and reset to `false` whenever the form for that source is re-submitted with new
+  values or the source is disconnected.
+- **Trello, Microsoft (Outlook / To Do) and Notion are all real integrations as of Phase 3.**
+  Trello and Microsoft call their APIs directly from the browser using the credentials saved
+  above — no backend involved for those two. **Notion goes through a small serverless proxy**
+  (see [Architecture → Backend serverless](architecture.md#backend-serverless-netlify-functions))
+  because its API token can't safely live in the browser; the client only ever knows the proxy's
+  base URL (`notion.proxyUrl`), pasted after deploying that backend.
 - **Connected/verified status**: `isTrelloConnected()` / `isMicrosoftConnected()` /
-  `isNotionConnected()` still just check whether the required fields are non-empty ("credentials
-  saved"). `renderIntegrationsStatus()` additionally reads `integrations.<source>.verified` to show
-  a more precise status pill for Trello/Microsoft: **"No conectado"** (nothing saved),
-  **"Guardado, sin verificar"** (credentials saved but no successful fetch/login yet — amber), or
-  **"Conectado ✓"** (last fetch/login succeeded — accent color). Notion's pill only reflects
-  "saved" vs "not saved", since it can't be verified without the proxy.
+  `isNotionConnected()` check whether the required fields are non-empty ("credentials/endpoint
+  saved"). `renderIntegrationsStatus()` additionally reads `integrations.<source>.verified` to
+  show a precise status pill for all three sources: **"No conectado"** (nothing saved),
+  **"Guardado, sin verificar"** (saved but no successful fetch/login yet — amber), or
+  **"Conectado ✓"** (last fetch/login succeeded — accent color).
 - **Rendering is modular per source** — `renderTrelloTasks()`, `renderOutlookTasks()` and
   `renderNotionTasks()` each render into their own `#trello-tasks-list` / `#outlook-tasks-list` /
   `#notion-tasks-list` containers, with shared state/error/loading helpers (`sourceLoadingState()`,
   `sourceErrorState()`, `renderTaskItems()`). Runtime fetch results (not persisted) live in the
-  module-level `hubState.trello` / `hubState.outlook` objects (`status`: `'idle' | 'loading' |
-  'ready' | 'error'`, plus `items`), which `renderAgendaSummary()` reads to build the combined
-  "Próximas tareas" tile (Trello + Outlook items merged and sorted by due date; Notion still shows
-  its own connected/disconnected note there, no real data).
+  module-level `hubState.trello` / `hubState.outlook` / `hubState.notion` objects (`status`:
+  `'idle' | 'loading' | 'ready' | 'error'`, plus `items`), which `renderAgendaSummary()` reads to
+  build the combined "Próximas tareas" tile (all three sources merged and sorted by due date).
+  `renderAgendaSummary()` also calls `syncExternalSummaryToBackend()` (best-effort, throttled to
+  once per 5 min) to POST a lightweight Trello/Outlook summary to the backend, so its push cron
+  can cover those sources too — see the "Known limitation" note in
+  [Architecture](architecture.md#backend-serverless-netlify-functions).
   - **Trello**: `renderTrelloTasks()` calls `fetchTrelloCards()`, a direct `fetch()` to
     `https://api.trello.com/1/boards/{boardId}/cards?key=...&token=...&fields=name,due,idList&filter=open`
     (read-only, no `client.js` needed — `key`+`token` in the query string is enough). Cards are
@@ -67,11 +72,20 @@ quick-action tiles (connect accounts, notifications, sync, phase status).
     and sorting both by date. `redirectUri` is set dynamically to `window.location.origin`, so it
     works both locally and in production **as long as each exact origin is registered in the Azure
     AD app** — see the setup checklist below.
+  - **Notion**: `renderNotionTasks()` calls `fetchNotionTasks()`, a `fetch()` to
+    `{proxyUrl}/notion/tasks` on the deployed Netlify Functions backend (no credentials sent from
+    the client — the Notion token lives only as a server-side env var). Returns open
+    (non-completed) pages sorted by due date; same loading/error/empty states as Trello/Outlook.
 - **Push notifications**: "Activar notificaciones" button (`#enable-notifications-btn`) calls
   `Notification.requestPermission()` on explicit click (required by iOS Safari — never auto-fired
-  on load). Status is read live from `Notification.permission`, not duplicated in storage. The
-  actual VAPID subscription + backend registration is stubbed with a `// FASE 2:` comment in the
-  click handler and in `sw.js`'s `push` listener — still pending, not part of this phase.
+  on load). Status is read live from `Notification.permission`, not duplicated in storage. On
+  grant, it registers the service worker (if needed), calls `pushManager.subscribe()` with the
+  VAPID public key from `integrations.push.vapidPublicKey` (converted to a `Uint8Array` via
+  `urlBase64ToUint8Array()`), and `POST`s the resulting `PushSubscription` to
+  `{proxyUrl}/push/subscribe`. Requires both the VAPID public key and the proxy URL to be
+  configured first (the button alerts and bails out otherwise). Actual push delivery is handled
+  server-side by the `scheduled-check-deadlines.js` cron — see
+  [Architecture → Backend serverless](architecture.md#backend-serverless-netlify-functions).
 
 ### Setting up the Microsoft (Azure AD) app for Outlook / To Do
 The user connecting Outlook/To Do must register their own app in
@@ -99,5 +113,5 @@ The user connecting Outlook/To Do must register their own app in
 | `jdh_notes` | Notes array |
 | `jdh_audioPrefs` | `{minimized, shuffle, repeat}` |
 | `jdh_lastBackup` | ISO timestamp of last export |
-| `jdh_integrations` | Trello/Microsoft/Notion connection settings (see above) |
+| `jdh_integrations` | Trello/Microsoft/Notion/push connection settings (see above) |
 | `jdh_agendaTab` | Last active Agenda tab (`'calendar'` or `'hub'`) |
