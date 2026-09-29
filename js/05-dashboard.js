@@ -296,7 +296,14 @@ document.getElementById('wipe-btn')?.addEventListener('click', () => {
   showView('overview');
 });
 document.querySelectorAll('.dash-nav').forEach(n => n.addEventListener('click', () => showView(n.dataset.view)));
-document.querySelectorAll('[data-jump]').forEach(b => b.addEventListener('click', () => showView(b.dataset.jump)));
+/* Delegado en document, no enlazado elemento a elemento: algunos botones
+   [data-jump] se generan con innerHTML después de este punto (p. ej. el aviso de
+   fuentes sin cargar de la vista Hoy), y un querySelectorAll de una sola pasada
+   no los alcanzaría. */
+document.addEventListener('click', e => {
+  const jump = e.target.closest('[data-jump]');
+  if (jump) showView(jump.dataset.jump);
+});
 function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
 function renderOverview() {
