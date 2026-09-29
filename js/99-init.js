@@ -29,6 +29,21 @@ function initDashboard() {
   if (typeof isSyncConfigured === 'function' && isSyncConfigured()) syncNow();
 }
 
+/* Atajo de la PWA instalada: el manifest declara un shortcut a /index.html#hoy
+   (mantener pulsado el icono en Android → "Hoy"). Abre directamente la pantalla
+   del PIN en vez de dejar al usuario en la portada; el PIN sigue siendo
+   obligatorio — el hash sólo ahorra un clic, no salta la verificación. */
+if (window.location.hash === '#hoy') {
+  window.addEventListener('load', () => {
+    // Tras el loader (~1.5 s), para que no se abra sobre la animación de carga.
+    setTimeout(() => {
+      openDashboard();
+      // Se limpia el hash para que recargar no vuelva a forzar la apertura.
+      history.replaceState(null, '', window.location.pathname + window.location.search);
+    }, 1600);
+  });
+}
+
 /* Nav highlight */
 const navLinks = document.querySelectorAll('.nav-link');
 window.addEventListener('scroll', () => {

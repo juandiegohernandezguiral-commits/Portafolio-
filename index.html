@@ -10,10 +10,10 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%232667ff'/%3E%3Ctext x='50' y='68' font-family='monospace' font-size='56' font-weight='800' text-anchor='middle' fill='%23fff'%3EJ%3C/text%3E%3C/svg%3E" />
 
 <!-- PWA: manifest + iOS/Android install meta.
-     icon.svg reuses the same "J" mark as the favicon above (placeholder — swap for a
-     dedicated PNG/maskable icon set whenever one is designed; see docs/customization.md). -->
+     iOS ignora el manifest para el icono de inicio y usa apple-touch-icon, que además
+     no entiende SVG — por eso apunta al PNG de 192. -->
 <link rel="manifest" href="manifest.json" />
-<link rel="apple-touch-icon" href="icon.svg" />
+<link rel="apple-touch-icon" href="icon-192.png" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <meta name="apple-mobile-web-app-title" content="JDH Panel" />
@@ -1266,9 +1266,10 @@
 <!-- Contenedor de avisos efímeros (toasts) -->
 <div id="toast-host" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[95] flex flex-col items-center gap-2 pointer-events-none"></div>
 
-<!-- Scripts de la app, en orden de dependencia. Son scripts clasicos (no modulos):
-     comparten el mismo scope global, igual que cuando todo vivia en un solo bloque
-     <script> inline. El orden importa - ver docs/architecture.md. -->
+<!-- Scripts de la app, en orden de dependencia. Son scripts clasicos, NO modulos ES:
+     comparten el mismo scope global, igual que cuando todo vivia en un unico bloque
+     inline. El orden de carga ES el grafo de dependencias, y anadir un archivo
+     nuevo exige anadir aqui su etiqueta a mano. Ver docs/architecture.md. -->
 <script src="js/01-base.js"></script>
 <script src="js/02-effects.js"></script>
 <script src="js/03-hero.js"></script>

@@ -11,11 +11,38 @@
   "lang": "es",
   "icons": [
     {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
       "src": "icon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any"
     }
   ],
-  "_note": "icon.svg is a placeholder reusing the site's existing favicon mark ('J' on accent background). Swap for a dedicated PNG/maskable icon set (e.g. 192x192 and 512x512) when one is designed — see docs/customization.md."
+  "shortcuts": [
+    {
+      "name": "Hoy",
+      "short_name": "Hoy",
+      "description": "Abre el panel en la vista de pendientes de hoy",
+      "url": "/index.html#hoy",
+      "icons": [{ "src": "icon-192.png", "sizes": "192x192" }]
+    }
+  ],
+  "_note": "El icono maskable lleva el fondo a sangre porque Android recorta hasta un 20% por lado; la marca queda dentro del circulo seguro central. icon.svg se mantiene al final como respaldo para navegadores que lo prefieran. Regenerar con el script descrito en docs/customization.md."
 }

@@ -2,15 +2,95 @@
 
 A hidden full-screen overlay accessible via the footer "Panel privado" button or `Alt+P`. Protected by a 4-digit PIN — see [Customization](customization.md) for the constant. All data persists to `localStorage`.
 
+## Command palette (`Ctrl+K` / `Cmd+K`)
+Defined in `js/09-palette.js`. Only binds while the dashboard is unlocked — hijacking the
+browser shortcut on the public site would cost something and give nothing back. Mixes commands
+(navigate, create, sync, export, toggle theme) with live search across tasks, events, projects
+and notes. Note bodies are searchable but not shown in the row label.
+
+Prefixes: `+ texto` creates a task immediately; `? texto` searches data only, skipping commands.
+
+Ranking (`scoreMatch`) is deliberately simpler than real fuzzy matching: exact > prefix >
+substring > subsequence, with shorter haystacks winning ties. For a few hundred items that's
+enough, and it guarantees typing a full word ranks the literal match first.
+
 ## Views
+- **Hoy** — the default view on unlock, and the reason the panel is worth opening daily.
+  Three blocks (vencidas / para hoy / en progreso) merging local tasks and events with whatever
+  Trello, Outlook and Notion returned. Because external items come from `hubState` — runtime
+  state, not persisted — they're only present if the Centro de tareas has been loaded this
+  session; when a connected source hasn't loaded, the view says so instead of quietly showing
+  an incomplete list. Includes a quick-capture field (`quickAddTask`) that parses a small
+  syntax: `!alta` / `!media` / `!baja` for priority, `hoy` / `mañana` for a due date.
 - **Overview** — summary stats pulled from all other modules
 - **Agenda** — two tabs, switched with `showAgendaTab()`:
   - **Calendario** — original events view; events stored as `jdh_events`
   - **Centro de tareas** — bento-grid hub aggregating Trello, Outlook/To Do and Notion (see below)
-- **Tasks (Kanban)** — drag-and-drop 3-column board; data at `jdh_tasks`
+- **Tasks (Kanban)** — drag-and-drop 3-column board; data at `jdh_tasks`. Tasks carry an
+  optional `due` (datetime-local string) and `repeat`
+  (`none` | `daily` | `weekly` | `biweekly` | `monthly`). Dropping a recurring task into
+  *Completadas* calls `spawnNextOccurrence()`, which creates the next one — advancing the date
+  repeatedly until it lands in the future, so a daily task ignored for two weeks doesn't spawn
+  an already-overdue successor. The `spawnedNext` flag prevents a second spawn if the same card
+  is dragged out of and back into *done*.
 - **Projects** — project tracker with 5-stage pipeline; data at `jdh_projects`
 - **Notes** — freeform notes grid; data at `jdh_notes`
-- **Data & Backup** — export/import all data as a single JSON file; wipe option
+- **Data & Backup** — export/import as a single JSON file, wipe option, and the two durability
+  mechanisms below.
+
+## Durability (`js/07-sync.js`)
+
+The dashboard used to live entirely in one browser's `localStorage`: clearing the cache lost
+everything, and the phone and the laptop were separate universes. Two independent defences,
+usable together or separately.
+
+### Data model prerequisites
+Merging two devices needs more than the raw records:
+- **`updatedAt`** on every record — resolves conflicts per record instead of one device
+  clobbering the other's whole state. `migrateTimestamps()` (called from `initDashboard`)
+  stamps pre-existing records once, preferring `createdAt` so they don't claim to be newer
+  than they are.
+- **Tombstones** (`jdh_tombstones`) — a deletion is an *absence*, and an absence is
+  indistinguishable from "this device hasn't seen it yet". Without a record of the delete,
+  every sync would resurrect whatever you deleted elsewhere. Pruned after
+  `TOMBSTONE_TTL_DAYS` (60).
+
+Backup payloads are `version: 2` when they carry these; `version: 1` files still import.
+
+### A) Cloud sync
+Client-side merge against the [`data-sync` backend](architecture.md#backend-serverless-netlify-functions).
+Cycle: pull → merge → save locally → push with `baseRev` → on `409`, re-merge against the
+returned state and retry (up to 3 times). Local save happens *before* the push so a failed push
+doesn't discard what was just pulled.
+
+Merge rules, verified by `node tests/merge.test.js`:
+- Highest `updatedAt` wins per record; a record with no `updatedAt` is treated as oldest.
+- A tombstone removes the record **unless** the record was edited after the delete
+  (`updatedAt > tombstone.at`) — deleting on the phone then continuing to edit on the laptop
+  keeps the edit.
+- No field-level merging inside a record. For one person, simultaneous edits of the same item
+  are rare and cheap to get wrong; field-level merging would be far more code and much harder
+  to reason about.
+
+Triggers: dashboard unlock, 2.5 s debounce after any local change, tab regaining visibility,
+every 5 min while open and visible, and the `online` event if a push is still pending.
+Configured in "Conectar cuentas" → Sincronización; the URL falls back to `notion.proxyUrl`
+since it's the same backend.
+
+**Wipe interaction**: "Borrar todos los datos" asks a third question when sync is active —
+whether the deletion should reach the cloud. Propagating it silently would mean someone
+clearing one browser also destroys their backup.
+
+### B) File auto-backup
+File System Access API. You pick a `.json` once (ideally inside OneDrive/Drive) and the panel
+rewrites it on every change, debounced 5 s. Needs no backend at all, which is the point: it
+covers the case where the serverless side isn't deployed.
+
+The `FileSystemFileHandle` is stored in **IndexedDB** (`jdh-fs` → `handles` → `backupFile`),
+not `localStorage` — it isn't JSON-serializable but it is structured-cloneable. Write
+permission is revoked when the browser closes, so on startup `restoreAutoBackup()` only
+*queries* permission (no user gesture available) and surfaces a "Reautorizar" button when it
+needs a click. Chrome and Edge desktop only; elsewhere the card reports it's unavailable.
 
 ### Agenda → Centro de tareas (task aggregation hub)
 Bento-grid layout inside the existing "Agenda" section (not a separate top-level nav item, to
@@ -27,6 +107,9 @@ quick-action tiles (connect accounts, notifications, sync, phase status).
     microsoft: { clientId: '', verified: false },  // Azure AD app Client ID
     notion: { proxyUrl: '', verified: false },     // Netlify Functions backend base URL (Phase 3)
     push: { vapidPublicKey: '' },                  // VAPID public key (not secret) for Web Push
+    sync: { url: '', token: '', enabled: false },  // dashboard data sync (Phase 4). `url` empty
+                                                   // → reuses notion.proxyUrl (same backend).
+                                                   // `token` must match the backend's SYNC_TOKEN.
   }
   ```
   `verified` is set to `true` the first time a real fetch (Trello/Notion) or login (Microsoft)
@@ -113,5 +196,14 @@ The user connecting Outlook/To Do must register their own app in
 | `jdh_notes` | Notes array |
 | `jdh_audioPrefs` | `{minimized, shuffle, repeat}` |
 | `jdh_lastBackup` | ISO timestamp of last export |
-| `jdh_integrations` | Trello/Microsoft/Notion/push connection settings (see above) |
+| `jdh_integrations` | Trello/Microsoft/Notion/push/sync connection settings (see above) |
 | `jdh_agendaTab` | Last active Agenda tab (`'calendar'` or `'hub'`) |
+| `jdh_tombstones` | `[{ kind, id, at }]` — deletion records, pruned after 60 days |
+| `jdh_syncRev` | Last cloud revision this browser successfully pushed |
+| `jdh_syncLastAt` | ISO timestamp of the last successful sync |
+| `jdh_syncDirty` | `true` if local changes still need pushing (survives reloads) |
+| `jdh_autoBackupName` | Filename of the auto-backup target, for display only |
+| `jdh_autoBackupAt` | ISO timestamp of the last auto-backup write |
+
+Not in `localStorage`: the `FileSystemFileHandle` for auto-backup lives in IndexedDB
+(`jdh-fs` → `handles` → `backupFile`), because handles can't be serialized to JSON.

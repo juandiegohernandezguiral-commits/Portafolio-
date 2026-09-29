@@ -4,7 +4,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-Single-file personal portfolio for Juan Diego Hernández (Software Engineer, Colombia) — no build step, no framework, no package manager. Edit `index.html` directly.
+Personal portfolio + private dashboard for Juan Diego Hernández (Software Engineer, Colombia).
+**No build step, no framework, no package manager** for the frontend — that constraint still
+holds and is worth preserving.
+
+It is no longer a single file, though. `index.html` is markup only; styles live in
+`css/styles.css` and behaviour in `js/*.js`, loaded as **classic scripts in numbered order**
+(not ES modules), so they all share one global scope. See
+[Architecture](docs/architecture.md) for the file-by-file responsibility table — read it before
+adding a file, because load order *is* the dependency graph and new files need a `<script>` tag
+added by hand.
+
+The `/netlify` directory is a separate backend with its own `package.json`, deployed as its own
+Netlify site. The portfolio itself stays a plain static deploy.
 
 ## Run locally
 
@@ -15,6 +27,28 @@ python -m http.server 8080
 # Node (if available)
 npx serve .
 ```
+
+Serve it over HTTP rather than opening `index.html` from disk — the service worker and the PWA
+manifest don't work from `file://`.
+
+## Tests
+
+```
+node tests/merge.test.js
+```
+
+Covers the cloud-sync merge logic (last-write-wins per record, tombstones, TTL pruning) by
+loading `js/07-sync.js` in a sandboxed VM with stubbed browser globals. Run it after touching
+that file — it's the one place where a bug means silently losing data rather than an
+error message.
+
+## Gotchas
+
+- **Bump `SW_VERSION` in `sw.js`** after changing any file in its `SHELL_ASSETS` list, or
+  returning visitors keep the cached old shell.
+- **The `ACCESS_PIN` is not security.** It's a plain string in a file anyone can read; it keeps
+  casual visitors out of the panel and nothing more. Real secrets belong in the backend's
+  environment variables.
 
 ## Agent architecture
 

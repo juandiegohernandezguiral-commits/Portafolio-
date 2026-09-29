@@ -1,6 +1,45 @@
 # Architecture
 
-Everything lives in `index.html` — HTML structure, a `<style>` block, and a single `<script>` block at the bottom. Styles and scripts are co-located with the markup, not in separate files.
+## File layout
+
+`index.html` holds only markup. Styles live in `css/styles.css` and behaviour in `js/*.js`.
+There is still **no build step and no package manager** for the frontend — the JS files are
+plain classic `<script src>` tags loaded in order at the end of `<body>`, *not* ES modules.
+That matters: they all share one global scope, exactly as when everything lived in a single
+inline `<script>`. A function defined in `05-dashboard.js` is directly callable from
+`09-palette.js`, no imports involved.
+
+**Load order is the dependency graph.** Each file may use anything defined in a lower-numbered
+one:
+
+| File | Responsibility |
+|---|---|
+| `js/01-base.js` | PIN constant, theme toggle, loader, service worker registration |
+| `js/02-effects.js` | Custom cursor, audio player widget, flow-field canvas |
+| `js/03-hero.js` | Scroll-expansion hero, video guards, Lenis, GSAP/ScrollTrigger setups |
+| `js/04-ui.js` | Magnetic buttons, contact form |
+| `js/05-dashboard.js` | PIN gate, view routing, CRUD, backup. Defines `store`, `uid`, `escapeHtml`, `touch`, `tombstone`, `saveAll` |
+| `js/06-integrations.js` | Trello / Microsoft Graph / Notion, push subscription. Defines `integrations`, `hubState` |
+| `js/07-sync.js` | Cloud sync + file auto-backup. Defines `onDataChanged`, `syncNow`, `isSyncConfigured` |
+| `js/08-productivity.js` | "Hoy" view, due dates, recurring tasks, quick capture. Defines `parseDue`, `spawnNextOccurrence`, `quickAddTask` |
+| `js/09-palette.js` | Command palette (Ctrl+K), global search, `toast()` |
+| `js/99-init.js` | Dashboard seed + timestamp migration, nav highlight, `#hoy` PWA shortcut. Must load last |
+
+Two consequences worth remembering when editing:
+
+- **Adding a file means adding a `<script>` tag** to `index.html` in the right position. Nothing
+  discovers files automatically.
+- **Lower-numbered files calling into higher-numbered ones** (e.g. `saveAll()` calling
+  `onDataChanged()` from `07-sync.js`) is fine *at runtime* — everything is parsed before the
+  user can click anything — but those calls are guarded with `typeof fn === 'function'` so the
+  dashboard keeps working if a later file is missing or throws while parsing.
+
+## Tests
+
+`node tests/merge.test.js` — covers the sync merge logic (last-write-wins per record,
+tombstones, TTL pruning) by loading `js/07-sync.js` into a sandboxed VM with stubbed browser
+globals. It's the one piece where a bug means silent data loss, so it's worth running after
+touching anything in that file.
 
 ## External dependencies (CDN, no local copies)
 - **Tailwind CSS** — configured inline via `tailwind.config`; dark mode uses the `class` strategy
@@ -11,9 +50,34 @@ Everything lives in `index.html` — HTML structure, a `<style>` block, and a si
   [Dashboard](dashboard.md)) as a public client (SPA), no client secret
 
 ## PWA shell
-- `manifest.json` — name, icons, `display: standalone`, theme/background colors; linked from `<head>` via `<link rel="manifest">`
-- `sw.js` — service worker registered from the main `<script>` block on `window.load`; its `push` listener renders real notifications sent by the [backend serverless](#backend-serverless-netlify-functions) (no offline caching strategy — that's out of scope)
-- `icon.svg` — placeholder app icon (reuses the inline favicon's "J" mark) referenced by both the manifest and `<link rel="apple-touch-icon">`
+- `manifest.json` — name, icons, `display: standalone`, theme/background colors, plus a
+  `shortcuts` entry pointing at `/index.html#hoy` (long-press the installed icon on Android).
+  `js/99-init.js` handles that hash by opening the PIN screen directly — it saves a tap, it does
+  **not** bypass the PIN.
+- `icon-192.png` / `icon-512.png` — app icons (`purpose: any`, rounded corners baked in).
+  `icon-maskable-512.png` is the Android-adaptive variant: full-bleed background with the "J"
+  inside the central safe circle, because the OS crops up to 20% per side. `icon.svg` is kept
+  last in the manifest as a fallback. iOS ignores the manifest for the home-screen icon and
+  can't read SVG, so `<link rel="apple-touch-icon">` points at the 192 PNG.
+- `sw.js` — service worker registered from `js/01-base.js` on `window.load`. Two jobs:
+
+  **Push** — its `push` listener renders notifications sent by the
+  [backend serverless](#backend-serverless-netlify-functions).
+
+  **Offline caching** (added in Fase 4). Strategy per request type:
+
+  | Request | Strategy | Why |
+  |---|---|---|
+  | Navigation (HTML) | network-first, fall back to cached `index.html` | Offline navigation to any path lands in the app, which is single-page anyway |
+  | Same-origin `.js` / `.css` | network-first | Prevents version skew — cache-first here could pair a fresh `index.html` with stale JS, a bug that shows up once and never reproduces |
+  | Same-origin images / manifest | stale-while-revalidate | Effectively immutable |
+  | `intro.mp4` | not intercepted | 12 MB would dominate a phone's storage quota to cache a hero nobody watches offline |
+  | CDN libs + Google Fonts | stale-while-revalidate | Versioned URLs, so a stale copy is still a correct copy. Opaque responses (`type === 'opaque'`, status 0) are cached too — that's normal for cross-origin scripts |
+  | `/data/*`, `/notion/*`, `/push/*`, `/sync/*`, Trello, Graph | never cached | Live or authenticated data; a stale task list is worse than no task list, because it looks current |
+
+  **Bump `SW_VERSION` whenever a shell file changes** — that constant names the caches, so
+  changing it is what evicts the old ones on `activate`. `SHELL_ASSETS` is also a hardcoded
+  list: adding a JS file means adding it there too, or it won't be available offline.
 
 ## Backend serverless (Netlify Functions)
 A small, separate backend under `/netlify/` — deployed as its **own Netlify site** (not the
@@ -50,6 +114,21 @@ Files (see `netlify.toml` at the repo root for full comments on env vars and dep
   this is a single-user/single-subscription app.
 - `netlify/functions/sync-external-summary.js` — `POST /sync/external-summary`. See "Known
   limitation" below.
+- `netlify/functions/_lib/auth.js` — shared-token check for the endpoints that serve or accept
+  personal data. **Fails closed**: if `SYNC_TOKEN` isn't set it rejects everything with 503,
+  rather than treating "unconfigured" as "open". Compares SHA-256 digests with
+  `timingSafeEqual` so neither the token's content nor its length leaks through response timing.
+- `netlify/functions/data-sync.js` — `GET /data/pull` and `POST /data/push`. The store for the
+  dashboard's own data (tasks, events, projects, notes), which is what makes the panel usable
+  from more than one device. The server is a **dumb versioned store**: every snapshot carries an
+  integer `rev`, and a push must declare the `baseRev` it was built on. Mismatch → `409` with the
+  current state attached, so the client can re-merge and retry.
+
+  The merge deliberately lives client-side (`js/07-sync.js`), not here: that's where the rules
+  are (highest `updatedAt` wins per record, tombstones delete), and implementing them in two
+  places would mean maintaining them in two places. Each write archives the revision it
+  replaces, keeping the last 10 under `user-data-history` — cheap insurance against a client
+  with corrupt or empty data overwriting the cloud.
 - `netlify/functions/scheduled-check-deadlines.js` — cron, every 30 min (`*/30 * * * *`, UTC),
   via `@netlify/functions`'s `schedule()` helper. Queries Notion live, reads the last synced
   Trello/Outlook summary (if fresh), finds tasks due within `PUSH_DUE_SOON_HOURS` (default 24)
