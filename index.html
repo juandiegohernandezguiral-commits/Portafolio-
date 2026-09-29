@@ -665,7 +665,7 @@
           <button type="button" class="key">7</button><button type="button" class="key">8</button><button type="button" class="key">9</button>
           <button type="button" class="key opacity-0 pointer-events-none"></button><button type="button" class="key">0</button><button type="button" class="key" data-action="del">←</button>
         </div>
-        <p class="mt-6 meta-label text-neutral-500">PIN por defecto: 2580 · cámbialo en el código</p>
+        <p class="mt-6 meta-label text-neutral-500">Alt+P para abrir desde cualquier parte</p>
       </div>
     </div>
   </div>
@@ -680,6 +680,10 @@
         </div>
       </div>
       <nav class="flex-1 p-3 lg:p-4 space-y-1">
+        <button type="button" class="dash-nav w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm hover:bg-neutral-100 dark:hover:bg-white/5 transition" data-view="today">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="shrink-0"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+          <span class="hidden lg:inline">Hoy</span>
+        </button>
         <button type="button" class="dash-nav w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm hover:bg-neutral-100 dark:hover:bg-white/5 transition" data-view="overview">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="shrink-0"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
           <span class="hidden lg:inline">Resumen</span>
@@ -714,6 +718,33 @@
     </aside>
     <main class="flex-1 overflow-y-auto bg-white dark:bg-black">
       <div class="p-6 md:p-10 max-w-6xl mx-auto">
+        <!-- Vista "Hoy": lo vencido, lo de hoy y lo en curso en una sola pantalla,
+             juntando datos locales con Trello/Outlook/Notion. Ver js/08-productivity.js -->
+        <section class="dash-view hidden" data-view="today">
+          <div class="flex items-end justify-between mb-8 flex-wrap gap-4">
+            <div>
+              <div class="meta-label text-neutral-500 mb-2">/ hoy</div>
+              <h1 class="display text-3xl md:text-5xl" id="today-count">—</h1>
+              <p class="text-neutral-500 mt-2 capitalize" id="today-heading-date"></p>
+            </div>
+            <button type="button" id="palette-open-btn" class="flex items-center gap-2 px-4 py-2.5 surface rounded-full hover:border-accent transition">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+              <span class="meta-label text-neutral-500">Buscar</span>
+              <span class="meta-label px-1.5 py-0.5 rounded surface-soft text-neutral-500">Ctrl K</span>
+            </button>
+          </div>
+
+          <!-- Captura rápida: una tarea no debería costar abrir un modal -->
+          <form id="quick-add-form" class="surface rounded-2xl p-3 mb-6 flex gap-3">
+            <input name="text" autocomplete="off"
+                   placeholder="Añadir tarea rápida…  (prueba: revisar PR !alta hoy)"
+                   class="flex-1 bg-transparent px-3 py-2.5 focus:outline-none text-sm" />
+            <button type="submit" class="px-5 rounded-xl bg-accent text-white font-bold mono text-[10px] uppercase tracking-[0.2em] shrink-0">Añadir</button>
+          </form>
+
+          <div id="today-list" class="space-y-4"></div>
+        </section>
+
         <section class="dash-view" data-view="overview">
           <div class="flex items-center justify-between mb-8">
             <div>
@@ -721,8 +752,10 @@
               <h1 class="display text-3xl md:text-5xl">Hola, <span class="text-accent">Juan Diego</span></h1>
               <p class="text-neutral-500 mt-2" id="today-date"></p>
             </div>
-            <div class="hidden md:flex items-center gap-2 px-4 py-2 surface rounded-full">
-              <span class="pulse-dot"></span><span class="meta-label">All systems normal</span>
+            <!-- Estado de sincronización en vivo (lo pinta renderSyncStatus en js/08-sync.js).
+                 Reemplaza el antiguo "All systems normal", que era decorativo y no decía nada. -->
+            <div id="sync-pill" class="hidden md:flex items-center gap-2 px-4 py-2 surface rounded-full">
+              <span class="w-1.5 h-1.5 rounded-full bg-neutral-400"></span><span class="meta-label text-neutral-500">Sólo local</span>
             </div>
           </div>
           <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
@@ -919,7 +952,7 @@
               <div>
                 <div class="meta-label text-neutral-500 mb-1">Ubicación</div>
                 <div class="font-display font-semibold text-sm">localStorage</div>
-                <div class="text-xs text-neutral-500 mt-1">de este navegador</div>
+                <div class="text-xs text-neutral-500 mt-1">+ nube y archivo, si los activas</div>
               </div>
               <div>
                 <div class="meta-label text-neutral-500 mb-1">Espacio usado</div>
@@ -936,6 +969,37 @@
                 <div class="font-display font-semibold text-sm" id="total-items">0</div>
                 <div class="text-xs text-neutral-500 mt-1">en todos los módulos</div>
               </div>
+            </div>
+          </div>
+
+          <!-- Durabilidad: sync en la nube + auto-backup a archivo.
+               Son las dos defensas contra perder los datos; el export manual de abajo
+               sigue existiendo como tercera red. -->
+          <div class="grid md:grid-cols-2 gap-4 mb-6">
+            <div class="surface rounded-2xl p-6">
+              <div class="flex items-start gap-3 mb-4">
+                <div class="w-10 h-10 rounded-xl bg-accent/10 border border-accent/30 flex items-center justify-center shrink-0">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2667ff" stroke-width="1.5"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>
+                </div>
+                <div>
+                  <h3 class="font-display font-bold">Sync en la nube</h3>
+                  <p class="text-neutral-500 dark:text-neutral-400 text-sm mt-1">Comparte tareas, eventos, proyectos y notas entre el portátil y el celular.</p>
+                </div>
+              </div>
+              <div id="sync-cloud-detail"></div>
+            </div>
+
+            <div class="surface rounded-2xl p-6">
+              <div class="flex items-start gap-3 mb-4">
+                <div class="w-10 h-10 rounded-xl bg-accent/10 border border-accent/30 flex items-center justify-center shrink-0">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2667ff" stroke-width="1.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>
+                </div>
+                <div>
+                  <h3 class="font-display font-bold">Auto-backup a archivo</h3>
+                  <p class="text-neutral-500 dark:text-neutral-400 text-sm mt-1">Se reescribe solo en cada cambio. No necesita backend.</p>
+                </div>
+              </div>
+              <div id="sync-file-detail"></div>
             </div>
           </div>
 
@@ -977,9 +1041,9 @@
             </h3>
             <ul class="text-neutral-600 dark:text-neutral-400 text-sm space-y-2 leading-relaxed">
               <li><strong class="text-green-600 dark:text-green-400">✓ Sí persisten:</strong> al recargar, cerrar el navegador, apagar la computadora o cuando actualice el código del sitio. Los datos viven en tu navegador, independientes del HTML.</li>
-              <li><strong class="text-yellow-600 dark:text-yellow-400">⚠ No transfieren automáticamente:</strong> cuando subas el sitio a Hostinger (otro dominio), los datos locales no aparecerán ahí. <em>Exporta antes de subir, Importa después.</em></li>
-              <li><strong class="text-red-600 dark:text-red-400">✕ Sí se pueden perder si:</strong> limpias caché/datos del navegador, usas modo incógnito, cambias de navegador (Chrome → Firefox), o formateas el equipo.</li>
-              <li><strong class="text-accent">💾 Recomendación:</strong> exporta una vez por semana y guarda el .json en Google Drive, OneDrive o similar.</li>
+              <li><strong class="text-yellow-600 dark:text-yellow-400">⚠ Están atados al dominio:</strong> el localStorage de <span class="mono">localhost</span> y el de tu dominio en Hostinger son dos almacenes distintos. Con el <strong>sync en la nube</strong> activo esto deja de importar, porque ambos leen del mismo backend. Sin él, exporta antes de subir e importa después.</li>
+              <li><strong class="text-red-600 dark:text-red-400">✕ El localStorage solo se puede perder si:</strong> limpias caché/datos del navegador, usas modo incógnito, cambias de navegador, o formateas el equipo. Ninguna de esas cosas afecta a la copia en la nube ni al archivo de auto-backup.</li>
+              <li><strong class="text-accent">💾 Recomendación:</strong> activa las dos defensas de arriba. Son independientes — el sync te cubre entre dispositivos, el archivo te cubre si el backend no está desplegado o se cae.</li>
             </ul>
           </div>
 
@@ -1005,6 +1069,24 @@
       <div class="grid grid-cols-2 gap-3">
         <select name="priority" class="surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none"><option value="low">Prioridad baja</option><option value="med" selected>Media</option><option value="high">Alta</option></select>
         <select name="status" class="surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none"><option value="todo">Por hacer</option><option value="doing">En progreso</option><option value="done">Completada</option></select>
+      </div>
+      <!-- Vencimiento y recurrencia: alimentan la vista Hoy y la generación
+           automática de la siguiente ocurrencia al completar (js/08-productivity.js) -->
+      <div class="grid grid-cols-2 gap-3">
+        <label class="block">
+          <span class="meta-label text-neutral-500 block mb-1.5 px-1">Vence (opcional)</span>
+          <input name="due" type="datetime-local" class="w-full surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none" />
+        </label>
+        <label class="block">
+          <span class="meta-label text-neutral-500 block mb-1.5 px-1">Se repite</span>
+          <select name="repeat" class="w-full surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none">
+            <option value="none" selected>No se repite</option>
+            <option value="daily">Cada día</option>
+            <option value="weekly">Cada semana</option>
+            <option value="biweekly">Cada 2 semanas</option>
+            <option value="monthly">Cada mes</option>
+          </select>
+        </label>
       </div>
       <div class="flex gap-3 pt-3">
         <button type="button" class="flex-1 py-3 rounded-xl surface-soft hover:border-accent" data-close-modal>Cancelar</button>
@@ -1110,6 +1192,36 @@
         </form>
       </div>
 
+      <!-- Sync de los datos propios del panel entre dispositivos -->
+      <div data-integration-section="sync" class="pb-6 border-b border-neutral-200 dark:border-white/5">
+        <div class="flex items-center justify-between mb-3 gap-2">
+          <h4 class="font-display font-bold flex items-center gap-2">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>
+            Sincronización
+          </h4>
+          <span class="meta-label px-2.5 py-1 rounded-full surface-soft text-neutral-500" data-status-pill="sync">No conectado</span>
+        </div>
+        <p class="text-neutral-500 text-xs mb-3">
+          Sube tus tareas, eventos, proyectos y notas al mismo backend serverless de arriba, para
+          que el celular y el portátil vean lo mismo. El token es el valor de la variable de
+          entorno <span class="mono">SYNC_TOKEN</span> que configuraste en Netlify — genéralo con
+          <span class="mono">node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"</span>.
+          Deja la URL vacía para reutilizar la de Notion (es el mismo backend).
+        </p>
+        <form id="sync-form" class="grid gap-3">
+          <input name="url" type="url" placeholder="URL del backend (opcional, si es distinta a la de Notion)" autocomplete="off" class="surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none" />
+          <input name="token" type="password" placeholder="SYNC_TOKEN" autocomplete="off" class="surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none" />
+          <label class="flex items-center gap-3 px-1 text-sm cursor-pointer">
+            <input name="enabled" type="checkbox" class="rounded border-neutral-300 dark:border-white/20 text-accent focus:ring-accent" />
+            <span>Sincronizar automáticamente en cada cambio</span>
+          </label>
+          <div class="flex gap-3 pt-1">
+            <button type="submit" class="flex-1 py-2.5 rounded-xl bg-accent text-white font-bold mono text-[10px] uppercase tracking-[0.2em]">Guardar y probar</button>
+            <button type="button" data-disconnect="sync" class="px-4 py-2.5 rounded-xl surface-soft hover:border-red-400 hover:text-red-500 mono text-[10px] uppercase tracking-[0.2em]">Desconectar</button>
+          </div>
+        </form>
+      </div>
+
       <!-- Push notifications (VAPID) -->
       <div data-integration-section="push">
         <div class="flex items-center justify-between mb-3 gap-2">
@@ -1131,6 +1243,29 @@
   </div>
 </div>
 
+<!-- PALETA DE COMANDOS (Ctrl+K) — mezcla comandos con búsqueda en tareas, eventos,
+     proyectos y notas. z-index por encima de los modales del panel. Ver js/09-palette.js -->
+<div id="palette" class="fixed inset-0 z-[90] hidden items-start justify-center bg-black/50 backdrop-blur-sm pt-[12vh] px-4">
+  <div class="surface rounded-2xl w-full max-w-xl shadow-2xl overflow-hidden">
+    <div class="flex items-center gap-3 px-5 py-4 border-b border-neutral-200 dark:border-white/5">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2667ff" stroke-width="2" class="shrink-0"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+      <input id="palette-input" autocomplete="off" spellcheck="false"
+             placeholder="Buscar o ejecutar…   (+ crea tarea · ? sólo busca)"
+             class="flex-1 bg-transparent focus:outline-none text-sm" />
+      <span class="meta-label text-neutral-500 shrink-0 hidden sm:inline">esc</span>
+    </div>
+    <div id="palette-results" class="max-h-[50vh] overflow-y-auto"></div>
+    <div class="px-5 py-2.5 border-t border-neutral-200 dark:border-white/5 flex items-center gap-4">
+      <span class="meta-label text-neutral-500">↑↓ navegar</span>
+      <span class="meta-label text-neutral-500">↵ abrir</span>
+      <span class="meta-label text-neutral-500">esc cerrar</span>
+    </div>
+  </div>
+</div>
+
+<!-- Contenedor de avisos efímeros (toasts) -->
+<div id="toast-host" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[95] flex flex-col items-center gap-2 pointer-events-none"></div>
+
 <!-- Scripts de la app, en orden de dependencia. Son scripts clasicos (no modulos):
      comparten el mismo scope global, igual que cuando todo vivia en un solo bloque
      <script> inline. El orden importa - ver docs/architecture.md. -->
@@ -1140,6 +1275,9 @@
 <script src="js/04-ui.js"></script>
 <script src="js/05-dashboard.js"></script>
 <script src="js/06-integrations.js"></script>
-<script src="js/07-init.js"></script>
+<script src="js/07-sync.js"></script>
+<script src="js/08-productivity.js"></script>
+<script src="js/09-palette.js"></script>
+<script src="js/99-init.js"></script>
 </body>
 </html>

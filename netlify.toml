@@ -61,6 +61,20 @@
   #                                el estándar web-push, identifica al remitente)
   #   PUSH_DUE_SOON_HOURS       — (opcional, default 24) horas antes del
   #                                vencimiento a partir de las cuales se notifica
+  #   SYNC_TOKEN                — token compartido que protege /data/pull y
+  #                                /data/push (el sync de tareas, notas, eventos
+  #                                y proyectos del panel entre dispositivos).
+  #                                SIN ESTA VARIABLE el endpoint rechaza todo
+  #                                (falla cerrado, a propósito: un despliegue a
+  #                                medio configurar no debe quedar abierto con
+  #                                tus datos personales dentro). Genéralo con:
+  #                                  node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
+  #                                y pega la misma cadena en el panel →
+  #                                "Conectar cuentas" → Sincronización.
+  #   ALLOWED_ORIGIN            — (opcional, default '*') restringe CORS a tu
+  #                                dominio exacto, p. ej. https://tudominio.com.
+  #                                Recomendado ahora que el backend sirve datos
+  #                                personales: reduce la superficie a tu sitio.
   #
   # Cómo generar las VAPID keys (no las inventes, corre esto tú mismo):
   #   npx web-push generate-vapid-keys
@@ -82,6 +96,18 @@
 [[redirects]]
   from = "/sync/external-summary"
   to = "/.netlify/functions/sync-external-summary"
+  status = 200
+
+# Sync de los datos propios del panel (tareas, eventos, proyectos, notas) entre
+# dispositivos. Protegido por SYNC_TOKEN — ver netlify/functions/_lib/auth.js.
+[[redirects]]
+  from = "/data/pull"
+  to = "/.netlify/functions/data-sync"
+  status = 200
+
+[[redirects]]
+  from = "/data/push"
+  to = "/.netlify/functions/data-sync"
   status = 200
 
 # Nota: scheduled-check-deadlines.js NO necesita redirect — no es accesible por

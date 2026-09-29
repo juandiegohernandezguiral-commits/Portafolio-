@@ -14,7 +14,9 @@ const ALLOW_ORIGIN = process.env.ALLOWED_ORIGIN || '*';
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': ALLOW_ORIGIN,
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type',
+  // X-Sync-Token: lo usa data-sync.js para autenticar el sync de datos del panel.
+  // Sin declararlo aquí el navegador rechazaría la petición en el preflight.
+  'Access-Control-Allow-Headers': 'Content-Type, X-Sync-Token',
 };
 
 function withCors(response) {

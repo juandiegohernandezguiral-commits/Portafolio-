@@ -79,9 +79,60 @@ const store = {
 let tasks = store.get('tasks', []); let events = store.get('events', []);
 let projects = store.get('projects', []); let notes = store.get('notes', []);
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
-function saveAll() { store.set('tasks', tasks); store.set('events', events); store.set('projects', projects); store.set('notes', notes); }
+
+/* ---- Metadatos para sincronización (ver js/07-sync.js) ----
+   Sincronizar entre dos dispositivos necesita dos cosas que el modelo original no tenía:
+
+   1. `updatedAt` en cada registro — para resolver conflictos por "el último que escribió gana"
+      a nivel de registro individual, en vez de que un dispositivo pise el estado completo del
+      otro.
+   2. Tombstones (lápidas) — un borrado es la ausencia de un registro, y la ausencia no se puede
+      distinguir de "este dispositivo todavía no lo conoce". Sin dejar rastro del borrado, cada
+      sincronización resucitaría lo que borraste en el otro dispositivo. Un tombstone es el
+      registro explícito de "esto se borró en tal momento".
+
+   `touch()` sella un registro al crearlo o modificarlo; `tombstone()` anota un borrado. */
+const TOMBSTONE_TTL_DAYS = 60;
+let tombstones = store.get('tombstones', []);
+
+function touch(rec) { rec.updatedAt = Date.now(); return rec; }
+function tombstone(kind, id) {
+  tombstones = tombstones.filter(t => !(t.kind === kind && t.id === id));
+  tombstones.push({ kind, id, at: Date.now() });
+}
+function pruneTombstones() {
+  const cutoff = Date.now() - TOMBSTONE_TTL_DAYS * 86400000;
+  tombstones = tombstones.filter(t => t.at >= cutoff);
+}
+
+/* Registros creados antes de que existiera `updatedAt` (todo lo anterior a esta versión) no
+   tienen con qué compararse en un merge. Se les sella una sola vez, prefiriendo `createdAt`
+   cuando existe para no inventar que son más recientes de lo que son. */
+function migrateTimestamps() {
+  let changed = false;
+  [tasks, events, projects, notes].forEach(list => {
+    list.forEach(rec => {
+      if (typeof rec.updatedAt !== 'number') { rec.updatedAt = rec.createdAt || Date.now(); changed = true; }
+    });
+  });
+  if (changed) saveAll();
+}
+
+function saveAll() {
+  pruneTombstones();
+  store.set('tasks', tasks); store.set('events', events);
+  store.set('projects', projects); store.set('notes', notes);
+  store.set('tombstones', tombstones);
+  // Avisa a los módulos posteriores (sync en la nube, auto-backup a archivo, paleta de
+  // comandos) que los datos cambiaron. Se consultan con `typeof` porque 05-dashboard.js
+  // carga antes que ellos y debe seguir funcionando si alguno no está presente.
+  if (typeof onDataChanged === 'function') onDataChanged();
+}
+
+let activeView = 'overview';
 
 function showView(name) {
+  activeView = name;
   document.querySelectorAll('.dash-view').forEach(v => v.classList.toggle('hidden', v.dataset.view !== name));
   document.querySelectorAll('.dash-nav').forEach(n => {
     const active = n.dataset.view === name;
@@ -89,11 +140,31 @@ function showView(name) {
     n.classList.toggle('text-accent', active);
   });
   if (name === 'overview') renderOverview();
+  if (name === 'today' && typeof renderToday === 'function') renderToday();
   if (name === 'agenda') { renderEvents(); showAgendaTab(localStorage.getItem('jdh_agendaTab') || 'calendar'); }
   if (name === 'tasks') renderTasks();
   if (name === 'projects') renderProjects();
   if (name === 'notes') renderNotes();
   if (name === 'data') renderDataView();
+}
+
+/* Vuelve a pintar la vista actual sin cambiar de vista. La usa el sync tras
+   fusionar datos remotos, para que lo que se ve en pantalla no quede desfasado
+   respecto a lo que acaba de llegar del otro dispositivo.
+
+   A diferencia de showView(), no toca el Centro de tareas: ese hace peticiones
+   reales a Trello/Graph/Notion y no hay razón para repetirlas sólo porque
+   cambiaron datos locales. */
+function refreshActiveView() {
+  switch (activeView) {
+    case 'overview': renderOverview(); break;
+    case 'today': if (typeof renderToday === 'function') renderToday(); break;
+    case 'agenda': renderEvents(); break;
+    case 'tasks': renderTasks(); break;
+    case 'projects': renderProjects(); break;
+    case 'notes': renderNotes(); break;
+    case 'data': renderDataView(); break;
+  }
 }
 
 /* ============ DATA BACKUP / EXPORT / IMPORT / WIPE ============ */
@@ -126,19 +197,28 @@ function renderDataView() {
 
   const totalEl = document.getElementById('total-items');
   if (totalEl) totalEl.textContent = (tasks.length + events.length + projects.length + notes.length) + ' items';
+
+  if (typeof renderSyncStatus === 'function') renderSyncStatus();
 }
 
-document.getElementById('export-btn')?.addEventListener('click', () => {
-  const payload = {
-    version: 1,
+/* Payload canónico de backup. Lo comparten la descarga manual, el auto-backup a archivo
+   (js/07-sync.js) y el push al backend, para que los tres formatos no divergan.
+   version 2 = incluye `updatedAt` por registro y tombstones; version 1 = formato anterior. */
+function buildBackupPayload() {
+  return {
+    version: 2,
     exportedAt: new Date().toISOString(),
     owner: 'Juan Diego Hernández',
     counts: {
       tasks: tasks.length, events: events.length,
       projects: projects.length, notes: notes.length,
     },
-    data: { tasks, events, projects, notes },
+    data: { tasks, events, projects, notes, tombstones },
   };
+}
+
+document.getElementById('export-btn')?.addEventListener('click', () => {
+  const payload = buildBackupPayload();
   const json = JSON.stringify(payload, null, 2);
   const blob = new Blob([json], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
@@ -172,6 +252,9 @@ document.getElementById('import-file')?.addEventListener('change', e => {
       events = Array.isArray(d.events) ? d.events : [];
       projects = Array.isArray(d.projects) ? d.projects : [];
       notes = Array.isArray(d.notes) ? d.notes : [];
+      // Backups formato 1 no traen tombstones; se asume ninguno.
+      tombstones = Array.isArray(d.tombstones) ? d.tombstones : [];
+      migrateTimestamps();
       saveAll();
       alert('✓ Datos restaurados: ' + (tasks.length+events.length+projects.length+notes.length) + ' items.');
       showView('overview');
@@ -186,10 +269,30 @@ document.getElementById('import-file')?.addEventListener('change', e => {
 document.getElementById('wipe-btn')?.addEventListener('click', () => {
   if (!confirm('⚠ Esto borrará TODOS tus datos del navegador. ¿Estás seguro?')) return;
   if (!confirm('Última confirmación: este paso es irreversible (a menos que tengas un backup). ¿Continuar?')) return;
+
+  /* Con sync en la nube activo hay que decidir algo que antes no existía: ¿el borrado es sólo
+     de este navegador, o también de la copia remota? Propagarlo silenciosamente sería un
+     footgun — alguien que quiere "empezar limpio en este equipo" perdería también el respaldo
+     que tiene en la nube. Así que se pregunta explícitamente, y sólo se generan tombstones
+     (que es lo que hace viajar un borrado) si lo confirma. */
+  let propagate = false;
+  if (typeof isSyncConfigured === 'function' && isSyncConfigured()) {
+    propagate = confirm(
+      'Tienes sync en la nube activo.\n\n' +
+      'OK = borrar también la copia en la nube (y por lo tanto en tus otros dispositivos).\n' +
+      'Cancelar = borrar sólo en este navegador; la próxima sincronización lo restaurará desde la nube.'
+    );
+  }
+  if (propagate) {
+    tasks.forEach(t => tombstone('tasks', t.id));
+    events.forEach(e => tombstone('events', e.id));
+    projects.forEach(p => tombstone('projects', p.id));
+    notes.forEach(n => tombstone('notes', n.id));
+  }
   tasks = []; events = []; projects = []; notes = [];
   saveAll();
   localStorage.removeItem('jdh_seeded');
-  alert('Datos borrados.');
+  alert(propagate ? 'Datos borrados aquí y en la nube.' : 'Datos borrados de este navegador.');
   showView('overview');
 });
 document.querySelectorAll('.dash-nav').forEach(n => n.addEventListener('click', () => showView(n.dataset.view)));
@@ -229,7 +332,7 @@ function renderOverview() {
 document.getElementById('event-form').addEventListener('submit', e => {
   e.preventDefault();
   const fd = new FormData(e.target);
-  events.push({ id: uid(), title: fd.get('title'), date: fd.get('date') });
+  events.push(touch({ id: uid(), title: fd.get('title'), date: fd.get('date'), createdAt: Date.now() }));
   saveAll(); e.target.reset(); renderEvents();
 });
 function renderEvents() {
@@ -247,6 +350,7 @@ function renderEvents() {
       <button data-del-event="${e.id}" type="button" class="text-neutral-400 hover:text-red-500 text-sm">✕</button>
     </div>`).join('') : '<div class="text-neutral-500">No hay eventos.</div>';
   document.querySelectorAll('[data-del-event]').forEach(b => b.addEventListener('click', () => {
+    tombstone('events', b.dataset.delEvent);
     events = events.filter(e => e.id !== b.dataset.delEvent); saveAll(); renderEvents();
   }));
 }
@@ -256,11 +360,36 @@ document.getElementById('add-task-btn').addEventListener('click', () => { taskMo
 document.getElementById('task-form').addEventListener('submit', e => {
   e.preventDefault();
   const fd = new FormData(e.target);
-  tasks.push({ id: uid(), title: fd.get('title'), desc: fd.get('desc'), priority: fd.get('priority'), status: fd.get('status'), createdAt: Date.now() });
+  tasks.push(touch({ id: uid(), title: fd.get('title'), desc: fd.get('desc'), priority: fd.get('priority'), status: fd.get('status'), repeat: fd.get('repeat') || 'none', due: fd.get('due') || '', createdAt: Date.now() }));
   saveAll(); e.target.reset();
   taskModal.classList.add('hidden'); taskModal.classList.remove('flex');
   renderTasks();
 });
+/* Chips de vencimiento y recurrencia de una tarjeta del kanban. Las utilidades de
+   fecha viven en js/08-productivity.js, que carga después de este archivo; se
+   consultan con typeof porque estas funciones sólo corren tras un clic del
+   usuario, cuando todos los scripts ya están cargados, pero así el kanban sigue
+   pintándose aunque ese módulo falte. */
+function taskDueChip(t) {
+  if (!t.due || typeof parseDue !== 'function') return '';
+  const due = parseDue(t.due);
+  if (!due) return '';
+  const late = t.status !== 'done' && isOverdue(due);
+  const label = t.status === 'done'
+    ? due.toLocaleDateString('es-CO', { day: 'numeric', month: 'short' })
+    : humanizeDue(due);
+  return `<span class="mono text-[10px] uppercase tracking-widest px-2 py-0.5 rounded-full ${
+    late ? 'bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400' : 'bg-neutral-100 dark:bg-white/10 text-neutral-500'
+  }">${escapeHtml(label)}</span>`;
+}
+
+function taskRepeatChip(t) {
+  if (!t.repeat || t.repeat === 'none' || typeof REPEAT_LABELS === 'undefined') return '';
+  const label = REPEAT_LABELS[t.repeat];
+  if (!label) return '';
+  return `<span class="mono text-[10px] uppercase tracking-widest px-2 py-0.5 rounded-full bg-neutral-100 dark:bg-white/10 text-neutral-500">↻ ${label}</span>`;
+}
+
 function renderTasks() {
   ['todo','doing','done'].forEach(status => {
     const list = document.querySelector(`.kanban-list[data-status="${status}"]`);
@@ -273,13 +402,18 @@ function renderTasks() {
           <button data-del-task="${t.id}" type="button" class="text-neutral-400 hover:text-red-500 text-xs shrink-0">✕</button>
         </div>
         ${t.desc ? `<div class="text-neutral-500 text-xs leading-relaxed">${escapeHtml(t.desc)}</div>` : ''}
-        <div class="mt-2"><span class="mono text-[10px] uppercase tracking-widest px-2 py-0.5 rounded-full ${
-          t.priority === 'high' ? 'bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400' :
-          t.priority === 'med' ? 'bg-accent/15 text-accent' : 'bg-neutral-100 dark:bg-white/10 text-neutral-500'
-        }">${t.priority === 'high' ? 'Alta' : t.priority === 'med' ? 'Media' : 'Baja'}</span></div>
+        <div class="mt-2 flex flex-wrap items-center gap-1.5">
+          <span class="mono text-[10px] uppercase tracking-widest px-2 py-0.5 rounded-full ${
+            t.priority === 'high' ? 'bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400' :
+            t.priority === 'med' ? 'bg-accent/15 text-accent' : 'bg-neutral-100 dark:bg-white/10 text-neutral-500'
+          }">${t.priority === 'high' ? 'Alta' : t.priority === 'med' ? 'Media' : 'Baja'}</span>
+          ${taskDueChip(t)}
+          ${taskRepeatChip(t)}
+        </div>
       </div>`).join('');
   });
   document.querySelectorAll('[data-del-task]').forEach(b => b.addEventListener('click', () => {
+    tombstone('tasks', b.dataset.delTask);
     tasks = tasks.filter(t => t.id !== b.dataset.delTask); saveAll(); renderTasks();
   }));
   document.querySelectorAll('.kanban-card').forEach(c => {
@@ -293,7 +427,14 @@ function renderTasks() {
       e.preventDefault(); col.classList.remove('drag-over');
       const id = e.dataTransfer.getData('text/plain');
       const t = tasks.find(t => t.id === id);
-      if (t) { t.status = col.dataset.status; saveAll(); renderTasks(); }
+      if (t && t.status !== col.dataset.status) {
+        t.status = col.dataset.status;
+        touch(t);
+        // Al completar una tarea recurrente se genera automáticamente su próxima
+        // ocurrencia (ver spawnNextOccurrence en js/08-productivity.js).
+        if (t.status === 'done' && typeof spawnNextOccurrence === 'function') spawnNextOccurrence(t);
+        saveAll(); renderTasks();
+      }
     });
   });
 }
@@ -304,7 +445,7 @@ const STAGES = ['Planificación', 'Diseño', 'Desarrollo', 'Pruebas', 'Entrega']
 document.getElementById('project-form').addEventListener('submit', e => {
   e.preventDefault();
   const fd = new FormData(e.target);
-  projects.push({ id: uid(), name: fd.get('name'), client: fd.get('client') || '', desc: fd.get('desc') || '', deadline: fd.get('deadline') || '', stages: STAGES.map(s => ({ name: s, done: false })) });
+  projects.push(touch({ id: uid(), name: fd.get('name'), client: fd.get('client') || '', desc: fd.get('desc') || '', deadline: fd.get('deadline') || '', stages: STAGES.map(s => ({ name: s, done: false })), createdAt: Date.now() }));
   saveAll(); e.target.reset();
   projModal.classList.add('hidden'); projModal.classList.remove('flex');
   renderProjects();
@@ -340,12 +481,13 @@ function renderProjects() {
       </div>`;
   }).join('') : '<div class="surface rounded-2xl p-12 text-center text-neutral-500">Sin proyectos aún.</div>';
   box.querySelectorAll('[data-del-project]').forEach(b => b.addEventListener('click', () => {
+    tombstone('projects', b.dataset.delProject);
     projects = projects.filter(p => p.id !== b.dataset.delProject); saveAll(); renderProjects();
   }));
   box.querySelectorAll('[data-toggle-stage]').forEach(b => b.addEventListener('click', () => {
     const [pid, idx] = b.dataset.toggleStage.split(':');
     const p = projects.find(p => p.id === pid);
-    if (p) { p.stages[+idx].done = !p.stages[+idx].done; saveAll(); renderProjects(); }
+    if (p) { p.stages[+idx].done = !p.stages[+idx].done; touch(p); saveAll(); renderProjects(); }
   }));
 }
 
@@ -354,7 +496,7 @@ document.getElementById('add-note-btn').addEventListener('click', () => { noteMo
 document.getElementById('note-form').addEventListener('submit', e => {
   e.preventDefault();
   const fd = new FormData(e.target);
-  notes.unshift({ id: uid(), title: fd.get('title'), content: fd.get('content'), createdAt: Date.now() });
+  notes.unshift(touch({ id: uid(), title: fd.get('title'), content: fd.get('content'), createdAt: Date.now() }));
   saveAll(); e.target.reset();
   noteModal.classList.add('hidden'); noteModal.classList.remove('flex');
   renderNotes();
@@ -369,6 +511,7 @@ function renderNotes() {
       <p class="text-neutral-600 dark:text-neutral-400 text-sm whitespace-pre-wrap leading-relaxed">${escapeHtml(n.content)}</p>
     </div>`).join('') : '<div class="surface rounded-2xl p-12 text-center text-neutral-500 col-span-full">Sin notas.</div>';
   box.querySelectorAll('[data-del-note]').forEach(b => b.addEventListener('click', () => {
+    tombstone('notes', b.dataset.delNote);
     notes = notes.filter(n => n.id !== b.dataset.delNote); saveAll(); renderNotes();
   }));
 }

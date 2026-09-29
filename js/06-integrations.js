@@ -15,10 +15,14 @@ const integrationsDefault = {
   microsoft: { clientId: '', verified: false },
   notion: { proxyUrl: '', verified: false }, // proxyUrl also hosts /push/subscribe and /sync/external-summary
   push: { vapidPublicKey: '' },
+  // Sync de los datos propios del panel entre dispositivos (Fase 4 — ver js/07-sync.js).
+  // `url` es opcional: si se deja vacío se reutiliza notion.proxyUrl, que apunta al mismo
+  // backend. `token` es el SYNC_TOKEN configurado en las variables de entorno de Netlify.
+  sync: { url: '', token: '', enabled: false },
 };
 let integrations = store.get('integrations', integrationsDefault);
 // Backfill in case a saved object predates one of the keys (e.g. `verified` added in Fase 2,
-// `push` and `notion.verified` added in Fase 3)
+// `push` and `notion.verified` added in Fase 3, `sync` added in Fase 4)
 integrations = {
   ...integrationsDefault,
   ...integrations,
@@ -26,6 +30,7 @@ integrations = {
   microsoft: { ...integrationsDefault.microsoft, ...integrations.microsoft },
   notion: { ...integrationsDefault.notion, ...integrations.notion },
   push: { ...integrationsDefault.push, ...integrations.push },
+  sync: { ...integrationsDefault.sync, ...integrations.sync },
 };
 function saveIntegrations() { store.set('integrations', integrations); }
 
@@ -430,6 +435,19 @@ function renderIntegrationsStatus() {
       }
     });
   });
+  /* El sync de datos propios no es una "fuente de tareas", así que va aparte y no
+     entra en el contador de 0/3 de abajo. Se considera verificado cuando el último
+     ciclo de sincronización terminó bien (ver syncState en js/07-sync.js). */
+  document.querySelectorAll('[data-status-pill="sync"]').forEach(el => {
+    el.classList.remove('text-accent', 'text-neutral-500', 'text-amber-500');
+    const configured = !!(integrations.sync.token && (integrations.sync.url || integrations.notion.proxyUrl));
+    const ok = typeof syncState !== 'undefined' && syncState.status === 'ok';
+    if (!configured) { el.textContent = 'No conectado'; el.classList.add('text-neutral-500'); }
+    else if (!integrations.sync.enabled) { el.textContent = 'Guardado, en pausa'; el.classList.add('text-amber-500'); }
+    else if (ok) { el.textContent = 'Conectado ✓'; el.classList.add('text-accent'); }
+    else { el.textContent = 'Guardado, sin verificar'; el.classList.add('text-amber-500'); }
+  });
+
   const connectedCount = Object.values(map).filter(m => m.connected).length;
   const countEl = document.getElementById('agenda-sources-count');
   if (countEl) countEl.textContent = `${connectedCount}/3 conectadas`;
@@ -447,6 +465,12 @@ function renderIntegrationsForm() {
   if (nf) { nf.proxyUrl.value = integrations.notion.proxyUrl; }
   const pf = document.getElementById('push-form');
   if (pf) { pf.vapidPublicKey.value = integrations.push.vapidPublicKey; }
+  const sf = document.getElementById('sync-form');
+  if (sf) {
+    sf.url.value = integrations.sync.url;
+    sf.token.value = integrations.sync.token;
+    sf.enabled.checked = !!integrations.sync.enabled;
+  }
 }
 
 function renderNotifStatus() {
@@ -542,7 +566,23 @@ document.getElementById('push-form')?.addEventListener('submit', e => {
   integrations.push = { vapidPublicKey: (fd.get('vapidPublicKey') || '').trim() };
   saveIntegrations(); renderAgendaHub();
 });
-const disconnectLabels = { trello: 'Trello', microsoft: 'Microsoft', notion: 'Notion', push: 'la clave VAPID de notificaciones push' };
+document.getElementById('sync-form')?.addEventListener('submit', e => {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  integrations.sync = {
+    url: (fd.get('url') || '').trim(),
+    token: (fd.get('token') || '').trim(),
+    enabled: fd.get('enabled') === 'on',
+  };
+  saveIntegrations();
+  renderIntegrationsStatus();
+  if (typeof renderSyncStatus === 'function') renderSyncStatus();
+  // Primera sincronización inmediata: es la forma más rápida de saber si el token
+  // y la URL son correctos, en vez de esperar al siguiente cambio de datos.
+  if (integrations.sync.enabled && typeof syncNow === 'function') syncNow({ interactive: true });
+});
+
+const disconnectLabels = { trello: 'Trello', microsoft: 'Microsoft', notion: 'Notion', push: 'la clave VAPID de notificaciones push', sync: 'la sincronización en la nube' };
 document.querySelectorAll('[data-disconnect]').forEach(b => b.addEventListener('click', async () => {
   const key = b.dataset.disconnect;
   if (!confirm(`¿Desconectar ${disconnectLabels[key] || key}? Se borrará lo guardado en este navegador.`)) return;

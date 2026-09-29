@@ -13,7 +13,20 @@ function initDashboard() {
     saveAll();
     localStorage.setItem('jdh_seeded', '1');
   }
-  showView('overview');
+
+  // Sella los registros anteriores a que existiera `updatedAt` (ver js/05-dashboard.js).
+  // Debe correr ANTES del primer sync: sin marca de tiempo, un merge no sabría
+  // distinguir lo viejo de lo nuevo y podría descartar datos válidos.
+  migrateTimestamps();
+
+  // Arranca en "Hoy" en vez de "Resumen": es la vista que responde a la pregunta
+  // con la que uno abre el panel (¿qué tengo que hacer?), no a la de cuántas
+  // cosas tengo guardadas.
+  showView('today');
+
+  if (typeof renderSyncStatus === 'function') renderSyncStatus();
+  // Al abrir el panel se traen los cambios hechos en otros dispositivos.
+  if (typeof isSyncConfigured === 'function' && isSyncConfigured()) syncNow();
 }
 
 /* Nav highlight */
