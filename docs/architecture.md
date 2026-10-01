@@ -26,6 +26,8 @@ one:
 | `js/10-markdown.js` | Markdown renderer written in-house. Defines `renderMarkdown`, `extractTags`, `extractWikiLinks`, `markdownToPlain` |
 | `js/11-notes.js` | Notes as a knowledge system: index, backlinks, tags, editor, autosave. Defines `renderNotes` (replacing the old one), `notesIndex`, `createNote`, `commitNoteEdits` |
 | `js/12-graph.js` | Knowledge graph (canvas force simulation). Defines `openGraph` |
+| `js/13-habits.js` | Habits, streaks, year heatmap. Defines `renderHabits`, `currentStreak`, `habitLogIndex` |
+| `js/14-focus.js` | Focus timer (pomodoro) + time logging. Defines `startFocus`, `openFocusPicker`, `minutesFocusedOn` |
 | `js/99-init.js` | Dashboard seed + migrations, nav highlight, `#hoy` PWA shortcut. Must load last |
 
 Two consequences worth remembering when editing:

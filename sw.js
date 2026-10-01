@@ -38,6 +38,8 @@ const SHELL_ASSETS = [
   './js/10-markdown.js',
   './js/11-notes.js',
   './js/12-graph.js',
+  './js/13-habits.js',
+  './js/14-focus.js',
   './js/99-init.js',
   './icon.svg',
   './icon-192.png',

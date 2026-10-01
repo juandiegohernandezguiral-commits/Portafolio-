@@ -33,6 +33,44 @@ enough, and it guarantees typing a full word ranks the literal match first.
   repeatedly until it lands in the future, so a daily task ignored for two weeks doesn't spawn
   an already-overdue successor. The `spawnedNext` flag prevents a second spawn if the same card
   is dragged out of and back into *done*.
+- **Hábitos** (`js/13-habits.js`) — habits with streaks and a 52-week heatmap. Cadence is
+  `daily`, `weekdays` or `custom` (specific weekdays).
+
+  `habitLog` is a **separate collection**, not an array inside each habit, specifically so the
+  sync merge can resolve per entry: ticking one habit on the phone and a different one on the
+  laptop on the same day merges cleanly. Nested inside the habit, one device's tick would
+  overwrite the other's.
+
+  **`currentStreak()` does not break the streak when today is unticked.** It starts counting
+  from yesterday if today is scheduled but not yet done — the day isn't over, and resetting a
+  200-day streak at 00:01 for something there's still time to do would be punishing the user for
+  the clock. Days the habit isn't scheduled are skipped, not counted as misses.
+
+  The heatmap is generated SVG (one `<rect>` per day, ~370 of them) rather than canvas, so each
+  cell gets a native `<title>` tooltip with no hit-testing code. Past days can be ticked
+  retroactively by clicking a cell; future days can't. Colours come from CSS variables
+  (`--heat-done`, `--heat-empty`, `--heat-off`) so dark mode resolves itself even though the
+  markup is built as a string in JS. `--heat-empty` (missed) and `--heat-off` (not scheduled)
+  are deliberately well separated: that's the difference between "you failed" and "didn't
+  apply", and at similar tones a weekdays-only habit looks full of gaps that aren't gaps.
+- **Focus timer** (`js/14-focus.js`) — floating pomodoro widget, bottom-left (the audio player
+  owns bottom-right), at `z-index: 65` so it sits above the dashboard overlay (`z-60`) but below
+  modals (`z-70`) and the palette (`z-90`).
+
+  **State is persisted as a start timestamp, not a decrementing counter.** A counter stops
+  being accurate the moment the browser throttles or suspends the tab — phone screen off,
+  laptop asleep — because `setInterval` stops firing on schedule. A timestamp can always be
+  compared against the clock, so the remaining time is right no matter how many ticks were
+  skipped.
+
+  Finished sessions are appended to `sessions` with the linked `taskId`/`projectId`, which is
+  what turns "I feel like I spend a lot of time on X" into a number. Each session stores `day`
+  as a **local** date key alongside the ISO `startedAt`: deriving the day from
+  `startedAt.slice(0,10)` would give the UTC date, and in Colombia (UTC−5) anything after 19:00
+  would be counted on the following day — precisely during the hours most work happens.
+
+  Breaks are never auto-started; chaining rounds without asking is the fastest way to make the
+  timer stop reflecting what you actually did.
 - **Projects** — project tracker with 5-stage pipeline; data at `jdh_projects`
 - **Notes ("Mi cerebro")** — the knowledge system, `js/11-notes.js`. Data still at `jdh_notes`,
   now with `pinned`, `archived` and `daily` (migrated by `migrateNotes()`).
@@ -70,6 +108,24 @@ enough, and it guarantees typing a full word ranks the literal match first.
 The dashboard used to live entirely in one browser's `localStorage`: clearing the cache lost
 everything, and the phone and the laptop were separate universes. Two independent defences,
 usable together or separately.
+
+### The collection registry
+
+`DATA_COLLECTIONS` in `js/05-dashboard.js` is the single list of what counts as user data:
+`tasks`, `events`, `projects`, `notes`, `habits`, `habitLog`, `sessions`. Everything that
+handles data wholesale iterates it — `saveAll()`, `buildBackupPayload()`, import, wipe, the
+storage-size readout, and the sync merge in `js/07-sync.js`.
+
+This used to be the same four names typed out in five places. Adding a collection meant
+remembering all five, and missing one showed up as data that silently didn't sync or didn't get
+backed up. `getCollection` / `setCollection` are plain switch statements because the
+collections are loose `let` bindings reassigned on merge and import; wrapping them in an object
+would mean rewriting every `tasks.push(...)` in the project.
+
+**The backend mirrors this list** (`netlify/functions/data-sync.js`) but doesn't enforce it: it
+validates whatever collections arrive and stores `data` verbatim, so a newer client pushing a
+collection an older backend doesn't know about won't lose it, and an older client that omits
+`habits` won't be rejected.
 
 ### Data model prerequisites
 Merging two devices needs more than the raw records:
@@ -231,6 +287,12 @@ The user connecting Outlook/To Do must register their own app in
 | `jdh_syncDirty` | `true` if local changes still need pushing (survives reloads) |
 | `jdh_autoBackupName` | Filename of the auto-backup target, for display only |
 | `jdh_autoBackupAt` | ISO timestamp of the last auto-backup write |
+| `jdh_habits` | Habit definitions |
+| `jdh_habitLog` | `[{ habitId, date }]` — one record per completed day |
+| `jdh_sessions` | Finished focus sessions (minutes, linked task/project, local `day`) |
+| `jdh_notesMode` | Last editor mode (`'write'` / `'split'` / `'preview'`) |
+| `jdh_focusRun` | In-flight timer state, so a reload doesn't lose a running session |
+| `jdh_focusSettings` | Pomodoro durations (focus / short / long / rounds) |
 
 Not in `localStorage`: the `FileSystemFileHandle` for auto-backup lives in IndexedDB
 (`jdh-fs` → `handles` → `backupFile`), because handles can't be serialized to JSON.

@@ -78,7 +78,55 @@ const store = {
 };
 let tasks = store.get('tasks', []); let events = store.get('events', []);
 let projects = store.get('projects', []); let notes = store.get('notes', []);
+let habits = store.get('habits', []); let habitLog = store.get('habitLog', []);
+let sessions = store.get('sessions', []);
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+
+/* ---- Registro de colecciones ----
+   Antes, la lista de colecciones estaba repetida literalmente en saveAll(), en
+   el payload de backup, en la fusión del sync, en el import y en la validación
+   del backend. Añadir una coleccion nueva significaba acordarse de los cinco
+   sitios, y olvidarse de uno se manifiesta como datos que no se sincronizan o
+   no se respaldan — en silencio.
+
+   Ahora la lista vive aquí y todo lo demás la recorre. Los accesores existen
+   porque las colecciones son variables `let` sueltas (reasignadas al fusionar o
+   importar), y no se pueden meter en un objeto sin reescribir los cientos de
+   `tasks.push(...)` repartidos por el proyecto. Un switch explícito es más
+   aburrido que elegante, pero no tiene magia que pueda fallar. */
+const DATA_COLLECTIONS = ['tasks', 'events', 'projects', 'notes', 'habits', 'habitLog', 'sessions'];
+
+function getCollection(name) {
+  switch (name) {
+    case 'tasks': return tasks;
+    case 'events': return events;
+    case 'projects': return projects;
+    case 'notes': return notes;
+    case 'habits': return habits;
+    case 'habitLog': return habitLog;
+    case 'sessions': return sessions;
+    default: return null;
+  }
+}
+
+function setCollection(name, value) {
+  const list = Array.isArray(value) ? value : [];
+  switch (name) {
+    case 'tasks': tasks = list; break;
+    case 'events': events = list; break;
+    case 'projects': projects = list; break;
+    case 'notes': notes = list; break;
+    case 'habits': habits = list; break;
+    case 'habitLog': habitLog = list; break;
+    case 'sessions': sessions = list; break;
+  }
+}
+
+function collectionsSnapshot() {
+  const out = {};
+  DATA_COLLECTIONS.forEach(name => { out[name] = getCollection(name); });
+  return out;
+}
 
 /* ---- Metadatos para sincronización (ver js/07-sync.js) ----
    Sincronizar entre dos dispositivos necesita dos cosas que el modelo original no tenía:
@@ -110,8 +158,8 @@ function pruneTombstones() {
    cuando existe para no inventar que son más recientes de lo que son. */
 function migrateTimestamps() {
   let changed = false;
-  [tasks, events, projects, notes].forEach(list => {
-    list.forEach(rec => {
+  DATA_COLLECTIONS.forEach(name => {
+    (getCollection(name) || []).forEach(rec => {
       if (typeof rec.updatedAt !== 'number') { rec.updatedAt = rec.createdAt || Date.now(); changed = true; }
     });
   });
@@ -120,8 +168,7 @@ function migrateTimestamps() {
 
 function saveAll() {
   pruneTombstones();
-  store.set('tasks', tasks); store.set('events', events);
-  store.set('projects', projects); store.set('notes', notes);
+  DATA_COLLECTIONS.forEach(name => store.set(name, getCollection(name)));
   store.set('tombstones', tombstones);
   // Avisa a los módulos posteriores (sync en la nube, auto-backup a archivo, paleta de
   // comandos) que los datos cambiaron. Se consultan con `typeof` porque 05-dashboard.js
@@ -143,9 +190,14 @@ function showView(name) {
   if (name === 'today' && typeof renderToday === 'function') renderToday();
   if (name === 'agenda') { renderEvents(); showAgendaTab(localStorage.getItem('jdh_agendaTab') || 'calendar'); }
   if (name === 'tasks') renderTasks();
+  if (name === 'habits' && typeof renderHabits === 'function') renderHabits();
   if (name === 'projects') renderProjects();
   if (name === 'notes') renderNotes();
   if (name === 'data') renderDataView();
+  if (name === 'insights' && typeof renderInsights === 'function') renderInsights();
+  // El widget de enfoque se oculta fuera del panel, así que hay que repintarlo
+  // cada vez que cambia la vista.
+  if (typeof renderFocusWidget === 'function') renderFocusWidget();
 }
 
 /* Vuelve a pintar la vista actual sin cambiar de vista. La usa el sync tras
@@ -161,15 +213,17 @@ function refreshActiveView() {
     case 'today': if (typeof renderToday === 'function') renderToday(); break;
     case 'agenda': renderEvents(); break;
     case 'tasks': renderTasks(); break;
+    case 'habits': if (typeof renderHabits === 'function') renderHabits(); break;
     case 'projects': renderProjects(); break;
     case 'notes': renderNotes(); break;
     case 'data': renderDataView(); break;
+    case 'insights': if (typeof renderInsights === 'function') renderInsights(); break;
   }
 }
 
 /* ============ DATA BACKUP / EXPORT / IMPORT / WIPE ============ */
 function renderDataView() {
-  const blob = JSON.stringify({ tasks, events, projects, notes });
+  const blob = JSON.stringify(collectionsSnapshot());
   const bytes = new Blob([blob]).size;
   const sizeKB = (bytes / 1024).toFixed(2);
   const sizeEl = document.getElementById('storage-size');
@@ -196,7 +250,10 @@ function renderDataView() {
   }
 
   const totalEl = document.getElementById('total-items');
-  if (totalEl) totalEl.textContent = (tasks.length + events.length + projects.length + notes.length) + ' items';
+  if (totalEl) {
+    const total = DATA_COLLECTIONS.reduce((n, name) => n + (getCollection(name) || []).length, 0);
+    totalEl.textContent = total + ' items';
+  }
 
   if (typeof renderSyncStatus === 'function') renderSyncStatus();
 }
@@ -205,15 +262,14 @@ function renderDataView() {
    (js/07-sync.js) y el push al backend, para que los tres formatos no divergan.
    version 2 = incluye `updatedAt` por registro y tombstones; version 1 = formato anterior. */
 function buildBackupPayload() {
+  const counts = {};
+  DATA_COLLECTIONS.forEach(name => { counts[name] = (getCollection(name) || []).length; });
   return {
-    version: 2,
+    version: 3,
     exportedAt: new Date().toISOString(),
     owner: 'Juan Diego Hernández',
-    counts: {
-      tasks: tasks.length, events: events.length,
-      projects: projects.length, notes: notes.length,
-    },
-    data: { tasks, events, projects, notes, tombstones },
+    counts,
+    data: { ...collectionsSnapshot(), tombstones },
   };
 }
 
@@ -248,15 +304,15 @@ document.getElementById('import-file')?.addEventListener('change', e => {
       const d = parsed.data || parsed;
       if (!d || (typeof d !== 'object')) throw new Error('Formato no válido');
       if (!confirm('Esto sobrescribirá tus datos actuales. ¿Continuar?')) return;
-      tasks = Array.isArray(d.tasks) ? d.tasks : [];
-      events = Array.isArray(d.events) ? d.events : [];
-      projects = Array.isArray(d.projects) ? d.projects : [];
-      notes = Array.isArray(d.notes) ? d.notes : [];
-      // Backups formato 1 no traen tombstones; se asume ninguno.
+      // Las colecciones ausentes quedan vacías, que es lo correcto al restaurar
+      // un backup de una versión anterior (formato 1 no traía tombstones;
+      // formato 2 no traía hábitos ni sesiones).
+      DATA_COLLECTIONS.forEach(name => setCollection(name, d[name]));
       tombstones = Array.isArray(d.tombstones) ? d.tombstones : [];
       migrateTimestamps();
       saveAll();
-      alert('✓ Datos restaurados: ' + (tasks.length+events.length+projects.length+notes.length) + ' items.');
+      const total = DATA_COLLECTIONS.reduce((n, name) => n + getCollection(name).length, 0);
+      alert('✓ Datos restaurados: ' + total + ' items.');
       showView('overview');
     } catch (err) {
       alert('Archivo no válido: ' + err.message);
@@ -284,12 +340,9 @@ document.getElementById('wipe-btn')?.addEventListener('click', () => {
     );
   }
   if (propagate) {
-    tasks.forEach(t => tombstone('tasks', t.id));
-    events.forEach(e => tombstone('events', e.id));
-    projects.forEach(p => tombstone('projects', p.id));
-    notes.forEach(n => tombstone('notes', n.id));
+    DATA_COLLECTIONS.forEach(name => getCollection(name).forEach(rec => tombstone(name, rec.id)));
   }
-  tasks = []; events = []; projects = []; notes = [];
+  DATA_COLLECTIONS.forEach(name => setCollection(name, []));
   saveAll();
   localStorage.removeItem('jdh_seeded');
   alert(propagate ? 'Datos borrados aquí y en la nube.' : 'Datos borrados de este navegador.');
@@ -504,7 +557,7 @@ function renderProjects() {
    persiste en saveAll(). */
 
 document.querySelectorAll('[data-close-modal]').forEach(b => b.addEventListener('click', () => {
-  ['task-modal','project-modal','integrations-modal'].forEach(id => {
+  ['task-modal','project-modal','integrations-modal','habit-modal','focus-modal'].forEach(id => {
     const m = document.getElementById(id);
     if (m) { m.classList.add('hidden'); m.classList.remove('flex'); }
   });

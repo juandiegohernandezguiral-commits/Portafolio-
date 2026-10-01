@@ -41,12 +41,17 @@ const HISTORY_LIMIT = 10;
 // que un bug del cliente no llene el almacenamiento con basura.
 const MAX_BODY_BYTES = 2 * 1024 * 1024;
 
-const COLLECTIONS = ['tasks', 'events', 'projects', 'notes'];
+/* Debe coincidir con DATA_COLLECTIONS en js/05-dashboard.js. El servidor no
+   interpreta el contenido de los registros, pero sí valida que las colecciones
+   que espera sean arrays — si el cliente manda una coleccion nueva que aqui no
+   figure, se guarda igual (ver el push mas abajo, que copia body.data entero),
+   asi que un cliente mas nuevo no se rompe contra un backend mas viejo. */
+const COLLECTIONS = ['tasks', 'events', 'projects', 'notes', 'habits', 'habitLog', 'sessions'];
 
 const EMPTY_SNAPSHOT = {
   rev: 0,
   updatedAt: null,
-  data: { tasks: [], events: [], projects: [], notes: [], tombstones: [] },
+  data: COLLECTIONS.reduce((acc, k) => { acc[k] = []; return acc; }, { tombstones: [] }),
 };
 
 function json(statusCode, payload) {
@@ -57,18 +62,26 @@ function json(statusCode, payload) {
   });
 }
 
-/** Valida la forma de `data` sin opinar sobre el contenido de cada registro. */
+/** Valida la forma de `data` sin opinar sobre el contenido de cada registro.
+ *
+ *  Valida lo que VIENE, no exige que vengan todas: un cliente de una version
+ *  anterior no manda `habits` ni `sessions`, y rechazar su push por eso le
+ *  dejaria el sync roto sin motivo. Lo que si se comprueba de toda coleccion
+ *  presente es que sea un array de objetos con id, porque sin id la fusion del
+ *  cliente no puede emparejar registros. */
 function validateData(data) {
   if (!data || typeof data !== 'object' || Array.isArray(data)) return 'data debe ser un objeto';
-  for (const key of COLLECTIONS) {
-    if (!Array.isArray(data[key])) return `data.${key} debe ser un array`;
-    for (const rec of data[key]) {
+
+  for (const [key, value] of Object.entries(data)) {
+    if (key === 'tombstones') {
+      if (!Array.isArray(value)) return 'data.tombstones debe ser un array';
+      continue;
+    }
+    if (!Array.isArray(value)) return `data.${key} debe ser un array`;
+    for (const rec of value) {
       if (!rec || typeof rec !== 'object') return `data.${key} contiene un registro que no es objeto`;
       if (typeof rec.id !== 'string' || !rec.id) return `data.${key} contiene un registro sin id`;
     }
-  }
-  if (data.tombstones !== undefined && !Array.isArray(data.tombstones)) {
-    return 'data.tombstones debe ser un array';
   }
   return null;
 }
@@ -142,16 +155,14 @@ exports.handler = async (event) => {
         });
       }
 
+      // Se guarda `data` tal cual (ya validado) en vez de copiar campo a campo:
+      // una lista explicita descartaria en silencio cualquier coleccion que el
+      // cliente conozca y este backend todavia no, que es justo el caso de un
+      // despliegue a medio actualizar.
       const next = {
         rev: current.rev + 1,
         updatedAt: new Date().toISOString(),
-        data: {
-          tasks: body.data.tasks,
-          events: body.data.events,
-          projects: body.data.projects,
-          notes: body.data.notes,
-          tombstones: body.data.tombstones || [],
-        },
+        data: { ...body.data, tombstones: body.data.tombstones || [] },
       };
 
       // Archiva la revisión que se está reemplazando (no la nueva), que es la

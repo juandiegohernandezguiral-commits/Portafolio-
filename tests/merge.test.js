@@ -19,7 +19,8 @@ const sandbox = {
   integrations: { sync: { url: '', token: '', enabled: false }, notion: { proxyUrl: '' } },
   saveIntegrations: noop,
   TOMBSTONE_TTL_DAYS: 60,
-  tasks: [], events: [], projects: [], notes: [], tombstones: [],
+  tasks: [], events: [], projects: [], notes: [],
+  habits: [], habitLog: [], sessions: [], tombstones: [],
   // --- globals del navegador ---
   console,
   setTimeout, clearTimeout, setInterval, clearInterval,
@@ -36,6 +37,20 @@ const sandbox = {
   window: { addEventListener: noop, showSaveFilePicker: undefined },
   requestAnimationFrame: noop,
 };
+/* El registro de colecciones y sus accesores viven en js/05-dashboard.js, que no
+   se puede cargar aquí (depende del DOM de arriba abajo). Se reproduce su
+   contrato: la misma lista y los mismos accesores sobre el sandbox. Si
+   DATA_COLLECTIONS cambia allí y no aquí, la prueba de abajo sobre colecciones
+   nuevas lo delata. */
+sandbox.DATA_COLLECTIONS = ['tasks', 'events', 'projects', 'notes', 'habits', 'habitLog', 'sessions'];
+sandbox.getCollection = name => sandbox[name];
+sandbox.setCollection = (name, value) => { sandbox[name] = Array.isArray(value) ? value : []; };
+sandbox.collectionsSnapshot = () => {
+  const out = {};
+  sandbox.DATA_COLLECTIONS.forEach(n => { out[n] = sandbox[n]; });
+  return out;
+};
+
 sandbox.globalThis = sandbox;
 
 vm.createContext(sandbox);
@@ -143,6 +158,43 @@ console.log('\nmergeRemoteIntoLocal (integracion)');
     sandbox.tasks.find(t => t.id === 't1').title === 'local reciente');
   check('el tombstone queda registrado en local', sandbox.tombstones.length === 1);
   check('resultado final con 3 tareas', sandbox.tasks.length === 3, `length=${sandbox.tasks.length}`);
+}
+
+console.log('\nColecciones nuevas (habitos y sesiones)');
+{
+  // Esto es lo que se rompia antes de generalizar DATA_COLLECTIONS: una
+  // coleccion nueva se guardaba en local pero no viajaba en el sync, en
+  // silencio.
+  sandbox.DATA_COLLECTIONS.forEach(n => { sandbox[n] = []; });
+  sandbox.tombstones = [];
+  sandbox.habits = [{ id: 'h1', name: 'Leer', updatedAt: ago(5) }];
+
+  mergeRemoteIntoLocal({
+    habits: [{ id: 'h2', name: 'Correr', updatedAt: ago(5) }],
+    habitLog: [{ id: 'l1', habitId: 'h2', date: '2026-09-29', updatedAt: ago(5) }],
+    sessions: [{ id: 's1', minutes: 25, updatedAt: ago(5) }],
+    tombstones: [],
+  });
+
+  check('los habitos locales y remotos se fusionan',
+    sandbox.habits.length === 2, `length=${sandbox.habits.length}`);
+  check('el registro de habitos llega desde remoto', sandbox.habitLog.length === 1);
+  check('las sesiones llegan desde remoto', sandbox.sessions.length === 1);
+
+  const snap = sandbox.currentSnapshotData();
+  check('el snapshot que se empuja incluye todas las colecciones',
+    sandbox.DATA_COLLECTIONS.every(n => Array.isArray(snap[n])),
+    Object.keys(snap).join(','));
+  check('el snapshot incluye tombstones', Array.isArray(snap.tombstones));
+}
+{
+  // Un backend o cliente mas viejo no manda las colecciones nuevas: no deben
+  // perderse las locales por su ausencia.
+  sandbox.DATA_COLLECTIONS.forEach(n => { sandbox[n] = []; });
+  sandbox.tombstones = [];
+  sandbox.habits = [{ id: 'h1', name: 'Leer', updatedAt: ago(5) }];
+  mergeRemoteIntoLocal({ tasks: [], events: [], projects: [], notes: [], tombstones: [] });
+  check('un remoto sin la coleccion nueva no borra la local', sandbox.habits.length === 1);
 }
 
 console.log(`\n${pass} pasaron, ${fail} fallaron`);

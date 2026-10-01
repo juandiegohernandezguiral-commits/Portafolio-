@@ -16,6 +16,19 @@ function parseDue(value) {
   return isNaN(d.getTime()) ? null : d;
 }
 
+/* Clave de día en hora LOCAL (YYYY-MM-DD). No se usa toISOString() a propósito:
+   ese convierte a UTC, así que en Colombia (UTC-5) cualquier cosa registrada
+   después de las 19:00 se contaría como del día siguiente. Lo usan los hábitos
+   (js/13-habits.js) y las métricas. */
+function dateKey(d) {
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+function keyToDate(key) {
+  const [y, m, d] = key.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+
 function startOfToday() {
   const d = new Date();
   d.setHours(0, 0, 0, 0);
@@ -170,6 +183,52 @@ function todayItemHtml(item, { danger = false } = {}) {
         </p>
       </div>
       ${item.priority === 'high' ? '<span class="meta-label text-red-500 shrink-0">Alta</span>' : ''}
+      ${canComplete ? `
+        <button type="button" data-focus-task="${item.id}" title="Enfocarme en esto"
+          class="shrink-0 w-7 h-7 rounded-lg flex items-center justify-center text-neutral-400 hover:text-accent hover:bg-accent/10 transition">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+        </button>` : ''}
+    </div>`;
+}
+
+/* Bloque de hábitos del día dentro de "Hoy": marcarlos donde ya estás mirando
+   qué te toca, en vez de obligar a ir a otra vista, es la diferencia entre que
+   el registro se mantenga o se abandone a la semana. */
+function todayHabitsBlock() {
+  if (typeof habits === 'undefined' || !habits.length) return '';
+  const idx = habitLogIndex();
+  const today = new Date();
+  const key = dateKey(today);
+  const due = habits.filter(h => !h.archived && isScheduled(h, today));
+  if (!due.length) return '';
+
+  const doneCount = due.filter(h => isHabitDone(h.id, key, idx)).length;
+
+  return `
+    <div class="surface rounded-2xl p-6">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="font-display font-bold flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full ${doneCount === due.length ? 'bg-green-500' : 'bg-accent'}"></span> Hábitos de hoy
+        </h3>
+        <span class="meta-label text-neutral-500">${doneCount}/${due.length}</span>
+      </div>
+      <div class="flex flex-wrap gap-2">
+        ${due.map(h => {
+          const done = isHabitDone(h.id, key, idx);
+          const streak = currentStreak(h, idx);
+          return `
+            <button type="button" data-habit-toggle="${h.id}"
+              class="flex items-center gap-2.5 pl-2 pr-4 py-2 rounded-xl border transition ${
+                done ? 'bg-accent/10 border-accent/40' : 'surface-soft hover:border-accent'
+              }">
+              <span class="w-7 h-7 rounded-lg flex items-center justify-center text-sm ${
+                done ? 'bg-accent text-white' : 'bg-neutral-200 dark:bg-white/10'
+              }">${done ? '✓' : (h.emoji || '·')}</span>
+              <span class="text-sm font-medium">${escapeHtml(h.name)}</span>
+              ${streak > 0 ? `<span class="meta-label ${done ? 'text-accent' : 'text-neutral-500'}">${streak}d</span>` : ''}
+            </button>`;
+        }).join('')}
+      </div>
     </div>`;
 }
 
@@ -208,8 +267,16 @@ function renderToday() {
       return connected && hubState[k].status !== 'ready';
     });
 
+  const habitsBlock = typeof todayHabitsBlock === 'function' ? todayHabitsBlock() : '';
+  const focusedToday = typeof minutesFocusedOn === 'function' ? minutesFocusedOn(dateKey(new Date())) : 0;
+  const focusBlock = focusedToday > 0 ? `
+    <div class="surface rounded-2xl px-6 py-4 flex items-center justify-between">
+      <span class="meta-label text-neutral-500">Tiempo enfocado hoy</span>
+      <span class="display text-2xl text-accent">${Math.floor(focusedToday / 60)}<span class="text-sm">h</span> ${focusedToday % 60}<span class="text-sm">m</span></span>
+    </div>` : '';
+
   if (total === 0) {
-    box.innerHTML = `
+    box.innerHTML = habitsBlock + focusBlock + `
       <div class="surface rounded-2xl p-12 text-center">
         <div class="w-12 h-12 mx-auto mb-4 rounded-2xl bg-accent/10 border border-accent/30 flex items-center justify-center">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2667ff" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>
@@ -222,6 +289,8 @@ function renderToday() {
       todayBlock('Vencidas', overdue, { dot: 'bg-red-500', danger: true }),
       todayBlock('Para hoy', today, { dot: 'bg-accent' }),
       todayBlock('En progreso', doing, { dot: 'bg-amber-500' }),
+      habitsBlock,
+      focusBlock,
     ].filter(Boolean).join('');
   }
 

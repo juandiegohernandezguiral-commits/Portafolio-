@@ -105,26 +105,24 @@ function applyTombstones(collections, tombs) {
   });
 }
 
-/** Fusiona el snapshot remoto sobre el estado local en memoria y lo persiste. */
+/** Fusiona el snapshot remoto sobre el estado local en memoria y lo persiste.
+ *  Recorre DATA_COLLECTIONS (js/05-dashboard.js) en vez de una lista propia: así
+ *  una colección nueva se sincroniza sola, sin que haya que acordarse de este
+ *  archivo. */
 function mergeRemoteIntoLocal(remoteData) {
-  const merged = {
-    tasks: mergeCollections(tasks, remoteData.tasks),
-    events: mergeCollections(events, remoteData.events),
-    projects: mergeCollections(projects, remoteData.projects),
-    notes: mergeCollections(notes, remoteData.notes),
-  };
+  const merged = {};
+  DATA_COLLECTIONS.forEach(name => {
+    merged[name] = mergeCollections(getCollection(name), remoteData[name]);
+  });
   const mergedTombs = mergeTombstones(tombstones, remoteData.tombstones);
   applyTombstones(merged, mergedTombs);
 
-  tasks = merged.tasks;
-  events = merged.events;
-  projects = merged.projects;
-  notes = merged.notes;
+  DATA_COLLECTIONS.forEach(name => setCollection(name, merged[name]));
   tombstones = mergedTombs;
 }
 
 function currentSnapshotData() {
-  return { tasks, events, projects, notes, tombstones };
+  return { ...collectionsSnapshot(), tombstones };
 }
 
 /**
