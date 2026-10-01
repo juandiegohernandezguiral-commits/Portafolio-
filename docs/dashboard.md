@@ -71,7 +71,11 @@ enough, and it guarantees typing a full word ranks the literal match first.
 
   Breaks are never auto-started; chaining rounds without asking is the fastest way to make the
   timer stop reflecting what you actually did.
-- **Projects** — project tracker with 5-stage pipeline; data at `jdh_projects`
+- **Projects** — project tracker with 5-stage pipeline; data at `jdh_projects`. Tasks carry an
+  optional `projectId`, and each project card rolls up what hangs off it: tasks done vs total,
+  minutes actually focused on it (from `sessions`), and its open tasks with a one-click focus
+  button. A task pointing at a deleted project just omits the chip rather than rendering
+  `undefined`.
 - **Notes ("Mi cerebro")** — the knowledge system, `js/11-notes.js`. Data still at `jdh_notes`,
   now with `pinned`, `archived` and `daily` (migrated by `migrateNotes()`).
 

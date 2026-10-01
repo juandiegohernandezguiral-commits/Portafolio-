@@ -18,12 +18,17 @@ function openDashboard() {
   updateDots();
   if (lenis) lenis.stop();
   document.body.style.overflow = 'hidden';
+  // Marca para que lo flotante (el temporizador de enfoque) se aparte de la
+  // barra lateral del panel — ver #focus-widget en css/styles.css.
+  document.body.classList.add('dash-open');
 }
 function closeDashboard() {
   dashboard.classList.add('hidden');
   pinInput = '';
   if (lenis) lenis.start();
   document.body.style.overflow = '';
+  document.body.classList.remove('dash-open');
+  if (typeof renderFocusWidget === 'function') renderFocusWidget();
 }
 function updateDots() {
   pinDots.forEach((d, i) => { d.classList.toggle('filled', i < pinInput.length); d.classList.remove('error'); });
@@ -416,11 +421,26 @@ function renderEvents() {
 }
 
 const taskModal = document.getElementById('task-modal');
-document.getElementById('add-task-btn').addEventListener('click', () => { taskModal.classList.remove('hidden'); taskModal.classList.add('flex'); });
+
+/* El selector de proyecto se rellena al abrir el modal, no una vez al cargar:
+   si no, un proyecto creado en esta sesión no aparecería hasta recargar. */
+function fillProjectSelect() {
+  const sel = document.getElementById('task-project-select');
+  if (!sel) return;
+  const current = sel.value;
+  sel.innerHTML = '<option value="">Sin proyecto</option>' +
+    projects.map(p => `<option value="${p.id}">${escapeHtml(p.name)}</option>`).join('');
+  sel.value = current;
+}
+
+document.getElementById('add-task-btn').addEventListener('click', () => {
+  fillProjectSelect();
+  taskModal.classList.remove('hidden'); taskModal.classList.add('flex');
+});
 document.getElementById('task-form').addEventListener('submit', e => {
   e.preventDefault();
   const fd = new FormData(e.target);
-  tasks.push(touch({ id: uid(), title: fd.get('title'), desc: fd.get('desc'), priority: fd.get('priority'), status: fd.get('status'), repeat: fd.get('repeat') || 'none', due: fd.get('due') || '', createdAt: Date.now() }));
+  tasks.push(touch({ id: uid(), title: fd.get('title'), desc: fd.get('desc'), priority: fd.get('priority'), status: fd.get('status'), repeat: fd.get('repeat') || 'none', due: fd.get('due') || '', projectId: fd.get('projectId') || null, createdAt: Date.now() }));
   saveAll(); e.target.reset();
   taskModal.classList.add('hidden'); taskModal.classList.remove('flex');
   renderTasks();
@@ -441,6 +461,15 @@ function taskDueChip(t) {
   return `<span class="mono text-[10px] uppercase tracking-widest px-2 py-0.5 rounded-full ${
     late ? 'bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400' : 'bg-neutral-100 dark:bg-white/10 text-neutral-500'
   }">${escapeHtml(label)}</span>`;
+}
+
+function taskProjectChip(t) {
+  if (!t.projectId) return '';
+  const project = projects.find(p => p.id === t.projectId);
+  // Una tarea puede apuntar a un proyecto ya borrado: se omite el chip en vez
+  // de pintar "undefined".
+  if (!project) return '';
+  return `<span class="mono text-[10px] uppercase tracking-widest px-2 py-0.5 rounded-full bg-accent/10 text-accent truncate max-w-[140px]" title="${escapeHtml(project.name)}">▧ ${escapeHtml(project.name)}</span>`;
 }
 
 function taskRepeatChip(t) {
@@ -469,6 +498,7 @@ function renderTasks() {
           }">${t.priority === 'high' ? 'Alta' : t.priority === 'med' ? 'Media' : 'Baja'}</span>
           ${taskDueChip(t)}
           ${taskRepeatChip(t)}
+          ${taskProjectChip(t)}
         </div>
       </div>`).join('');
   });
@@ -510,6 +540,42 @@ document.getElementById('project-form').addEventListener('submit', e => {
   projModal.classList.add('hidden'); projModal.classList.remove('flex');
   renderProjects();
 });
+/* Resumen de lo que cuelga de un proyecto: sus tareas y el tiempo que le has
+   dedicado de verdad (sesiones de enfoque, js/14-focus.js). Es lo que convierte
+   un proyecto de una ficha estática en algo con estado real. */
+function projectRollup(p) {
+  const linked = tasks.filter(t => t.projectId === p.id);
+  const minutes = typeof sessions !== 'undefined'
+    ? sessions.filter(s => s.kind === 'focus' && s.projectId === p.id).reduce((n, s) => n + (s.minutes || 0), 0)
+    : 0;
+
+  if (!linked.length && !minutes) return '';
+
+  const done = linked.filter(t => t.status === 'done').length;
+  const open = linked.filter(t => t.status !== 'done');
+
+  return `
+    <div class="mt-5 pt-5 border-t border-neutral-200 dark:border-white/5">
+      <div class="flex items-center gap-6 mb-3 flex-wrap">
+        ${linked.length ? `<div><span class="display text-xl">${done}</span><span class="text-neutral-500">/${linked.length}</span> <span class="meta-label text-neutral-500 ml-1">tareas hechas</span></div>` : ''}
+        ${minutes ? `<div><span class="display text-xl text-accent">${Math.floor(minutes / 60)}</span><span class="text-sm">h</span> <span class="display text-xl text-accent">${minutes % 60}</span><span class="text-sm">m</span> <span class="meta-label text-neutral-500 ml-1">enfocados</span></div>` : ''}
+      </div>
+      ${open.length ? `
+        <div class="space-y-1.5">
+          ${open.slice(0, 5).map(t => `
+            <div class="flex items-center gap-2.5 text-sm">
+              <span class="w-1.5 h-1.5 rounded-full shrink-0 ${t.priority === 'high' ? 'bg-red-500' : t.status === 'doing' ? 'bg-amber-500' : 'bg-neutral-400'}"></span>
+              <span class="truncate flex-1">${escapeHtml(t.title)}</span>
+              <button type="button" data-focus-task="${t.id}" title="Enfocarme en esto"
+                class="shrink-0 w-6 h-6 rounded flex items-center justify-center text-neutral-400 hover:text-accent hover:bg-accent/10 transition">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+              </button>
+            </div>`).join('')}
+          ${open.length > 5 ? `<div class="meta-label text-neutral-500 pt-1">y ${open.length - 5} más</div>` : ''}
+        </div>` : ''}
+    </div>`;
+}
+
 function renderProjects() {
   const box = document.getElementById('projects-list');
   box.innerHTML = projects.length ? projects.map(p => {
@@ -538,6 +604,7 @@ function renderProjects() {
               <div class="mt-2 text-[10px] ${s.done ? 'text-accent' : 'text-neutral-500'}">${s.done ? '✓ Hecho' : 'Pendiente'}</div>
             </button>`).join('')}
         </div>
+        ${projectRollup(p)}
       </div>`;
   }).join('') : '<div class="surface rounded-2xl p-12 text-center text-neutral-500">Sin proyectos aún.</div>';
   box.querySelectorAll('[data-del-project]').forEach(b => b.addEventListener('click', () => {

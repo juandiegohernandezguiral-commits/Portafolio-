@@ -98,6 +98,11 @@ function paletteCommands() {
 function openModal(id) {
   const m = document.getElementById(id);
   if (!m) return;
+  // El modal de tarea lleva un selector de proyecto que se rellena al abrirlo
+  // (ver fillProjectSelect en js/05-dashboard.js). Sin esto, abrirlo desde la
+  // paleta mostraría la lista vacía mientras que el botón "+ Nueva" sí la
+  // rellena — la misma pantalla comportándose de dos maneras según cómo llegues.
+  if (id === 'task-modal' && typeof fillProjectSelect === 'function') fillProjectSelect();
   m.classList.remove('hidden');
   m.classList.add('flex');
 }

@@ -407,7 +407,12 @@
      opaco), que es justo donde tiene que verse, y por debajo de los modales
      (z-70) y de la paleta (z-90), que si deben taparlo. El reproductor de audio
      se queda en z-45 a proposito: ese pertenece al sitio publico. */
-  #focus-widget { position: fixed; bottom: 24px; left: 24px; z-index: 65; }
+  #focus-widget { position: fixed; bottom: 24px; left: 24px; z-index: 65; transition: left .25s cubic-bezier(.2,.7,.2,1); }
+  /* Con el panel abierto hay una barra lateral en la esquina inferior izquierda
+     (el boton "Salir"), asi que el widget se aparta hasta pasarla: w-20 (80px)
+     por defecto y lg:w-64 (256px) a partir de 1024px. */
+  body.dash-open #focus-widget { left: 96px; }
+  @media (min-width: 1024px) { body.dash-open #focus-widget { left: 276px; } }
   .focus-fab {
     width: 48px; height: 48px; border-radius: 50%;
     display: flex; align-items: center; justify-content: center;

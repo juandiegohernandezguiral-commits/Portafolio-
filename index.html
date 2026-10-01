@@ -1113,6 +1113,14 @@
         <select name="priority" class="surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none"><option value="low">Prioridad baja</option><option value="med" selected>Media</option><option value="high">Alta</option></select>
         <select name="status" class="surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none"><option value="todo">Por hacer</option><option value="doing">En progreso</option><option value="done">Completada</option></select>
       </div>
+      <!-- Vincular la tarea a un proyecto: es lo que permite que el proyecto
+           agregue sus tareas y su tiempo invertido (js/15-insights.js) -->
+      <label class="block">
+        <span class="meta-label text-neutral-500 block mb-1.5 px-1">Proyecto (opcional)</span>
+        <select name="projectId" id="task-project-select" class="w-full surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none">
+          <option value="">Sin proyecto</option>
+        </select>
+      </label>
       <!-- Vencimiento y recurrencia: alimentan la vista Hoy y la generación
            automática de la siguiente ocurrencia al completar (js/08-productivity.js) -->
       <div class="grid grid-cols-2 gap-3">
