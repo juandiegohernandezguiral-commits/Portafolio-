@@ -23,7 +23,10 @@ one:
 | `js/07-sync.js` | Cloud sync + file auto-backup. Defines `onDataChanged`, `syncNow`, `isSyncConfigured` |
 | `js/08-productivity.js` | "Hoy" view, due dates, recurring tasks, quick capture. Defines `parseDue`, `spawnNextOccurrence`, `quickAddTask` |
 | `js/09-palette.js` | Command palette (Ctrl+K), global search, `toast()` |
-| `js/99-init.js` | Dashboard seed + timestamp migration, nav highlight, `#hoy` PWA shortcut. Must load last |
+| `js/10-markdown.js` | Markdown renderer written in-house. Defines `renderMarkdown`, `extractTags`, `extractWikiLinks`, `markdownToPlain` |
+| `js/11-notes.js` | Notes as a knowledge system: index, backlinks, tags, editor, autosave. Defines `renderNotes` (replacing the old one), `notesIndex`, `createNote`, `commitNoteEdits` |
+| `js/12-graph.js` | Knowledge graph (canvas force simulation). Defines `openGraph` |
+| `js/99-init.js` | Dashboard seed + migrations, nav highlight, `#hoy` PWA shortcut. Must load last |
 
 Two consequences worth remembering when editing:
 
@@ -36,10 +39,15 @@ Two consequences worth remembering when editing:
 
 ## Tests
 
-`node tests/merge.test.js` — covers the sync merge logic (last-write-wins per record,
-tombstones, TTL pruning) by loading `js/07-sync.js` into a sandboxed VM with stubbed browser
-globals. It's the one piece where a bug means silent data loss, so it's worth running after
-touching anything in that file.
+- `node tests/merge.test.js` — the sync merge logic (last-write-wins per record, tombstones,
+  TTL pruning), loaded into a sandboxed VM with stubbed browser globals. The one piece where a
+  bug means silent data loss.
+- `node tests/markdown.test.js` — the in-house markdown renderer. Roughly a third of the cases
+  are about escaping, because `renderMarkdown()`'s output goes straight into `innerHTML`: the
+  invariant is that nothing the user types can arrive as live HTML. Run it after touching
+  `js/10-markdown.js`.
+
+Both are plain `node` scripts with no dependencies and no test runner.
 
 ## External dependencies (CDN, no local copies)
 - **Tailwind CSS** — configured inline via `tailwind.config`; dark mode uses the `class` strategy
@@ -70,6 +78,14 @@ touching anything in that file.
   |---|---|---|
   | Navigation (HTML) | network-first, fall back to cached `index.html` | Offline navigation to any path lands in the app, which is single-page anyway |
   | Same-origin `.js` / `.css` | network-first | Prevents version skew — cache-first here could pair a fresh `index.html` with stale JS, a bug that shows up once and never reproduces |
+
+  **`networkFirst` must fetch with `cache: 'no-cache'`, and that is not optional.** A plain
+  `fetch(request)` is resolved against the browser's *HTTP* cache and can return a stale copy
+  without ever contacting the server (`transferSize: 0`). That silently turns "network-first"
+  into "cache-first" and reintroduces exactly the version skew the strategy exists to prevent —
+  this was observed in practice: a changed `styles.css` kept serving the previous build until
+  the fetch was forced to revalidate. `'no-cache'` issues a conditional request, so an unchanged
+  file costs a `304` with no body.
   | Same-origin images / manifest | stale-while-revalidate | Effectively immutable |
   | `intro.mp4` | not intercepted | 12 MB would dominate a phone's storage quota to cache a hero nobody watches offline |
   | CDN libs + Google Fonts | stale-while-revalidate | Versioned URLs, so a stale copy is still a correct copy. Opaque responses (`type === 'opaque'`, status 0) are cached too — that's normal for cross-origin scripts |

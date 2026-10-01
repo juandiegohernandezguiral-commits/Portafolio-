@@ -75,7 +75,13 @@ function paletteCommands() {
 
     { label: 'Nueva tarea',    hint: 'crear', icon: '+', run: () => openModal('task-modal') },
     { label: 'Nuevo proyecto', hint: 'crear', icon: '+', run: () => openModal('project-modal') },
-    { label: 'Nueva nota',     hint: 'crear', icon: '+', run: () => openModal('note-modal') },
+    { label: 'Nueva nota',     hint: 'crear', icon: '+', run: () => {
+      createNote({});
+      showView('notes');
+      requestAnimationFrame(() => document.getElementById('note-title')?.select());
+    } },
+    { label: 'Nota diaria de hoy', hint: 'crear', icon: '◎', run: () => openDailyNote() },
+    { label: 'Ver el grafo de conocimiento', hint: 'notas', icon: '⬡', run: () => openGraph() },
 
     { label: 'Sincronizar ahora', hint: 'acción', icon: '↻', run: () => syncNow({ interactive: true }) },
     { label: 'Descargar backup',  hint: 'acción', icon: '↓', run: () => document.getElementById('export-btn')?.click() },
@@ -124,14 +130,20 @@ function paletteDataItems() {
   }));
 
   notes.forEach(n => out.push({
-    type: 'note', icon: '✎',
+    type: 'note', icon: n.daily ? '◎' : '✎',
     label: n.title,
     // El cuerpo de la nota entra en el haystack pero no en la etiqueta: buscar
     // dentro del texto es justo lo que faltaba, pero mostrarlo entero rompería
-    // la lista.
-    hint: 'nota · ' + (n.content || '').replace(/\s+/g, ' ').slice(0, 60),
+    // la lista. El preview va sin sintaxis markdown.
+    hint: (n.archived ? 'archivada · ' : 'nota · ') + markdownToPlain(n.content, 60),
     haystack: `${n.title} ${n.content || ''}`,
-    run: () => showView('notes'),
+    run: () => {
+      commitNoteEdits();
+      notesUi.selectedId = n.id;
+      notesUi.showArchived = !!n.archived;
+      notesUi.tagFilter = null;
+      showView('notes');
+    },
   }));
 
   return out;

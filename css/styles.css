@@ -261,6 +261,107 @@
   }
   .toast.visible { opacity: 1; transform: translateY(0); }
 
+  /* ---- Notas: lista lateral ---- */
+  .note-row { transition: background .12s, box-shadow .12s; }
+  .note-row:hover { background: rgba(38,103,255,0.05); }
+  html.dark .note-row:hover { background: rgba(38,103,255,0.09); }
+  .note-row.is-active { background: rgba(38,103,255,0.10); box-shadow: inset 2px 0 0 #2667ff; }
+  html.dark .note-row.is-active { background: rgba(38,103,255,0.16); }
+  /* line-clamp no esta en el build de Tailwind via CDN sin el plugin, asi que va aqui */
+  .line-clamp-2 {
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  /* ---- Etiquetas ---- */
+  .tag-chip {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    padding: 3px 9px;
+    border-radius: 999px;
+    background: #f4f4f5;
+    border: 1px solid #e5e5e5;
+    color: #52525b;
+    transition: all .15s;
+  }
+  html.dark .tag-chip { background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.08); color: #a1a1aa; }
+  .tag-chip:hover { border-color: #2667ff; color: #2667ff; }
+  .tag-chip.is-active { background: #2667ff; border-color: #2667ff; color: #fff; }
+
+  /* ---- Markdown renderizado ----
+     Estilos explicitos porque el reset de Tailwind quita los margenes y tamanos
+     por defecto de h1/ul/blockquote, y este HTML lo genera renderMarkdown(), no
+     el markup, asi que no puede llevar clases de utilidad una por una. */
+  .md-body { font-size: 14px; line-height: 1.7; }
+  .md-body .md-h { font-family: 'Inter Tight', system-ui, sans-serif; font-weight: 700; letter-spacing: -0.02em; line-height: 1.25; }
+  .md-body .md-h1 { font-size: 1.6em; margin: 0.2em 0 0.5em; }
+  .md-body .md-h2 { font-size: 1.3em; margin: 1.3em 0 0.4em; }
+  .md-body .md-h3 { font-size: 1.12em; margin: 1.2em 0 0.3em; }
+  .md-body .md-h4, .md-body .md-h5, .md-body .md-h6 { font-size: 1em; margin: 1.1em 0 0.3em; }
+  .md-body .md-p { margin: 0 0 0.85em; }
+  .md-body .md-list { margin: 0 0 0.85em 1.2em; }
+  .md-body ul.md-list { list-style: disc; }
+  .md-body ol.md-list { list-style: decimal; }
+  .md-body .md-list li { margin: 0.2em 0; }
+  .md-body .md-list .md-task { list-style: none; margin-left: -1.2em; display: flex; gap: 8px; align-items: flex-start; }
+  .md-body .md-check {
+    width: 15px; height: 15px; border-radius: 4px; flex-shrink: 0; margin-top: 3px;
+    border: 1.5px solid rgba(0,0,0,0.25);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; line-height: 1; color: #fff;
+  }
+  html.dark .md-body .md-check { border-color: rgba(255,255,255,0.3); }
+  .md-body .md-check.is-done { background: #2667ff; border-color: #2667ff; }
+  .md-body .md-task.is-done > span:last-child { opacity: 0.55; text-decoration: line-through; }
+  .md-body .md-quote {
+    margin: 0 0 0.85em; padding: 0.4em 0 0.4em 1em;
+    border-left: 3px solid #2667ff;
+    color: #52525b; font-style: italic;
+  }
+  html.dark .md-body .md-quote { color: #a1a1aa; }
+  .md-body .md-pre {
+    margin: 0 0 0.9em; padding: 12px 14px; border-radius: 12px;
+    background: #f6f6f7; border: 1px solid #e9e9eb;
+    overflow-x: auto;
+  }
+  html.dark .md-body .md-pre { background: #0b0b0d; border-color: rgba(255,255,255,0.07); }
+  .md-body .md-pre code { font-family: 'JetBrains Mono', monospace; font-size: 12px; line-height: 1.6; }
+  .md-body code {
+    font-family: 'JetBrains Mono', monospace; font-size: 0.88em;
+    background: rgba(38,103,255,0.09); color: #1d4ed8;
+    padding: 1px 5px; border-radius: 5px;
+  }
+  html.dark .md-body code { background: rgba(38,103,255,0.16); color: #93b4ff; }
+  .md-body .md-hr { margin: 1.4em 0; border: 0; border-top: 1px solid #e5e5e5; }
+  html.dark .md-body .md-hr { border-top-color: rgba(255,255,255,0.08); }
+  .md-body a { color: #2667ff; text-decoration: underline; text-underline-offset: 2px; }
+  .md-body mark { background: rgba(250,204,21,0.35); color: inherit; padding: 0 2px; border-radius: 3px; }
+  html.dark .md-body mark { background: rgba(250,204,21,0.25); }
+  .md-body strong { font-weight: 700; }
+  .md-body em { font-style: italic; }
+
+  /* Enlaces [[...]] entre notas. Los que apuntan a una nota que aun no existe se
+     marcan en ambar y con subrayado punteado: es una invitacion a crearla, no un
+     error. */
+  .md-body .wikilink {
+    color: #2667ff; text-decoration: none;
+    border-bottom: 1px solid rgba(38,103,255,0.35);
+  }
+  .md-body .wikilink:hover { border-bottom-color: #2667ff; background: rgba(38,103,255,0.07); }
+  .md-body .wikilink.is-missing { color: #f59e0b; border-bottom: 1px dashed rgba(245,158,11,0.6); }
+  .md-body .wikilink.is-missing:hover { background: rgba(245,158,11,0.08); }
+  .md-body .md-tag {
+    color: #2667ff; text-decoration: none; font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85em; background: rgba(38,103,255,0.08);
+    padding: 1px 5px; border-radius: 5px;
+  }
+  .md-body .md-tag:hover { background: rgba(38,103,255,0.18); }
+
+  /* ---- Grafo ---- */
+  #graph-overlay, #graph-overlay * { cursor: default; }
+  #graph-canvas { display: block; }
+
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
   }

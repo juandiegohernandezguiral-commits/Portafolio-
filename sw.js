@@ -13,7 +13,7 @@
  * invalida la caché anterior y fuerza a los clientes a recoger la nueva.
  */
 
-const SW_VERSION = 'jdh-sw-v2';
+const SW_VERSION = 'jdh-sw-v3';
 const SHELL_CACHE = `${SW_VERSION}-shell`;
 const RUNTIME_CACHE = `${SW_VERSION}-runtime`;
 
@@ -35,6 +35,9 @@ const SHELL_ASSETS = [
   './js/07-sync.js',
   './js/08-productivity.js',
   './js/09-palette.js',
+  './js/10-markdown.js',
+  './js/11-notes.js',
+  './js/12-graph.js',
   './js/99-init.js',
   './icon.svg',
   './icon-192.png',
@@ -97,10 +100,22 @@ function shouldNeverCache(url) {
   return NEVER_CACHE_PATTERNS.some((pattern) => url.includes(pattern));
 }
 
-/** Red primero, caché como red de seguridad. Para el documento HTML. */
+/** Red primero, caché como red de seguridad. Para el HTML y para el JS/CSS propios.
+ *
+ *  `cache: 'no-cache'` NO es redundante: sin él, `fetch(request)` se resuelve
+ *  contra la caché HTTP del navegador y puede devolver una copia vieja sin
+ *  tocar el servidor (transferSize 0). Es decir, "red primero" leería de caché
+ *  — justo el desfase de versiones que esta estrategia existe para evitar.
+ *  Con 'no-cache' siempre se hace una petición condicional: si el archivo no
+ *  cambió el servidor responde 304 y no se transfiere cuerpo, así que el coste
+ *  es mínimo y la corrección es total.
+ *
+ *  Se pasa la URL en vez del Request original porque construir un Request a
+ *  partir de otro con mode 'navigate' lanza una excepción, y aquí sólo se
+ *  manejan GET de recursos propios. */
 async function networkFirst(request) {
   try {
-    const response = await fetch(request);
+    const response = await fetch(request.url, { cache: 'no-cache', credentials: 'same-origin' });
     if (response && response.ok) {
       const cache = await caches.open(SHELL_CACHE);
       cache.put(request, response.clone());

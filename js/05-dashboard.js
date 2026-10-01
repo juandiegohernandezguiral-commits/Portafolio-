@@ -498,33 +498,14 @@ function renderProjects() {
   }));
 }
 
-const noteModal = document.getElementById('note-modal');
-document.getElementById('add-note-btn').addEventListener('click', () => { noteModal.classList.remove('hidden'); noteModal.classList.add('flex'); });
-document.getElementById('note-form').addEventListener('submit', e => {
-  e.preventDefault();
-  const fd = new FormData(e.target);
-  notes.unshift(touch({ id: uid(), title: fd.get('title'), content: fd.get('content'), createdAt: Date.now() }));
-  saveAll(); e.target.reset();
-  noteModal.classList.add('hidden'); noteModal.classList.remove('flex');
-  renderNotes();
-});
-function renderNotes() {
-  const box = document.getElementById('notes-list');
-  box.innerHTML = notes.length ? notes.map(n => `
-    <div class="relative p-5 surface rounded-2xl hover:border-accent transition">
-      <button data-del-note="${n.id}" type="button" class="absolute top-3 right-3 text-neutral-400 hover:text-red-500 text-sm">✕</button>
-      <div class="meta-label text-neutral-500 mb-2">${new Date(n.createdAt).toLocaleDateString('es-CO',{day:'numeric',month:'short'})}</div>
-      <h3 class="font-display font-bold text-lg mb-2">${escapeHtml(n.title)}</h3>
-      <p class="text-neutral-600 dark:text-neutral-400 text-sm whitespace-pre-wrap leading-relaxed">${escapeHtml(n.content)}</p>
-    </div>`).join('') : '<div class="surface rounded-2xl p-12 text-center text-neutral-500 col-span-full">Sin notas.</div>';
-  box.querySelectorAll('[data-del-note]').forEach(b => b.addEventListener('click', () => {
-    tombstone('notes', b.dataset.delNote);
-    notes = notes.filter(n => n.id !== b.dataset.delNote); saveAll(); renderNotes();
-  }));
-}
+/* Las notas ya no se gestionan aquí: tienen su propio sistema con markdown,
+   enlaces [[...]], retroenlaces y autoguardado en js/11-notes.js, que define su
+   propio renderNotes(). Este archivo sólo las declara (`let notes`) y las
+   persiste en saveAll(). */
 
 document.querySelectorAll('[data-close-modal]').forEach(b => b.addEventListener('click', () => {
-  ['task-modal','project-modal','note-modal','integrations-modal'].forEach(id => {
-    const m = document.getElementById(id); m.classList.add('hidden'); m.classList.remove('flex');
+  ['task-modal','project-modal','integrations-modal'].forEach(id => {
+    const m = document.getElementById(id);
+    if (m) { m.classList.add('hidden'); m.classList.remove('flex'); }
   });
 }));

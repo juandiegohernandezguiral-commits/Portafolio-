@@ -931,12 +931,38 @@
           <div id="projects-list" class="space-y-4"></div>
         </section>
 
+        <!-- Notas: sistema de conocimiento con markdown, enlaces [[...]],
+             retroenlaces y autoguardado. Ver js/11-notes.js -->
         <section class="dash-view hidden" data-view="notes">
-          <div class="flex items-center justify-between mb-8">
-            <div><div class="meta-label text-neutral-500 mb-2">/ notas</div><h1 class="display text-3xl md:text-5xl">Mis notas</h1></div>
-            <button id="add-note-btn" type="button" class="px-4 py-2 rounded-xl bg-accent text-white font-bold mono text-[11px] uppercase tracking-[0.25em] hover:bg-neutral-900 dark:hover:bg-white dark:hover:text-black transition">+ Nueva</button>
+          <div class="flex items-end justify-between mb-6 flex-wrap gap-4">
+            <div>
+              <div class="meta-label text-neutral-500 mb-2">/ notas</div>
+              <h1 class="display text-3xl md:text-5xl">Mi cerebro</h1>
+            </div>
+            <div class="flex items-center gap-2 flex-wrap">
+              <button id="daily-note-btn" type="button" class="px-4 py-2.5 rounded-xl surface hover:border-accent mono text-[10px] uppercase tracking-[0.2em] transition">◎ Nota diaria</button>
+              <button id="open-graph-btn" type="button" class="px-4 py-2.5 rounded-xl surface hover:border-accent mono text-[10px] uppercase tracking-[0.2em] transition">⬡ Grafo</button>
+              <button id="new-note-btn" type="button" class="px-4 py-2.5 rounded-xl bg-accent text-white font-bold mono text-[10px] uppercase tracking-[0.2em] transition">+ Nueva</button>
+            </div>
           </div>
-          <div id="notes-list" class="grid md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+
+          <div class="flex items-center gap-3 mb-4 flex-wrap">
+            <div class="flex items-center gap-2 px-4 py-2.5 surface rounded-xl flex-1 min-w-[200px]">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-neutral-400 shrink-0"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+              <input id="notes-search" autocomplete="off" placeholder="Buscar en títulos y contenido…" class="flex-1 bg-transparent focus:outline-none text-sm" />
+            </div>
+            <button id="notes-archived-btn" type="button" class="px-4 py-2.5 rounded-xl surface hover:border-accent mono text-[10px] uppercase tracking-[0.2em] transition shrink-0">Ver archivadas</button>
+          </div>
+
+          <div id="notes-tags" class="flex flex-wrap gap-1.5 mb-4"></div>
+
+          <div class="grid lg:grid-cols-[280px_1fr_240px] gap-4 h-[calc(100vh-320px)] min-h-[480px]">
+            <div class="surface rounded-2xl overflow-y-auto">
+              <div id="notes-list"></div>
+            </div>
+            <div id="note-pane" class="surface rounded-2xl flex flex-col overflow-hidden min-h-0"></div>
+            <div id="note-meta" class="surface rounded-2xl p-5 overflow-y-auto hidden lg:block"></div>
+          </div>
         </section>
 
         <section class="dash-view hidden" data-view="data">
@@ -1112,17 +1138,22 @@
   </div>
 </div>
 
-<div id="note-modal" class="fixed inset-0 z-[70] hidden items-center justify-center bg-black/60 backdrop-blur p-6">
-  <div class="surface rounded-2xl p-8 max-w-lg w-full">
-    <h3 class="font-display font-bold text-xl mb-6">Nueva nota</h3>
-    <form id="note-form" class="space-y-3">
-      <input name="title" required placeholder="Título" class="w-full surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none" />
-      <textarea name="content" required rows="8" placeholder="Escribe aquí..." class="w-full surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none resize-none mono text-sm"></textarea>
-      <div class="flex gap-3 pt-3">
-        <button type="button" class="flex-1 py-3 rounded-xl surface-soft hover:border-accent" data-close-modal>Cancelar</button>
-        <button type="submit" class="flex-1 py-3 rounded-xl bg-accent text-white font-bold mono text-[11px] uppercase tracking-[0.25em]">Guardar</button>
-      </div>
-    </form>
+<!-- GRAFO DE CONOCIMIENTO — cómo se enlazan tus notas entre sí. Ver js/12-graph.js -->
+<div id="graph-overlay" class="fixed inset-0 z-[85] hidden bg-white dark:bg-black">
+  <div class="absolute top-0 left-0 right-0 z-10 flex items-center justify-between gap-4 px-6 py-4 border-b border-neutral-200 dark:border-white/5 bg-white/80 dark:bg-black/80 backdrop-blur">
+    <div>
+      <div class="meta-label text-neutral-500">/ grafo</div>
+      <h2 class="font-display font-bold text-lg">Cómo se conecta tu cerebro</h2>
+    </div>
+    <div class="flex items-center gap-3">
+      <span id="graph-stats" class="meta-label text-neutral-500 hidden sm:inline"></span>
+      <button id="graph-close-btn" type="button" class="px-4 py-2 rounded-xl surface hover:border-accent mono text-[10px] uppercase tracking-[0.2em]">Cerrar</button>
+    </div>
+  </div>
+  <canvas id="graph-canvas" class="absolute inset-0 w-full h-full"></canvas>
+  <div id="graph-empty" class="absolute inset-0 hidden flex-col items-center justify-center text-center px-8 pointer-events-none">
+    <p class="font-display font-bold text-lg mb-2">Todavía no hay conexiones</p>
+    <p class="text-neutral-500 text-sm max-w-sm">Enlaza unas notas con otras escribiendo <span class="mono text-accent">[[Título]]</span> dentro de una nota, y el grafo se dibujará solo.</p>
   </div>
 </div>
 
@@ -1279,6 +1310,9 @@
 <script src="js/07-sync.js"></script>
 <script src="js/08-productivity.js"></script>
 <script src="js/09-palette.js"></script>
+<script src="js/10-markdown.js"></script>
+<script src="js/11-notes.js"></script>
+<script src="js/12-graph.js"></script>
 <script src="js/99-init.js"></script>
 </body>
 </html>

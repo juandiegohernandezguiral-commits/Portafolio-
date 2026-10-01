@@ -18,6 +18,8 @@ function initDashboard() {
   // Debe correr ANTES del primer sync: sin marca de tiempo, un merge no sabría
   // distinguir lo viejo de lo nuevo y podría descartar datos válidos.
   migrateTimestamps();
+  // Las notas anteriores no tenían pinned/archived/daily (ver js/11-notes.js).
+  migrateNotes();
 
   // Arranca en "Hoy" en vez de "Resumen": es la vista que responde a la pregunta
   // con la que uno abre el panel (¿qué tengo que hacer?), no a la de cuántas

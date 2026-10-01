@@ -34,7 +34,34 @@ enough, and it guarantees typing a full word ranks the literal match first.
   an already-overdue successor. The `spawnedNext` flag prevents a second spawn if the same card
   is dragged out of and back into *done*.
 - **Projects** — project tracker with 5-stage pipeline; data at `jdh_projects`
-- **Notes** — freeform notes grid; data at `jdh_notes`
+- **Notes ("Mi cerebro")** — the knowledge system, `js/11-notes.js`. Data still at `jdh_notes`,
+  now with `pinned`, `archived` and `daily` (migrated by `migrateNotes()`).
+
+  Three panes: note list (search + tag filter), editor, and a context sidebar with tags,
+  backlinks and unresolved links.
+
+  - **Markdown** via the in-house renderer (`js/10-markdown.js`), with a write / split / preview
+    toggle persisted at `jdh_notesMode`.
+  - **`[[Wikilinks]]`** connect notes. Typing `[[` opens an autocomplete; picking a title that
+    doesn't exist yet creates the note. Links to non-existent notes render in amber as an
+    invitation, not an error. **Links resolve by title, not id** — if two notes share a title the
+    most recently updated one wins, and the list flags the clash with a `dup` badge.
+  - **Backlinks** are derived, never stored: `notesIndex()` rebuilds the whole index (titles,
+    tags, out-links, back-links) whenever notes change. With a few hundred notes that's cheap,
+    and keeping no incremental state means there's nothing to fall out of sync.
+  - **`#tags`** are extracted from the body, not a separate field to maintain. Tags inside code
+    spans or fences are ignored, so `#2667ff` in a snippet isn't a tag.
+  - **Daily note** — one note per day, titled `YYYY-MM-DD` with a `daily` field, created on
+    demand from the button or the palette.
+  - **Autosave** 700 ms after you stop typing, plus `Ctrl+S` and `beforeunload`. In a second
+    brain, losing a paragraph because you didn't press Save is not acceptable. Editing only the
+    body re-renders the sidebar rather than the whole view, so the textarea never loses focus
+    mid-sentence.
+- **Graph** (`js/12-graph.js`) — overlay showing notes as nodes and `[[links]]` as edges, laid
+  out by a hand-written force simulation on canvas (repulsion + springs + centre gravity; no d3).
+  Node size and opacity scale with degree; unconnected notes render muted, which is itself the
+  useful signal. Clicking a node opens that note. The repulsion loop is O(n²) — fine for
+  hundreds of notes; past a few thousand it would need Barnes-Hut.
 - **Data & Backup** — export/import as a single JSON file, wipe option, and the two durability
   mechanisms below.
 
