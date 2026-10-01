@@ -444,6 +444,39 @@
     .focus-panel { width: calc(100vw - 32px); max-width: 290px; }
   }
 
+  /* ---- Graficas (js/15-insights.js) ----
+     El texto de las graficas lleva tinta de TEXTO, nunca el color de la serie:
+     la marca de color que tiene al lado ya carga la identidad, y un numero
+     coloreado compite con ella y pierde contraste. */
+  .viz-svg { display: block; overflow: visible; }
+  .viz-tick {
+    font-family: 'JetBrains Mono', monospace; font-size: 9px;
+    fill: #8e8e95; letter-spacing: 0.04em;
+  }
+  html.dark .viz-tick { fill: #8a8a90; }
+  .viz-row-label { font-family: 'Inter', system-ui, sans-serif; font-size: 12px; fill: #52525b; }
+  html.dark .viz-row-label { fill: #c4c4cc; }
+  .viz-row-value {
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    fill: #18181b; font-weight: 600;
+  }
+  html.dark .viz-row-value { fill: #fafafa; }
+  .viz-bar { transition: opacity .12s; }
+  .viz-bar:hover { opacity: 0.75; cursor: default; }
+
+  .viz-tip {
+    position: fixed; z-index: 95;
+    transform: translate(-50%, -100%);
+    padding: 6px 10px; border-radius: 8px;
+    background: rgba(17,17,17,0.94);
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255,255,255,0.10);
+    color: #fff; font-size: 12px; white-space: nowrap;
+    opacity: 0; pointer-events: none;
+    transition: opacity .12s;
+  }
+  .viz-tip.visible { opacity: 1; }
+
   /* ---- Grafo ---- */
   #graph-overlay, #graph-overlay * { cursor: default; }
   #graph-canvas { display: block; }

@@ -311,6 +311,7 @@ document.addEventListener('click', e => {
   const task = tasks.find(t => t.id === btn.dataset.todayDone);
   if (!task) return;
   task.status = 'done';
+  markTaskCompletion(task);
   touch(task);
   spawnNextOccurrence(task);
   saveAll();

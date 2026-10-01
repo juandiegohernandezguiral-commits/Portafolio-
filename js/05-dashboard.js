@@ -463,6 +463,16 @@ function taskDueChip(t) {
   }">${escapeHtml(label)}</span>`;
 }
 
+/* Sella CUÁNDO se completó una tarea. Hace falta un campo propio: `updatedAt`
+   serviría de aproximación, pero cualquier edición posterior lo pisa, así que
+   una tarea completada en marzo y retocada en septiembre contaría como
+   completada en septiembre y las métricas semanales saldrían falsas.
+   Si se saca de "Completadas", el sello se borra. */
+function markTaskCompletion(t) {
+  if (t.status === 'done') { if (!t.completedAt) t.completedAt = Date.now(); }
+  else if (t.completedAt) delete t.completedAt;
+}
+
 function taskProjectChip(t) {
   if (!t.projectId) return '';
   const project = projects.find(p => p.id === t.projectId);
@@ -519,6 +529,7 @@ function renderTasks() {
       const t = tasks.find(t => t.id === id);
       if (t && t.status !== col.dataset.status) {
         t.status = col.dataset.status;
+        markTaskCompletion(t);
         touch(t);
         // Al completar una tarea recurrente se genera automáticamente su próxima
         // ocurrencia (ver spawnNextOccurrence en js/08-productivity.js).

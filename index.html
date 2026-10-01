@@ -708,6 +708,10 @@
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="shrink-0"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>
           <span class="hidden lg:inline">Notas</span>
         </button>
+        <button type="button" class="dash-nav w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm hover:bg-neutral-100 dark:hover:bg-white/5 transition" data-view="insights">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="shrink-0"><path d="M3 3v18h18"/><rect x="7" y="11" width="3" height="7"/><rect x="12.5" y="7" width="3" height="11"/><rect x="18" y="13" width="3" height="5"/></svg>
+          <span class="hidden lg:inline">Métricas</span>
+        </button>
         <button type="button" class="dash-nav w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm hover:bg-neutral-100 dark:hover:bg-white/5 transition" data-view="data">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="shrink-0"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5M3 12a9 3 0 0 0 18 0"/></svg>
           <span class="hidden lg:inline">Datos & Backup</span>
@@ -980,6 +984,16 @@
             <div id="note-pane" class="surface rounded-2xl flex flex-col overflow-hidden min-h-0"></div>
             <div id="note-meta" class="surface rounded-2xl p-5 overflow-y-auto hidden lg:block"></div>
           </div>
+        </section>
+
+        <!-- Métricas: lectura en agregado de tareas, enfoque y hábitos. Ver js/15-insights.js -->
+        <section class="dash-view hidden" data-view="insights">
+          <div class="mb-8">
+            <div class="meta-label text-neutral-500 mb-2">/ métricas</div>
+            <h1 class="display text-3xl md:text-5xl">Qué dicen tus datos</h1>
+            <p class="text-neutral-500 mt-2 max-w-2xl">La constancia sólo se ve en agregado: un día suelto no dice nada, doce semanas sí.</p>
+          </div>
+          <div id="insights-root"></div>
         </section>
 
         <section class="dash-view hidden" data-view="data">
@@ -1387,6 +1401,7 @@
 <script src="js/12-graph.js"></script>
 <script src="js/13-habits.js"></script>
 <script src="js/14-focus.js"></script>
+<script src="js/15-insights.js"></script>
 <script src="js/99-init.js"></script>
 </body>
 </html>

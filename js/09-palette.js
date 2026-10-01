@@ -72,6 +72,7 @@ function paletteCommands() {
     { label: 'Ir a Hábitos',    hint: 'vista',   icon: '◈', run: () => showView('habits') },
     { label: 'Ir a Proyectos',  hint: 'vista',   icon: '▧', run: () => showView('projects') },
     { label: 'Ir a Notas',      hint: 'vista',   icon: '✎', run: () => showView('notes') },
+    { label: 'Ir a Métricas',   hint: 'vista',   icon: '▥', run: () => showView('insights') },
     { label: 'Ir a Datos & Backup', hint: 'vista', icon: '▦', run: () => showView('data') },
 
     { label: 'Nueva tarea',    hint: 'crear', icon: '+', run: () => openModal('task-modal') },

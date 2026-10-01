@@ -28,6 +28,7 @@ one:
 | `js/12-graph.js` | Knowledge graph (canvas force simulation). Defines `openGraph` |
 | `js/13-habits.js` | Habits, streaks, year heatmap. Defines `renderHabits`, `currentStreak`, `habitLogIndex` |
 | `js/14-focus.js` | Focus timer (pomodoro) + time logging. Defines `startFocus`, `openFocusPicker`, `minutesFocusedOn` |
+| `js/15-insights.js` | Metrics view: aggregations + hand-generated SVG charts. Defines `renderInsights` |
 | `js/99-init.js` | Dashboard seed + migrations, nav highlight, `#hoy` PWA shortcut. Must load last |
 
 Two consequences worth remembering when editing:
