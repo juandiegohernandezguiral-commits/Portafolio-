@@ -72,6 +72,7 @@ function paletteCommands() {
     { label: 'Ir a Hábitos',    hint: 'vista',   icon: '◈', run: () => showView('habits') },
     { label: 'Ir a Proyectos',  hint: 'vista',   icon: '▧', run: () => showView('projects') },
     { label: 'Ir a Notas',      hint: 'vista',   icon: '✎', run: () => showView('notes') },
+    { label: 'Ir a Automatización', hint: 'vista', icon: '⚡', run: () => showView('auto') },
     { label: 'Ir a Métricas',   hint: 'vista',   icon: '▥', run: () => showView('insights') },
     { label: 'Ir a Datos & Backup', hint: 'vista', icon: '▦', run: () => showView('data') },
 
@@ -85,6 +86,9 @@ function paletteCommands() {
     { label: 'Nota diaria de hoy', hint: 'crear', icon: '◎', run: () => openDailyNote() },
     { label: 'Ver el grafo de conocimiento', hint: 'notas', icon: '⬡', run: () => openGraph() },
 
+    { label: 'Hacer la revisión semanal', hint: 'acción', icon: '◈', run: () => openReview() },
+    { label: 'Nota desde plantilla', hint: 'crear', icon: '▤', run: () => { showView('notes'); openNoteTemplatePicker(); } },
+    { label: 'Ejecutar las reglas ahora', hint: 'acción', icon: '⚡', run: () => runRules({ interactive: true }) },
     { label: 'Iniciar sesión de enfoque', hint: 'acción', icon: '◷', run: () => openFocusPicker() },
     { label: 'Nuevo hábito', hint: 'crear', icon: '+', run: () => { showView('habits'); document.getElementById('add-habit-btn')?.click(); } },
     { label: 'Sincronizar ahora', hint: 'acción', icon: '↻', run: () => syncNow({ interactive: true }) },

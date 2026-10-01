@@ -95,24 +95,43 @@ function createNote({ title = '', content = '', daily = null, open = true } = {}
   return note;
 }
 
-/** Abre (o crea) la nota del día de hoy. */
-function openDailyNote() {
+const DAILY_FALLBACK_TEMPLATE = `# {{fechaLarga}}\n\n## Qué pasó hoy\n\n\n## Ideas\n\n\n## Para mañana\n\n- [ ] \n`;
+
+/**
+ * Devuelve la nota de hoy, creándola si no existe. NO navega ni cambia de vista:
+ * eso lo hace openDailyNote(). Se separan porque la regla automática
+ * "crear la nota diaria" (js/16-rules.js) tiene que poder crearla sin
+ * secuestrar la navegación del usuario.
+ */
+function ensureDailyNote({ focus = false } = {}) {
   const today = new Date();
-  const pad = n => String(n).padStart(2, '0');
-  const stamp = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
+  const stamp = dateKey(today);
 
   let note = notes.find(n => n.daily === stamp);
   if (!note) {
-    const human = today.toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    // Si hay una plantilla diaria configurada se usa; si no, la de serie.
+    const tpl = typeof dailyTemplateBody === 'function' ? dailyTemplateBody() : null;
+    const body = tpl || DAILY_FALLBACK_TEMPLATE;
     note = createNote({
       title: stamp,
       daily: stamp,
-      content: `# ${human}\n\n## Qué pasó hoy\n\n\n## Ideas\n\n\n## Para mañana\n\n- [ ] \n`,
+      // El módulo de plantillas carga después que éste; si faltara, la nota se
+      // crea igual con los marcadores sin sustituir en vez de romperse.
+      content: typeof applyTemplatePlaceholders === 'function'
+        ? applyTemplatePlaceholders(body, today)
+        : body,
       open: false,
     });
   }
+  if (focus) notesUi.selectedId = note.id;
+  return note;
+}
+
+/** Abre (o crea) la nota del día de hoy y salta a ella. */
+function openDailyNote() {
+  const note = ensureDailyNote({ focus: true });
   notesUi.selectedId = note.id;
-  notesUi.archived = false;
+  notesUi.showArchived = false;
   showView('notes');
   // Deja el cursor listo para escribir, que es el punto de una nota diaria.
   requestAnimationFrame(() => document.getElementById('note-body')?.focus());

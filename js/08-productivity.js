@@ -267,6 +267,10 @@ function renderToday() {
       return connected && hubState[k].status !== 'ready';
     });
 
+  // Los avisos de las reglas van ARRIBA del todo: son lo que el panel ha
+  // detectado por su cuenta y lo único que el usuario no sabe ya.
+  const noticesHtml = typeof noticesBlock === 'function' ? noticesBlock() : '';
+  const reviewHtml = typeof reviewPromptBlock === 'function' ? reviewPromptBlock() : '';
   const habitsBlock = typeof todayHabitsBlock === 'function' ? todayHabitsBlock() : '';
   const focusedToday = typeof minutesFocusedOn === 'function' ? minutesFocusedOn(dateKey(new Date())) : 0;
   const focusBlock = focusedToday > 0 ? `
@@ -276,7 +280,7 @@ function renderToday() {
     </div>` : '';
 
   if (total === 0) {
-    box.innerHTML = habitsBlock + focusBlock + `
+    box.innerHTML = noticesHtml + habitsBlock + focusBlock + reviewHtml + `
       <div class="surface rounded-2xl p-12 text-center">
         <div class="w-12 h-12 mx-auto mb-4 rounded-2xl bg-accent/10 border border-accent/30 flex items-center justify-center">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2667ff" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>
@@ -286,11 +290,13 @@ function renderToday() {
       </div>`;
   } else {
     box.innerHTML = [
+      noticesHtml,
       todayBlock('Vencidas', overdue, { dot: 'bg-red-500', danger: true }),
       todayBlock('Para hoy', today, { dot: 'bg-accent' }),
       todayBlock('En progreso', doing, { dot: 'bg-amber-500' }),
       habitsBlock,
       focusBlock,
+      reviewHtml,
     ].filter(Boolean).join('');
   }
 

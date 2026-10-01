@@ -285,7 +285,13 @@
     color: #52525b;
     transition: all .15s;
   }
-  html.dark .tag-chip { background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.08); color: #a1a1aa; }
+  /* El :not() NO es cosmetico. `html.dark .tag-chip` tiene mas especificidad
+     (0,2,1) que `.tag-chip.is-active` (0,2,0), asi que sin acotarlo el estado
+     activo nunca se veria en modo oscuro. Se acota la base en vez de duplicar
+     la regla del estado, porque el color activo es el mismo en ambos temas y
+     debe declararse una sola vez. Mismo motivo en .habit-check, .switch,
+     .review-dot y .day-pick. */
+  html.dark .tag-chip:not(.is-active) { background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.08); color: #a1a1aa; }
   .tag-chip:hover { border-color: #2667ff; color: #2667ff; }
   .tag-chip.is-active { background: #2667ff; border-color: #2667ff; color: #fff; }
 
@@ -366,7 +372,7 @@
     border: 2px solid #e5e5e5; background: #fafafa;
     transition: all .18s cubic-bezier(.2,.7,.2,1);
   }
-  html.dark .habit-check { border-color: rgba(255,255,255,0.12); background: rgba(255,255,255,0.03); }
+  html.dark .habit-check:not(.is-done) { border-color: rgba(255,255,255,0.12); background: rgba(255,255,255,0.03); }
   .habit-check:hover:not(.is-off) { border-color: #2667ff; transform: scale(1.06); }
   .habit-check:active:not(.is-off) { transform: scale(0.94); }
   .habit-check.is-done {
@@ -443,6 +449,42 @@
     #focus-widget { left: 16px; bottom: 16px; }
     .focus-panel { width: calc(100vw - 32px); max-width: 290px; }
   }
+
+  /* ---- Interruptor de regla (js/16-rules.js) ---- */
+  .switch {
+    width: 42px; height: 24px; border-radius: 999px;
+    background: #d4d4d8; border: 1px solid #d4d4d8;
+    padding: 2px; display: flex; align-items: center;
+    transition: background .2s, border-color .2s;
+  }
+  html.dark .switch:not(.is-on) { background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.12); }
+  .switch.is-on { background: #2667ff; border-color: #2667ff; }
+  .switch-knob {
+    width: 18px; height: 18px; border-radius: 50%;
+    background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+    transition: transform .2s cubic-bezier(.2,.7,.2,1);
+  }
+  .switch.is-on .switch-knob { transform: translateX(18px); }
+
+  /* ---- Plantillas (js/17-templates.js) ---- */
+  .tpl-preview {
+    font-family: 'JetBrains Mono', monospace; font-size: 10.5px; line-height: 1.6;
+    color: #71717a; background: #fafafa; border: 1px solid #ededed;
+    border-radius: 10px; padding: 10px 12px;
+    max-height: 104px; overflow: hidden;
+    white-space: pre-wrap; word-break: break-word;
+  }
+  html.dark .tpl-preview { color: #a1a1aa; background: rgba(255,255,255,0.03); border-color: rgba(255,255,255,0.06); }
+
+  /* ---- Revision semanal (js/18-review.js) ---- */
+  #review-overlay:not(.hidden) { display: flex; }
+  .review-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: #d4d4d8; transition: all .2s;
+  }
+  html.dark .review-dot:not(.is-active):not(.is-done) { background: rgba(255,255,255,0.18); }
+  .review-dot.is-done { background: rgba(38,103,255,0.45); }
+  .review-dot.is-active { background: #2667ff; width: 20px; border-radius: 999px; }
 
   /* ---- Graficas (js/15-insights.js) ----
      El texto de las graficas lleva tinta de TEXTO, nunca el color de la serie:

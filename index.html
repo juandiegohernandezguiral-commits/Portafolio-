@@ -708,6 +708,11 @@
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="shrink-0"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>
           <span class="hidden lg:inline">Notas</span>
         </button>
+        <button type="button" class="dash-nav w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm hover:bg-neutral-100 dark:hover:bg-white/5 transition" data-view="auto">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="shrink-0"><path d="M13 2L3 14h8l-1 8 10-12h-8z"/></svg>
+          <span class="hidden lg:inline">Automatización</span>
+          <span id="notice-badge" class="hidden ml-auto px-1.5 py-0.5 rounded-full bg-amber-500 text-white mono text-[9px] font-bold">0</span>
+        </button>
         <button type="button" class="dash-nav w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm hover:bg-neutral-100 dark:hover:bg-white/5 transition" data-view="insights">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="shrink-0"><path d="M3 3v18h18"/><rect x="7" y="11" width="3" height="7"/><rect x="12.5" y="7" width="3" height="11"/><rect x="18" y="13" width="3" height="5"/></svg>
           <span class="hidden lg:inline">Métricas</span>
@@ -963,6 +968,7 @@
             <div class="flex items-center gap-2 flex-wrap">
               <button id="daily-note-btn" type="button" class="px-4 py-2.5 rounded-xl surface hover:border-accent mono text-[10px] uppercase tracking-[0.2em] transition">◎ Nota diaria</button>
               <button id="open-graph-btn" type="button" class="px-4 py-2.5 rounded-xl surface hover:border-accent mono text-[10px] uppercase tracking-[0.2em] transition">⬡ Grafo</button>
+              <button id="tpl-from-btn" type="button" class="px-4 py-2.5 rounded-xl surface hover:border-accent mono text-[10px] uppercase tracking-[0.2em] transition">▤ Plantilla</button>
               <button id="new-note-btn" type="button" class="px-4 py-2.5 rounded-xl bg-accent text-white font-bold mono text-[10px] uppercase tracking-[0.2em] transition">+ Nueva</button>
             </div>
           </div>
@@ -983,6 +989,34 @@
             </div>
             <div id="note-pane" class="surface rounded-2xl flex flex-col overflow-hidden min-h-0"></div>
             <div id="note-meta" class="surface rounded-2xl p-5 overflow-y-auto hidden lg:block"></div>
+          </div>
+        </section>
+
+        <!-- Automatización: reglas que vigilan por ti + plantillas. Ver js/16-rules.js y js/17-templates.js -->
+        <section class="dash-view hidden" data-view="auto">
+          <div class="flex items-end justify-between mb-8 flex-wrap gap-4">
+            <div>
+              <div class="meta-label text-neutral-500 mb-2">/ automatización</div>
+              <h1 class="display text-3xl md:text-5xl">Que trabaje solo</h1>
+              <p class="text-neutral-500 mt-2 max-w-2xl">Las reglas vigilan tus datos y te avisan. Las plantillas se encargan de la hoja en blanco.</p>
+            </div>
+            <button id="rules-run-btn" type="button" class="px-4 py-2.5 rounded-xl surface hover:border-accent mono text-[10px] uppercase tracking-[0.2em] transition">↻ Ejecutar reglas</button>
+          </div>
+
+          <div class="inline-flex p-1 rounded-full surface-soft mb-6" role="tablist">
+            <button type="button" class="auto-tab-btn bg-accent text-white px-4 py-2 rounded-full text-xs font-bold mono uppercase tracking-[0.15em] transition" data-auto-tab="rules">Reglas</button>
+            <button type="button" class="auto-tab-btn text-neutral-500 px-4 py-2 rounded-full text-xs font-bold mono uppercase tracking-[0.15em] transition" data-auto-tab="templates">Plantillas</button>
+          </div>
+
+          <div data-auto-panel="rules">
+            <div id="rules-list" class="space-y-4"></div>
+          </div>
+
+          <div data-auto-panel="templates" class="hidden">
+            <div class="flex justify-end mb-4">
+              <button id="new-template-btn" type="button" class="px-4 py-2.5 rounded-xl bg-accent text-white font-bold mono text-[10px] uppercase tracking-[0.2em]">+ Nueva plantilla</button>
+            </div>
+            <div id="templates-list"></div>
           </div>
         </section>
 
@@ -1174,6 +1208,76 @@
         <button type="submit" class="flex-1 py-3 rounded-xl bg-accent text-white font-bold mono text-[11px] uppercase tracking-[0.25em]">Crear</button>
       </div>
     </form>
+  </div>
+</div>
+
+<div id="template-modal" class="fixed inset-0 z-[70] hidden items-start justify-center bg-black/60 backdrop-blur p-6 overflow-y-auto">
+  <div class="surface rounded-2xl p-8 max-w-lg w-full my-8">
+    <h3 class="font-display font-bold text-xl mb-6" id="template-modal-title">Nueva plantilla</h3>
+    <form id="template-form" class="space-y-3">
+      <select name="kind" class="w-full surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none">
+        <option value="note">Plantilla de nota</option>
+        <option value="project">Plantilla de proyecto</option>
+      </select>
+      <input name="name" required placeholder="Nombre de la plantilla" class="w-full surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none" />
+      <input name="titlePattern" placeholder="Título, admite {{fecha}}" class="w-full surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none" />
+
+      <div id="tpl-project-fields" class="hidden">
+        <input name="stages" placeholder="Etapas separadas por comas" class="w-full surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none" />
+      </div>
+
+      <label class="block">
+        <span class="meta-label text-neutral-500 block mb-1.5 px-1" id="tpl-body-label">Cuerpo (markdown)</span>
+        <textarea name="body" rows="9" class="w-full surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none resize-none mono text-sm"></textarea>
+      </label>
+
+      <div id="tpl-note-fields">
+        <label class="flex items-center gap-3 px-1 text-sm cursor-pointer">
+          <input name="isDaily" type="checkbox" class="rounded border-neutral-300 dark:border-white/20 text-accent focus:ring-accent" />
+          <span>Usar esta plantilla para la nota diaria</span>
+        </label>
+      </div>
+
+      <p class="text-neutral-500 text-xs px-1">Marcadores: <span class="mono">{{fecha}} {{fechaLarga}} {{dia}} {{mes}} {{anio}} {{semana}} {{hora}}</span></p>
+
+      <div class="flex gap-3 pt-3">
+        <button type="button" class="flex-1 py-3 rounded-xl surface-soft hover:border-accent" data-close-modal>Cancelar</button>
+        <button type="submit" class="flex-1 py-3 rounded-xl bg-accent text-white font-bold mono text-[11px] uppercase tracking-[0.25em]">Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="tpl-picker-modal" class="fixed inset-0 z-[70] hidden items-start justify-center bg-black/60 backdrop-blur pt-[14vh] px-4">
+  <div class="surface rounded-2xl w-full max-w-md overflow-hidden">
+    <div class="px-5 py-4 border-b border-neutral-200 dark:border-white/5">
+      <h3 class="font-display font-bold">Nueva nota desde plantilla</h3>
+    </div>
+    <div id="tpl-picker-list" class="max-h-[50vh] overflow-y-auto"></div>
+  </div>
+</div>
+
+<!-- REVISIÓN SEMANAL GUIADA — ver js/18-review.js -->
+<div id="review-overlay" class="fixed inset-0 z-[88] hidden items-center justify-center bg-black/70 backdrop-blur p-4 md:p-8">
+  <div class="surface rounded-2xl w-full max-w-2xl max-h-[88vh] flex flex-col overflow-hidden">
+    <div class="px-6 py-5 border-b border-neutral-200 dark:border-white/5">
+      <div class="flex items-start justify-between gap-4 mb-3">
+        <div>
+          <div class="meta-label text-neutral-500" id="review-week"></div>
+          <h2 class="font-display font-bold text-xl mt-1" id="review-step-title"></h2>
+        </div>
+        <button type="button" id="review-close" class="text-neutral-400 hover:text-red-500 text-xl leading-none shrink-0">✕</button>
+      </div>
+      <div class="flex items-center gap-3">
+        <div id="review-progress" class="flex items-center gap-1.5"></div>
+        <span class="meta-label text-neutral-500" id="review-step-count"></span>
+      </div>
+    </div>
+    <div id="review-body" class="flex-1 overflow-y-auto px-6 py-6"></div>
+    <div class="px-6 py-4 border-t border-neutral-200 dark:border-white/5 flex items-center justify-between gap-3">
+      <button type="button" id="review-back" class="px-5 py-2.5 rounded-xl surface-soft hover:border-accent mono text-[10px] uppercase tracking-[0.2em]">← Atrás</button>
+      <button type="button" id="review-next" class="px-6 py-2.5 rounded-xl bg-accent text-white font-bold mono text-[10px] uppercase tracking-[0.2em]">Siguiente</button>
+    </div>
   </div>
 </div>
 
@@ -1402,6 +1506,9 @@
 <script src="js/13-habits.js"></script>
 <script src="js/14-focus.js"></script>
 <script src="js/15-insights.js"></script>
+<script src="js/16-rules.js"></script>
+<script src="js/17-templates.js"></script>
+<script src="js/18-review.js"></script>
 <script src="js/99-init.js"></script>
 </body>
 </html>

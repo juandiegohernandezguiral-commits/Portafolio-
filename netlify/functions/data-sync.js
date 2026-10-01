@@ -46,7 +46,7 @@ const MAX_BODY_BYTES = 2 * 1024 * 1024;
    que espera sean arrays — si el cliente manda una coleccion nueva que aqui no
    figure, se guarda igual (ver el push mas abajo, que copia body.data entero),
    asi que un cliente mas nuevo no se rompe contra un backend mas viejo. */
-const COLLECTIONS = ['tasks', 'events', 'projects', 'notes', 'habits', 'habitLog', 'sessions'];
+const COLLECTIONS = ['tasks', 'events', 'projects', 'notes', 'habits', 'habitLog', 'sessions', 'rules', 'templates'];
 
 const EMPTY_SNAPSHOT = {
   rev: 0,

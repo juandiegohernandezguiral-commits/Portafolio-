@@ -20,6 +20,9 @@ function initDashboard() {
   migrateTimestamps();
   // Las notas anteriores no tenían pinned/archived/daily (ver js/11-notes.js).
   migrateNotes();
+  // Siembra las plantillas de serie una sola vez, para que la función sirva
+  // desde el primer día en vez de pedir configurarla antes de poder probarla.
+  if (typeof seedTemplatesOnce === 'function') seedTemplatesOnce();
 
   // Arranca en "Hoy" en vez de "Resumen": es la vista que responde a la pregunta
   // con la que uno abre el panel (¿qué tengo que hacer?), no a la de cuántas
@@ -27,6 +30,10 @@ function initDashboard() {
   showView('today');
 
   if (typeof renderSyncStatus === 'function') renderSyncStatus();
+  if (typeof renderNoticeBadge === 'function') renderNoticeBadge();
+  // Las reglas se evalúan al abrir el panel: es el momento en que lo que
+  // detecten todavía sirve de algo.
+  if (typeof runRules === 'function') runRules();
   // Al abrir el panel se traen los cambios hechos en otros dispositivos.
   if (typeof isSyncConfigured === 'function' && isSyncConfigured()) syncNow();
 }

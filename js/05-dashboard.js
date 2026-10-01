@@ -85,6 +85,7 @@ let tasks = store.get('tasks', []); let events = store.get('events', []);
 let projects = store.get('projects', []); let notes = store.get('notes', []);
 let habits = store.get('habits', []); let habitLog = store.get('habitLog', []);
 let sessions = store.get('sessions', []);
+let rules = store.get('rules', []); let templates = store.get('templates', []);
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
 
 /* ---- Registro de colecciones ----
@@ -99,7 +100,7 @@ function uid() { return Date.now().toString(36) + Math.random().toString(36).sli
    importar), y no se pueden meter en un objeto sin reescribir los cientos de
    `tasks.push(...)` repartidos por el proyecto. Un switch explícito es más
    aburrido que elegante, pero no tiene magia que pueda fallar. */
-const DATA_COLLECTIONS = ['tasks', 'events', 'projects', 'notes', 'habits', 'habitLog', 'sessions'];
+const DATA_COLLECTIONS = ['tasks', 'events', 'projects', 'notes', 'habits', 'habitLog', 'sessions', 'rules', 'templates'];
 
 function getCollection(name) {
   switch (name) {
@@ -110,6 +111,8 @@ function getCollection(name) {
     case 'habits': return habits;
     case 'habitLog': return habitLog;
     case 'sessions': return sessions;
+    case 'rules': return rules;
+    case 'templates': return templates;
     default: return null;
   }
 }
@@ -124,6 +127,8 @@ function setCollection(name, value) {
     case 'habits': habits = list; break;
     case 'habitLog': habitLog = list; break;
     case 'sessions': sessions = list; break;
+    case 'rules': rules = list; break;
+    case 'templates': templates = list; break;
   }
 }
 
@@ -196,6 +201,7 @@ function showView(name) {
   if (name === 'agenda') { renderEvents(); showAgendaTab(localStorage.getItem('jdh_agendaTab') || 'calendar'); }
   if (name === 'tasks') renderTasks();
   if (name === 'habits' && typeof renderHabits === 'function') renderHabits();
+  if (name === 'auto' && typeof showAutoTab === 'function') showAutoTab(store.get('autoTab', 'rules'));
   if (name === 'projects') renderProjects();
   if (name === 'notes') renderNotes();
   if (name === 'data') renderDataView();
@@ -219,6 +225,7 @@ function refreshActiveView() {
     case 'agenda': renderEvents(); break;
     case 'tasks': renderTasks(); break;
     case 'habits': if (typeof renderHabits === 'function') renderHabits(); break;
+    case 'auto': if (typeof renderRules === 'function') renderRules(); break;
     case 'projects': renderProjects(); break;
     case 'notes': renderNotes(); break;
     case 'data': renderDataView(); break;
@@ -635,7 +642,7 @@ function renderProjects() {
    persiste en saveAll(). */
 
 document.querySelectorAll('[data-close-modal]').forEach(b => b.addEventListener('click', () => {
-  ['task-modal','project-modal','integrations-modal','habit-modal','focus-modal'].forEach(id => {
+  ['task-modal','project-modal','integrations-modal','habit-modal','focus-modal','template-modal','tpl-picker-modal'].forEach(id => {
     const m = document.getElementById(id);
     if (m) { m.classList.add('hidden'); m.classList.remove('flex'); }
   });
