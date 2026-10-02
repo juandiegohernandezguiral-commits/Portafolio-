@@ -20,7 +20,28 @@ const { getStore } = require('@netlify/blobs');
 // necesitas correr esto localmente contra Blobs reales (fuera de `netlify dev`,
 // que ya lo resuelve solo), puedes forzar el modo manual así:
 //   getStore({ name: 'jdh-agenda', siteID: process.env.NETLIFY_SITE_ID, token: process.env.NETLIFY_API_TOKEN })
+/* Netlify normalmente inyecta la configuración de Blobs en NETLIFY_BLOBS_CONTEXT
+   y getStore('nombre') funciona sin más. En este sitio esa variable NO llega
+   (comprobado: hasBlobsContext=false con hasSiteId=true y Node 24), y ni cambiar
+   el empaquetador ni actualizar el SDK lo resolvió — es algo del sitio, no del
+   código.
+
+   Así que se usa el modo manual que documenta el propio error de la librería:
+   pasarle siteID y token a mano. El siteID lo da Netlify solo; el token es un
+   Personal Access Token puesto como variable de entorno NETLIFY_API_TOKEN.
+
+   Se intenta primero el modo automático: si algún día Netlify empieza a
+   inyectar el contexto, esto sigue funcionando sin tocar nada, y el token deja
+   de hacer falta. */
 function agendaStore() {
+  if (process.env.NETLIFY_BLOBS_CONTEXT) return getStore('jdh-agenda');
+
+  const siteID = process.env.NETLIFY_SITE_ID || process.env.SITE_ID;
+  const token = process.env.NETLIFY_API_TOKEN;
+  if (siteID && token) return getStore({ name: 'jdh-agenda', siteID, token });
+
+  // Sin ninguna de las dos vías: que falle aquí con el error de la librería,
+  // que isBlobsConfigError() reconoce y convierte en un 503 explicado.
   return getStore('jdh-agenda');
 }
 
@@ -43,6 +64,7 @@ function blobsDiagnostics() {
   return {
     hasBlobsContext: !!process.env.NETLIFY_BLOBS_CONTEXT,
     hasSiteId: !!(process.env.SITE_ID || process.env.NETLIFY_SITE_ID),
+    hasApiToken: !!process.env.NETLIFY_API_TOKEN,
     nodeVersion: process.version,
   };
 }

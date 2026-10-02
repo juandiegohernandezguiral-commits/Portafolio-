@@ -104,7 +104,7 @@ exports.handler = async (event) => {
       console.error('[data-sync] Netlify Blobs no disponible', blobsDiagnostics());
       return json(503, {
         error: 'blobs_unavailable',
-        message: 'El almacenamiento (Netlify Blobs) no está disponible en este despliegue.',
+        message: 'El almacenamiento (Netlify Blobs) no está disponible. Añade la variable de entorno NETLIFY_API_TOKEN en Netlify (un Personal Access Token) y vuelve a desplegar.',
         diagnostics: blobsDiagnostics(),
       });
     }

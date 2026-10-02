@@ -80,6 +80,15 @@
   #                                el estándar web-push, identifica al remitente)
   #   PUSH_DUE_SOON_HOURS       — (opcional, default 24) horas antes del
   #                                vencimiento a partir de las cuales se notifica
+  #   NETLIFY_API_TOKEN         — Personal Access Token de tu cuenta de Netlify
+  #                                (User settings → Applications → Personal
+  #                                access tokens → New access token). Hace falta
+  #                                porque este sitio no recibe la inyección
+  #                                automática de Netlify Blobs: sin el token,
+  #                                getStore() no sabe contra qué almacén hablar
+  #                                y el sync responde 503. Si algún día Netlify
+  #                                empieza a inyectar NETLIFY_BLOBS_CONTEXT,
+  #                                este token deja de usarse solo.
   #   SYNC_TOKEN                — token compartido que protege /data/pull y
   #                                /data/push (el sync de tareas, notas, eventos
   #                                y proyectos del panel entre dispositivos).
