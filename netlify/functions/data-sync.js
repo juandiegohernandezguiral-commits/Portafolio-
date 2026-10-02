@@ -29,7 +29,7 @@
 // real: un cliente con datos corruptos o vacíos que sobrescribe la nube.
 // ============================================================================
 
-const { agendaStore } = require('./_lib/store');
+const { agendaStore, isBlobsConfigError, blobsDiagnostics } = require('./_lib/store');
 const { withCors, handlePreflight } = require('./_lib/cors');
 const { requireSyncToken } = require('./_lib/auth');
 
@@ -93,7 +93,23 @@ exports.handler = async (event) => {
   const unauthorized = requireSyncToken(event);
   if (unauthorized) return withCors(unauthorized);
 
-  const store = agendaStore();
+  // Dentro de un try: getStore() lanza si Netlify no inyectó la configuración de
+  // Blobs, y antes esa excepción salía sin tratar como un 502 con el stack
+  // completo dentro — inservible para diagnosticar y feo de filtrar.
+  let store;
+  try {
+    store = agendaStore();
+  } catch (err) {
+    if (isBlobsConfigError(err)) {
+      console.error('[data-sync] Netlify Blobs no disponible', blobsDiagnostics());
+      return json(503, {
+        error: 'blobs_unavailable',
+        message: 'El almacenamiento (Netlify Blobs) no está disponible en este despliegue.',
+        diagnostics: blobsDiagnostics(),
+      });
+    }
+    throw err;
+  }
 
   // ---------------------------------------------------------------- PULL ----
   if (event.httpMethod === 'GET') {
