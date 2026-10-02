@@ -20,6 +20,28 @@
    acumula error que luego aparece como descuadres de unos pocos pesos imposibles
    de explicar. */
 
+/* ============ REFERENCIAS DEL MERCADO COLOMBIANO ============
+   Los umbrales de este archivo NO son inventados: salen de datos publicados
+   sobre dropshipping contra entrega en Colombia (ver docs/dashboard.md para las
+   fuentes). Se guardan juntos y con su origen para que se puedan discutir y
+   actualizar, en vez de quedar escondidos como números mágicos dentro de un if.
+
+   Son REFERENCIAS DEL MERCADO, no leyes. Sirven para responder "¿cómo voy
+   frente a los demás?", no para decidir por ti: un nicho concreto puede
+   funcionar perfectamente fuera de estos rangos. */
+const BENCHMARKS = {
+  // Tasa de entrega. Promedio reportado 72-78%; con confirmación telefónica
+  // previa 65-78%, y sin confirmar cae a 50-60%. Por experiencia: principiante
+  // 65-75%, intermedio 75-85%, operación escalada 70-80%.
+  entrega: { critico: 65, normal: 72, bueno: 85, promedioMin: 72, promedioMax: 78 },
+  // Margen neto recomendado tras envío, comisiones y publicidad.
+  margenMinimoPct: 40,
+  // Ganancia neta por pedido típica en COD Colombia.
+  gananciaPorPedido: { min: 25000, max: 45000 },
+  // Rango de precio donde el contra entrega funciona mejor.
+  precioDulce: { min: 50000, max: 200000 },
+};
+
 const ORDER_STATUS = {
   nuevo:       { label: 'Nuevo',       tone: 'neutral', resolved: false },
   confirmado:  { label: 'Confirmado',  tone: 'accent',  resolved: false },
@@ -158,12 +180,23 @@ function effectiveReturnRate(p) {
   return d.rate === null ? 0 : 100 - d.rate;
 }
 
-/** CPA observado de un producto: gasto en campañas suyas / pedidos generados. */
+/** CPA observado de un producto: gasto en campañas suyas / pedidos generados.
+ *
+ *  Devuelve null si NO hay gasto registrado, y esto importa mucho más de lo que
+ *  parece. Antes bastaba con que hubiera pedidos para devolver 0/pedidos = 0, y
+ *  un CPA de cero hace que todo producto se vea rentable: la publicidad, que
+ *  suele ser el mayor costo variable, desaparecía de la cuenta. Un producto con
+ *  34% de margen real aparecía con 52%.
+ *
+ *  Cero nunca es una observación válida aquí: significa "no hay datos", y en ese
+ *  caso quien decide es el CPA objetivo que tú fijaste, no un optimismo
+ *  accidental. */
 function observedCpa(productId) {
   const gasto = campaigns.filter(c => c.productId === productId)
     .reduce((n, c) => n + (Number(c.spend) || 0), 0);
   const pedidos = orders.filter(o => o.productId === productId && o.status !== 'cancelado').length;
-  return pedidos > 0 ? gasto / pedidos : null;
+  if (gasto <= 0 || pedidos <= 0) return null;
+  return gasto / pedidos;
 }
 
 /** Ingresos y margen de los pedidos entregados en el rango. */
@@ -209,11 +242,14 @@ function statTile(label, value, sub, tone) {
     </div>`;
 }
 
-/** Barra de tasa de entrega. El color comunica riesgo, no decora. */
+/** Barra de tasa de entrega. El color comunica riesgo, no decora, y los cortes
+ *  son los de BENCHMARKS (datos del mercado colombiano), no cifras elegidas a
+ *  ojo. */
 function rateBar(rate) {
   if (rate === null) return '<span class="text-neutral-500 text-xs">sin datos</span>';
-  const color = rate >= 80 ? 'bg-green-500' : rate >= 65 ? 'bg-amber-500' : 'bg-red-500';
-  const texto = rate >= 80 ? 'text-green-600 dark:text-green-400' : rate >= 65 ? 'text-amber-600 dark:text-amber-400' : 'text-red-500';
+  const b = BENCHMARKS.entrega;
+  const color = rate >= b.bueno ? 'bg-green-500' : rate >= b.normal ? 'bg-accent' : rate >= b.critico ? 'bg-amber-500' : 'bg-red-500';
+  const texto = rate >= b.bueno ? 'text-green-600 dark:text-green-400' : rate >= b.normal ? 'text-accent' : rate >= b.critico ? 'text-amber-600 dark:text-amber-400' : 'text-red-500';
   return `
     <div class="flex items-center gap-3 min-w-[160px]">
       <div class="flex-1 h-2 rounded-full bg-neutral-200 dark:bg-white/10 overflow-hidden">
@@ -289,9 +325,12 @@ function renderPedidos() {
     </div>
 
     ${enTransito ? `
-      <div class="surface rounded-2xl px-6 py-4 mb-6 flex items-center gap-3 flex-wrap" style="border-left:3px solid #f59e0b;">
+      <div class="surface rounded-2xl px-6 py-4 mb-4 flex items-center gap-3 flex-wrap" style="border-left:3px solid #f59e0b;">
         <span class="text-sm flex-1">Tienes <strong>${enTransito}</strong> pedido${enTransito > 1 ? 's' : ''} en tránsito. No cuentan en la tasa de entrega hasta que se resuelvan.</span>
       </div>` : ''}
+
+    ${benchmarkBanner(d.rate)}
+    ${confirmacionBanner(lista)}
 
     <div class="grid lg:grid-cols-3 gap-4 mb-6">
       ${tablaTasas('Por producto', porProducto, 'entregados / resueltos')}
@@ -324,6 +363,77 @@ function renderPedidos() {
         </table>
       </div>
     </div>`;
+}
+
+/** Sitúa tu tasa frente a la del mercado. Compararse con uno mismo no dice si
+ *  el número es bueno; compararse con el promedio del sector, sí. */
+function benchmarkBanner(rate) {
+  if (rate === null) return '';
+  const b = BENCHMARKS.entrega;
+  let tono, texto;
+  if (rate >= b.bueno) {
+    tono = '#22c55e';
+    texto = `Tu <strong>${pct(rate)}</strong> está por encima del promedio del mercado colombiano (${b.promedioMin}–${b.promedioMax}%). Es nivel de operación madura.`;
+  } else if (rate >= b.normal) {
+    tono = '#2667ff';
+    texto = `Tu <strong>${pct(rate)}</strong> está dentro del promedio del mercado colombiano (${b.promedioMin}–${b.promedioMax}%).`;
+  } else if (rate >= b.critico) {
+    tono = '#f59e0b';
+    texto = `Tu <strong>${pct(rate)}</strong> está por debajo del promedio (${b.promedioMin}–${b.promedioMax}%). Es el rango típico de quien empieza — se sube confirmando por teléfono antes de despachar.`;
+  } else {
+    tono = '#ef4444';
+    texto = `Tu <strong>${pct(rate)}</strong> está muy por debajo del promedio (${b.promedioMin}–${b.promedioMax}%). Despachar sin confirmar suele dejar la tasa entre 50 y 60%; revisa ese paso antes de subir presupuesto.`;
+  }
+  return `<div class="surface rounded-2xl px-6 py-4 mb-4" style="border-left:3px solid ${tono};">
+    <p class="text-sm leading-relaxed">${texto}</p>
+  </div>`;
+}
+
+/** Compara la tasa de los pedidos confirmados contra los que salieron sin
+ *  confirmar. Se mide en TUS datos en vez de repetir la cifra del sector: lo que
+ *  importa es si en tu operación concreta confirmar cambia algo. */
+function confirmacionBanner(lista) {
+  const resueltos = lista.filter(o => ORDER_STATUS[o.status]?.resolved);
+  const conf = deliveryRate(resueltos.filter(o => o.confirmed));
+  const sin = deliveryRate(resueltos.filter(o => !o.confirmed));
+
+  // Hace falta una muestra mínima por lado: con tres pedidos cualquier
+  // diferencia es ruido y presentarla como hallazgo sería engañarse.
+  if (conf.resolved < 5 || sin.resolved < 5) {
+    return `<div class="surface rounded-2xl px-6 py-4 mb-6">
+      <p class="text-sm text-neutral-500 leading-relaxed">
+        <strong class="text-neutral-700 dark:text-neutral-300">Confirmación telefónica.</strong>
+        Es la palanca más citada para subir la entrega en contra entrega: confirmar antes de
+        despachar reduce las devoluciones entre un 40% y un 60%. Marca los pedidos como
+        <em>Confirmado</em> antes de <em>Despachado</em> y aquí verás si en tu operación
+        funciona igual. ${conf.resolved + sin.resolved > 0 ? `Llevas ${conf.resolved} confirmados y ${sin.resolved} sin confirmar resueltos; hacen falta al menos 5 de cada uno.` : ''}
+      </p>
+    </div>`;
+  }
+
+  const diff = conf.rate - sin.rate;
+  const tono = diff > 5 ? '#22c55e' : diff < -5 ? '#ef4444' : '#2667ff';
+  return `<div class="surface rounded-2xl px-6 py-4 mb-6" style="border-left:3px solid ${tono};">
+    <div class="flex items-center gap-6 flex-wrap">
+      <div>
+        <div class="meta-label text-neutral-500 mb-1">Confirmados</div>
+        <div class="display text-2xl">${pct(conf.rate)}</div>
+        <div class="text-xs text-neutral-500">${conf.delivered}/${conf.resolved}</div>
+      </div>
+      <div>
+        <div class="meta-label text-neutral-500 mb-1">Sin confirmar</div>
+        <div class="display text-2xl">${pct(sin.rate)}</div>
+        <div class="text-xs text-neutral-500">${sin.delivered}/${sin.resolved}</div>
+      </div>
+      <p class="text-sm flex-1 min-w-[240px] leading-relaxed">
+        ${diff > 5
+          ? `Confirmar te sube la entrega <strong>${pct(diff)}</strong>. Es el dato de tu propia operación, no una regla general: vale la pena confirmar todo.`
+          : diff < -5
+          ? `Tus confirmados entregan <strong>${pct(Math.abs(diff))}</strong> menos, que es lo contrario de lo esperado. Probablemente estés marcando como confirmados pedidos que en realidad no lo están.`
+          : `Apenas <strong>${pct(Math.abs(diff))}</strong> de diferencia. En tu operación confirmar todavía no está cambiando el resultado.`}
+      </p>
+    </div>
+  </div>`;
 }
 
 function renderOrderRows() {
@@ -415,6 +525,41 @@ function renderProductos() {
     </div>`;
 }
 
+/** Avisos de un producto contra las referencias del mercado (BENCHMARKS). */
+function productWarnings(p, e) {
+  const avisos = [];
+
+  if (e.margen <= 0) {
+    avisos.push({ tono: '#ef4444', texto:
+      `Pierdes ${cop(Math.abs(e.margen))} por entrega. Baja el CPA, sube el precio o mejora la tasa de entrega.` });
+  } else {
+    if (e.margenPct < BENCHMARKS.margenMinimoPct) {
+      avisos.push({ tono: '#f59e0b', texto:
+        `Margen del ${pct(e.margenPct)}. Para contra entrega se recomienda al menos ${BENCHMARKS.margenMinimoPct}% neto, porque cualquier subida del CPA o de las devoluciones se come lo que queda.` });
+    }
+    const g = BENCHMARKS.gananciaPorPedido;
+    if (e.margen < g.min) {
+      avisos.push({ tono: '#f59e0b', texto:
+        `Ganas ${cop(e.margen)} por pedido. Lo típico en COD Colombia es entre ${cop(g.min)} y ${cop(g.max)}; por debajo cuesta mucho que el volumen compense.` });
+    }
+  }
+
+  const pr = BENCHMARKS.precioDulce;
+  if (e.price > 0 && e.price < pr.min) {
+    avisos.push({ tono: '#f59e0b', texto:
+      `Precio de ${cop(e.price)}. El contra entrega funciona mejor entre ${cop(pr.min)} y ${cop(pr.max)}: por debajo, el flete y la publicidad pesan demasiado sobre el ticket.` });
+  } else if (e.price > pr.max) {
+    avisos.push({ tono: '#2667ff', texto:
+      `Precio de ${cop(e.price)}, por encima del rango habitual de contra entrega (hasta ${cop(pr.max)}). Se puede vender, pero suele costar más que el cliente acepte pagar al recibir.` });
+  }
+
+  if (!avisos.length) return '';
+  return avisos.map(a => `
+    <div class="rounded-xl p-4" style="border-left:3px solid ${a.tono};background:${a.tono}10">
+      <p class="text-xs leading-relaxed" style="color:${a.tono}">${a.texto}</p>
+    </div>`).join('');
+}
+
 function renderProductCard(p) {
   const cpaObs = observedCpa(p.id);
   const e = unitEconomics(p, { cpa: cpaObs ?? undefined });
@@ -477,10 +622,7 @@ function renderProductCard(p) {
             <div class="meta-label text-neutral-500 mb-1">Margen sobre venta</div>
             <div class="display text-2xl ${viable ? '' : 'text-red-500'}">${pct(e.margenPct)}</div>
           </div>
-          ${!viable ? `
-            <div class="rounded-xl p-4" style="border-left:3px solid #ef4444;background:rgba(239,68,68,0.06)">
-              <p class="text-red-500 text-xs leading-relaxed">Con estos números pierdes ${cop(Math.abs(e.margen))} por entrega. Baja el CPA, sube el precio o mejora la tasa de entrega.</p>
-            </div>` : ''}
+          ${productWarnings(p, e)}
         </div>
       </div>
       ${p.killReason ? `<p class="text-neutral-500 text-xs mt-4 pt-4 border-t border-neutral-100 dark:border-white/5"><strong>Por qué se descartó:</strong> ${escapeHtml(p.killReason)}</p>` : ''}
@@ -505,6 +647,7 @@ function renderCampanas() {
   }).filter(x => x.count > 0);
 
   box.innerHTML = `
+    ${metaSyncBanner()}
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
       ${statTile('Gasto en pauta', cop(gasto), `últimos ${dropUi.rangeDays} días`)}
       ${statTile('CPA global', cpaGlobal === null ? '—' : cop(cpaGlobal), `${pedidosRango.length} pedidos`)}
@@ -720,6 +863,12 @@ document.addEventListener('change', e => {
     // Sella cuándo se resolvió: sirve para medir cuánto tarda la transportadora.
     if (ORDER_STATUS[o.status]?.resolved) o.resolvedAt = Date.now();
     else delete o.resolvedAt;
+    /* `confirmed` es una marca permanente, no el estado actual. El estado avanza
+       (confirmado → despachado → entregado) y se pierde el rastro de por dónde
+       pasó; esta bandera recuerda que SÍ hubo confirmación, que es lo que luego
+       permite comparar la tasa de entrega de lo confirmado contra lo que salió
+       sin confirmar. */
+    if (o.status === 'confirmado') o.confirmed = true;
     touch(o); saveAll(); renderDropship();
     return;
   }
@@ -751,6 +900,7 @@ document.getElementById('order-form')?.addEventListener('submit', e => {
     carrier: (fd.get('carrier') || '').trim(),
     source: fd.get('source') || 'meta',
     status: fd.get('status') || 'nuevo',
+    confirmed: (fd.get('status') || 'nuevo') === 'confirmado',
     notes: (fd.get('notes') || '').trim(),
     createdAt: Date.now(),
   }));
@@ -799,3 +949,121 @@ document.getElementById('campaign-form')?.addEventListener('submit', e => {
 
 document.querySelectorAll('.drop-tab-btn').forEach(b =>
   b.addEventListener('click', () => showDropTab(b.dataset.dropTab)));
+
+/* ============ META ADS EN VIVO ============
+   El token de Meta nunca llega al navegador: la petición va al backend propio
+   (/meta/campaigns), que lo guarda como variable de entorno y devuelve sólo las
+   métricas. Mismo patrón que el proxy de Notion, y protegido con el mismo
+   SYNC_TOKEN porque esto revela cuánto gastas en publicidad. */
+
+const metaState = { status: 'idle', error: null, lastSync: store.get('metaLastSync', null) };
+
+function metaBaseUrl() {
+  return ((integrations.sync?.url || integrations.notion?.proxyUrl || '') + '').trim().replace(/\/$/, '');
+}
+function isMetaConfigured() { return !!(metaBaseUrl() && (integrations.sync?.token || '').trim()); }
+
+const PRESET_POR_RANGO = { 7: 'last_7d', 30: 'last_30d', 90: 'last_90d', 0: 'last_90d' };
+
+/**
+ * Trae las campañas de Meta y las vuelca en `campaigns`.
+ *
+ * Se hace UPSERT por `externalId` + fecha de corte, no se añaden filas nuevas en
+ * cada sincronización: si no, sincronizar dos veces el mismo día duplicaría el
+ * gasto y todos los CPA saldrían a la mitad. Los registros escritos a mano no se
+ * tocan — sólo se actualizan los que vinieron de Meta.
+ */
+async function syncMetaCampaigns({ interactive = false } = {}) {
+  if (!isMetaConfigured()) {
+    if (interactive) alert('Primero configura la URL del backend y el SYNC_TOKEN en "Conectar cuentas" → Sincronización.');
+    return false;
+  }
+  metaState.status = 'loading';
+  metaState.error = null;
+  renderDropship();
+
+  const preset = PRESET_POR_RANGO[dropUi.rangeDays] || 'last_30d';
+  try {
+    const res = await fetch(`${metaBaseUrl()}/meta/campaigns?preset=${preset}`, {
+      headers: { 'X-Sync-Token': (integrations.sync.token || '').trim() },
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || `El servidor respondió ${res.status}`);
+
+    const corte = dateKey(new Date());
+    let nuevos = 0, actualizados = 0;
+
+    (data.items || []).forEach(item => {
+      const existente = campaigns.find(c => c.externalId === item.externalId && c.date === corte);
+      if (existente) {
+        Object.assign(existente, {
+          name: item.name, spend: item.spend, results: item.results,
+          impressions: item.impressions, clicks: item.clicks, ctr: item.ctr,
+        });
+        touch(existente);
+        actualizados++;
+      } else {
+        campaigns.push(touch({
+          id: uid(), externalId: item.externalId, source: 'meta-api',
+          date: corte, name: item.name, platform: 'meta',
+          // El producto se asocia a mano: Meta no sabe cuál de tus productos es
+          // cada campaña, y adivinarlo por el nombre fallaría en silencio.
+          productId: '',
+          spend: item.spend, results: item.results,
+          impressions: item.impressions, clicks: item.clicks, ctr: item.ctr,
+          createdAt: Date.now(),
+        }));
+        nuevos++;
+      }
+    });
+
+    saveAll();
+    metaState.status = 'ok';
+    metaState.lastSync = new Date().toISOString();
+    store.set('metaLastSync', metaState.lastSync);
+    renderDropship();
+    toast(`Meta sincronizado: ${nuevos} nuevas, ${actualizados} actualizadas`);
+    return true;
+  } catch (err) {
+    console.warn('[meta] sincronización falló:', err);
+    metaState.status = 'error';
+    metaState.error = err.message;
+    renderDropship();
+    if (interactive) alert('No se pudo traer Meta: ' + err.message);
+    return false;
+  }
+}
+
+function metaSyncBanner() {
+  if (!isMetaConfigured()) {
+    return `<div class="surface rounded-2xl px-6 py-4 mb-6 flex items-center gap-4 flex-wrap">
+      <div class="flex-1 min-w-[240px]">
+        <h3 class="font-display font-bold text-sm">Meta Ads en vivo</h3>
+        <p class="text-neutral-500 text-xs mt-0.5">Necesita el backend configurado y las variables META_ACCESS_TOKEN y META_AD_ACCOUNT_ID en Netlify.</p>
+      </div>
+      <button type="button" data-open-integrations="sync" class="meta-label !text-accent shrink-0">Configurar →</button>
+    </div>`;
+  }
+  const estados = {
+    idle: ['bg-neutral-400', 'text-neutral-500', metaState.lastSync ? `Última vez ${relativeTime(metaState.lastSync)}` : 'Sin sincronizar todavía'],
+    loading: ['bg-accent animate-pulse', 'text-accent', 'Trayendo campañas…'],
+    ok: ['bg-accent', 'text-accent', `Sincronizado ${relativeTime(metaState.lastSync)}`],
+    error: ['bg-red-500', 'text-red-500', metaState.error || 'Error'],
+  };
+  const [dot, txt, msg] = estados[metaState.status] || estados.idle;
+  return `<div class="surface rounded-2xl px-6 py-4 mb-6 flex items-center gap-4 flex-wrap">
+    <span class="w-1.5 h-1.5 rounded-full ${dot} shrink-0"></span>
+    <div class="flex-1 min-w-[200px]">
+      <h3 class="font-display font-bold text-sm">Meta Ads en vivo</h3>
+      <p class="meta-label ${txt} mt-0.5">${escapeHtml(msg)}</p>
+    </div>
+    <button type="button" id="meta-sync-btn" ${metaState.status === 'loading' ? 'disabled' : ''}
+      class="px-4 py-2 rounded-xl bg-accent text-white font-bold mono text-[10px] uppercase tracking-[0.15em] shrink-0 ${metaState.status === 'loading' ? 'opacity-50' : ''}">
+      ↻ Traer de Meta
+    </button>
+  </div>`;
+}
+
+document.addEventListener('click', e => {
+  if (e.target.closest('#meta-sync-btn')) syncMetaCampaigns({ interactive: true });
+});

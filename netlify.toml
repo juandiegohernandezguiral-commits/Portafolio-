@@ -80,6 +80,15 @@
   #                                el estándar web-push, identifica al remitente)
   #   PUSH_DUE_SOON_HOURS       — (opcional, default 24) horas antes del
   #                                vencimiento a partir de las cuales se notifica
+  #   META_ACCESS_TOKEN         — token de acceso de Meta con permiso ads_read.
+  #                                Se genera en developers.facebook.com →
+  #                                Herramientas → Graph API Explorer, o mejor
+  #                                como token de larga duración de una app de
+  #                                sistema. Da acceso de LECTURA a toda la cuenta
+  #                                publicitaria, por eso vive aquí y nunca en el
+  #                                navegador.
+  #   META_AD_ACCOUNT_ID        — id numérico de la cuenta publicitaria, sin el
+  #                                prefijo "act_".
   #   BLOBS_TOKEN               — Personal Access Token de tu cuenta de Netlify
   #                                (User settings → Applications → Personal
   #                                access tokens → New access token). Hace falta
@@ -140,6 +149,13 @@
 [[redirects]]
   from = "/data/push"
   to = "/.netlify/functions/data-sync"
+  status = 200
+
+# Campañas de Meta Ads en vivo para el Centro de campañas del panel.
+# Protegido con SYNC_TOKEN: expone cuánto gastas en publicidad.
+[[redirects]]
+  from = "/meta/campaigns"
+  to = "/.netlify/functions/meta-ads"
   status = 200
 
 # Nota: scheduled-check-deadlines.js NO necesita redirect — no es accesible por

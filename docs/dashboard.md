@@ -133,6 +133,54 @@ enough, and it guarantees typing a full word ranks the literal match first.
 
   Money is handled in **whole pesos**. COP has no cents in practice, and accumulating floats
   across hundreds of rows produces few-peso discrepancies that are impossible to explain.
+
+  **`observedCpa()` returns `null`, never `0`, when no spend is recorded.** This was a real bug:
+  `0 spend / 20 orders` returned `0`, so advertising — usually the largest variable cost —
+  silently vanished from the margin calculation and every product looked profitable. A product
+  with a true 34% margin displayed 52%. Zero is never a valid observation here; it means "no
+  data", and the user's own `targetCpa` should decide instead of accidental optimism.
+
+  ### Market benchmarks (`BENCHMARKS`)
+
+  The thresholds are **not invented**. An earlier version hard-coded green ≥80 / amber ≥65 picked
+  by feel; they are now grounded in published figures for Colombian COD dropshipping and kept in
+  one constant with their provenance, so they can be argued with and updated rather than hiding
+  as magic numbers inside an `if`:
+
+  | Reference | Value | Source |
+  |---|---|---|
+  | Delivery rate, market average | 72–78% | [Talkyria](https://talkyria.com/blog/dropshipping-colombia-guia-completa), [Andrey Business](https://www.andreybusiness.com/colombia) |
+  | Without phone confirmation | 50–60% | same |
+  | By maturity | beginner 65–75%, intermediate 75–85%, scaled 70–80% | same |
+  | Returns / rejections | 10–20% normal, 50–60% with no process | same |
+  | Phone confirmation effect | cuts returns 40–60% | same |
+  | Minimum recommended net margin | 40% after shipping, fees and ads | [Facil.com.co](https://facil.com.co/como-crear-una-estrategia-de-precios-para-tu-negocio-de-dropshipping-en-colombia/) |
+  | Net profit per order | 25,000–45,000 COP | [Andrey Business](https://www.andreybusiness.com/blog/cuanto-gana-dropshipper-mes-colombia-2026) |
+  | COD price sweet spot | 50,000–200,000 COP | same |
+  | Who pays return freight | **the dropshipper** (Servientrega free in some cases) | [Andrey Business](https://www.andreybusiness.com/blog/dropshipping-contra-entrega-guia-definitiva-2026), [Envíotodo](https://enviotodo.com.co/como-funciona-el-pago-contra-entrega/) |
+
+  They are **market references, not laws** — a given niche can work outside these ranges. They
+  answer "how am I doing versus everyone else", which comparing against yourself cannot.
+
+  The **confirmation comparison** deserves note: rather than repeating the "40–60%" figure at the
+  user, the panel measures delivery rate for orders flagged `confirmed` against those that
+  weren't, in their own data, and only reports it once there are ≥5 resolved orders on each side.
+  Below that any difference is noise. `confirmed` is a permanent flag, not the current status,
+  because status moves on (confirmado → despachado → entregado) and would otherwise lose the trail.
+
+  ### Meta Ads live (`netlify/functions/meta-ads.js`)
+
+  `GET /meta/campaigns?preset=last_30d` returns campaign-level spend, impressions, clicks, CTR
+  and results. The Meta token grants read access to the whole ad account, so it lives as a
+  server env var (`META_ACCESS_TOKEN`, `META_AD_ACCOUNT_ID`) and never reaches the browser —
+  same reasoning as the Notion proxy. Protected by `SYNC_TOKEN` because it exposes ad spend.
+
+  For Click-to-WhatsApp the meaningful action is `onsite_conversion.total_messaging_connection`,
+  not a purchase — there is no checkout. `extractResults()` walks a priority list.
+
+  The client **upserts by `externalId` + today's date** rather than appending: syncing twice in
+  one day would otherwise double the recorded spend and halve every CPA. Campaign→product
+  association stays manual; guessing it from the campaign name would fail silently.
 - **Automatización** (`js/16-rules.js`, `js/17-templates.js`) — two tabs.
 
   **Reglas.** Typed rules, not a generic `when <field> <op> <value>` builder: for one person a
