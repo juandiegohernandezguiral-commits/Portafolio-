@@ -86,6 +86,9 @@ let projects = store.get('projects', []); let notes = store.get('notes', []);
 let habits = store.get('habits', []); let habitLog = store.get('habitLog', []);
 let sessions = store.get('sessions', []);
 let rules = store.get('rules', []); let templates = store.get('templates', []);
+// Dropshipping (ver js/19-dropship.js)
+let orders = store.get('orders', []); let shopProducts = store.get('shopProducts', []);
+let campaigns = store.get('campaigns', []);
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
 
 /* ---- Registro de colecciones ----
@@ -100,7 +103,12 @@ function uid() { return Date.now().toString(36) + Math.random().toString(36).sli
    importar), y no se pueden meter en un objeto sin reescribir los cientos de
    `tasks.push(...)` repartidos por el proyecto. Un switch explícito es más
    aburrido que elegante, pero no tiene magia que pueda fallar. */
-const DATA_COLLECTIONS = ['tasks', 'events', 'projects', 'notes', 'habits', 'habitLog', 'sessions', 'rules', 'templates'];
+const DATA_COLLECTIONS = [
+  'tasks', 'events', 'projects', 'notes', 'habits', 'habitLog', 'sessions', 'rules', 'templates',
+  // `shopProducts` y no `products` para no confundirlo con `projects`, que ya
+  // existe y significa otra cosa.
+  'orders', 'shopProducts', 'campaigns',
+];
 
 function getCollection(name) {
   switch (name) {
@@ -113,6 +121,9 @@ function getCollection(name) {
     case 'sessions': return sessions;
     case 'rules': return rules;
     case 'templates': return templates;
+    case 'orders': return orders;
+    case 'shopProducts': return shopProducts;
+    case 'campaigns': return campaigns;
     default: return null;
   }
 }
@@ -129,6 +140,9 @@ function setCollection(name, value) {
     case 'sessions': sessions = list; break;
     case 'rules': rules = list; break;
     case 'templates': templates = list; break;
+    case 'orders': orders = list; break;
+    case 'shopProducts': shopProducts = list; break;
+    case 'campaigns': campaigns = list; break;
   }
 }
 
@@ -200,6 +214,7 @@ function showView(name) {
   if (name === 'today' && typeof renderToday === 'function') renderToday();
   if (name === 'agenda') { renderEvents(); showAgendaTab(localStorage.getItem('jdh_agendaTab') || 'calendar'); }
   if (name === 'tasks') renderTasks();
+  if (name === 'dropship' && typeof renderDropship === 'function') renderDropship();
   if (name === 'habits' && typeof renderHabits === 'function') renderHabits();
   if (name === 'auto' && typeof showAutoTab === 'function') showAutoTab(store.get('autoTab', 'rules'));
   if (name === 'projects') renderProjects();
@@ -224,6 +239,7 @@ function refreshActiveView() {
     case 'today': if (typeof renderToday === 'function') renderToday(); break;
     case 'agenda': renderEvents(); break;
     case 'tasks': renderTasks(); break;
+    case 'dropship': if (typeof renderDropship === 'function') renderDropship(); break;
     case 'habits': if (typeof renderHabits === 'function') renderHabits(); break;
     case 'auto': if (typeof renderRules === 'function') renderRules(); break;
     case 'projects': renderProjects(); break;
@@ -642,7 +658,8 @@ function renderProjects() {
    persiste en saveAll(). */
 
 document.querySelectorAll('[data-close-modal]').forEach(b => b.addEventListener('click', () => {
-  ['task-modal','project-modal','integrations-modal','habit-modal','focus-modal','template-modal','tpl-picker-modal'].forEach(id => {
+  ['task-modal','project-modal','integrations-modal','habit-modal','focus-modal','template-modal','tpl-picker-modal',
+   'order-modal','product-modal','campaign-modal'].forEach(id => {
     const m = document.getElementById(id);
     if (m) { m.classList.add('hidden'); m.classList.remove('flex'); }
   });

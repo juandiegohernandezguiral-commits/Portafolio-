@@ -698,6 +698,10 @@
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="shrink-0"><path d="M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
           <span class="hidden lg:inline">Tareas</span>
         </button>
+        <button type="button" class="dash-nav w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm hover:bg-neutral-100 dark:hover:bg-white/5 transition" data-view="dropship">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="shrink-0"><path d="M1 3h15v13H1zM16 8h4l3 3v5h-7z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+          <span class="hidden lg:inline">Dropshipping</span>
+        </button>
         <button type="button" class="dash-nav w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm hover:bg-neutral-100 dark:hover:bg-white/5 transition" data-view="habits">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="shrink-0"><path d="M3 17l5-5 4 4 9-9"/><path d="M21 7h-5M21 7v5"/></svg>
           <span class="hidden lg:inline">Hábitos</span>
@@ -932,6 +936,34 @@
               <div class="kanban-list space-y-2 min-h-[200px]" data-status="done"></div>
             </div>
           </div>
+        </section>
+
+        <!-- Dropshipping: pedidos COD, unit economics y campañas. Ver js/19-dropship.js -->
+        <section class="dash-view hidden" data-view="dropship">
+          <div class="flex items-end justify-between mb-6 flex-wrap gap-4">
+            <div>
+              <div class="meta-label text-neutral-500 mb-2">/ negocio</div>
+              <h1 class="display text-3xl md:text-5xl">Dropshipping</h1>
+              <p class="text-neutral-500 mt-2 max-w-2xl">En contra entrega un pedido no es una venta: es una promesa. Aquí se mide lo que de verdad entregaste y cobraste.</p>
+            </div>
+            <label class="shrink-0">
+              <span class="meta-label text-neutral-500 block mb-1.5">Rango</span>
+              <select id="drop-range" class="surface rounded-xl px-4 py-2.5 text-sm focus:border-accent focus:outline-none">
+                <option value="7">Últimos 7 días</option>
+                <option value="30" selected>Últimos 30 días</option>
+                <option value="90">Últimos 90 días</option>
+                <option value="0">Todo</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="inline-flex p-1 rounded-full surface-soft mb-6" role="tablist">
+            <button type="button" role="tab" class="drop-tab-btn bg-accent text-white px-5 py-2 rounded-full text-xs font-bold mono uppercase tracking-[0.15em] transition" data-drop-tab="pedidos">Pedidos</button>
+            <button type="button" role="tab" class="drop-tab-btn text-neutral-500 px-5 py-2 rounded-full text-xs font-bold mono uppercase tracking-[0.15em] transition" data-drop-tab="productos">Productos</button>
+            <button type="button" role="tab" class="drop-tab-btn text-neutral-500 px-5 py-2 rounded-full text-xs font-bold mono uppercase tracking-[0.15em] transition" data-drop-tab="campanas">Campañas</button>
+          </div>
+
+          <div id="drop-panel"></div>
         </section>
 
         <!-- Hábitos: rachas y mapa de calor anual. Ver js/13-habits.js -->
@@ -1208,6 +1240,141 @@
       <div class="flex gap-3 pt-3">
         <button type="button" class="flex-1 py-3 rounded-xl surface-soft hover:border-accent" data-close-modal>Cancelar</button>
         <button type="submit" class="flex-1 py-3 rounded-xl bg-accent text-white font-bold mono text-[11px] uppercase tracking-[0.25em]">Crear</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ===== DROPSHIPPING: modales ===== -->
+<div id="order-modal" class="fixed inset-0 z-[70] hidden items-start justify-center bg-black/60 backdrop-blur p-6 overflow-y-auto">
+  <div class="surface rounded-2xl p-8 max-w-lg w-full my-8">
+    <h3 class="font-display font-bold text-xl mb-1">Nuevo pedido</h3>
+    <p class="text-neutral-500 text-sm mb-6">Regístralo apenas te escriban por WhatsApp.</p>
+    <form id="order-form" class="space-y-3">
+      <div class="grid sm:grid-cols-2 gap-3">
+        <label class="block"><span class="meta-label text-neutral-500 block mb-1.5 px-1">Cliente</span>
+          <input name="customer" required placeholder="Nombre" class="w-full surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none" /></label>
+        <label class="block"><span class="meta-label text-neutral-500 block mb-1.5 px-1">WhatsApp</span>
+          <input name="phone" inputmode="tel" placeholder="300 000 0000" class="w-full surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none" /></label>
+      </div>
+      <label class="block"><span class="meta-label text-neutral-500 block mb-1.5 px-1">Producto</span>
+        <select name="productId" class="w-full surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none"></select></label>
+      <div class="grid sm:grid-cols-3 gap-3">
+        <label class="block"><span class="meta-label text-neutral-500 block mb-1.5 px-1">Cantidad</span>
+          <input name="qty" type="number" min="1" value="1" class="w-full surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none" /></label>
+        <label class="block sm:col-span-2"><span class="meta-label text-neutral-500 block mb-1.5 px-1">Valor total (COP)</span>
+          <input name="price" type="number" min="0" inputmode="numeric" placeholder="89900" class="w-full surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none" /></label>
+      </div>
+      <div class="grid sm:grid-cols-2 gap-3">
+        <label class="block"><span class="meta-label text-neutral-500 block mb-1.5 px-1">Ciudad</span>
+          <input name="city" list="ciudades-col" placeholder="Medellín" class="w-full surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none" /></label>
+        <label class="block"><span class="meta-label text-neutral-500 block mb-1.5 px-1">Transportadora</span>
+          <input name="carrier" list="transportadoras-col" placeholder="Interrapidísimo" class="w-full surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none" /></label>
+      </div>
+      <div class="grid sm:grid-cols-2 gap-3">
+        <label class="block"><span class="meta-label text-neutral-500 block mb-1.5 px-1">Vino de</span>
+          <select name="source" class="w-full surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none">
+            <option value="meta">Meta</option><option value="tiktok">TikTok</option>
+            <option value="organico">Orgánico</option><option value="otro">Otro</option>
+          </select></label>
+        <label class="block"><span class="meta-label text-neutral-500 block mb-1.5 px-1">Estado</span>
+          <select name="status" class="w-full surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none">
+            <option value="nuevo">Nuevo</option><option value="confirmado">Confirmado</option>
+            <option value="despachado">Despachado</option><option value="entregado">Entregado</option>
+            <option value="devuelto">Devuelto</option><option value="cancelado">Cancelado</option>
+          </select></label>
+      </div>
+      <div class="flex gap-3 pt-3">
+        <button type="button" class="flex-1 py-3 rounded-xl surface-soft hover:border-accent" data-close-modal>Cancelar</button>
+        <button type="submit" class="flex-1 py-3 rounded-xl bg-accent text-white font-bold mono text-[11px] uppercase tracking-[0.25em]">Registrar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Listas de sugerencias: ahorran tecleo y, sobre todo, evitan que la misma
+     ciudad entre escrita de tres formas distintas y rompa las estadisticas. -->
+<datalist id="ciudades-col">
+  <option value="Medellín"></option><option value="Bogotá"></option><option value="Cali"></option>
+  <option value="Barranquilla"></option><option value="Cartagena"></option><option value="Bucaramanga"></option>
+  <option value="Pereira"></option><option value="Manizales"></option><option value="Cúcuta"></option>
+  <option value="Santa Marta"></option><option value="Ibagué"></option><option value="Villavicencio"></option>
+</datalist>
+<datalist id="transportadoras-col">
+  <option value="Interrapidísimo"></option><option value="Servientrega"></option><option value="Envía"></option>
+  <option value="Coordinadora"></option><option value="TCC"></option><option value="Deprisa"></option>
+</datalist>
+
+<div id="product-modal" class="fixed inset-0 z-[70] hidden items-start justify-center bg-black/60 backdrop-blur p-6 overflow-y-auto">
+  <div class="surface rounded-2xl p-8 max-w-lg w-full my-8">
+    <h3 class="font-display font-bold text-xl mb-1">Producto</h3>
+    <p class="text-neutral-500 text-sm mb-6">Con estos números el panel calcula tu margen real y tu CPA máximo.</p>
+    <form id="product-form" class="space-y-3">
+      <div class="grid sm:grid-cols-[1fr_160px] gap-3">
+        <label class="block"><span class="meta-label text-neutral-500 block mb-1.5 px-1">Nombre</span>
+          <input name="name" required placeholder="Cinturón térmico" class="w-full surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none" /></label>
+        <label class="block"><span class="meta-label text-neutral-500 block mb-1.5 px-1">Etapa</span>
+          <select name="stage" class="w-full surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none">
+            <option value="investigacion">Investigación</option><option value="validacion">Validación</option>
+            <option value="test">Test</option><option value="escala">Escala</option><option value="descartado">Descartado</option>
+          </select></label>
+      </div>
+      <div class="grid sm:grid-cols-2 gap-3">
+        <label class="block"><span class="meta-label text-neutral-500 block mb-1.5 px-1">Precio de venta</span>
+          <input name="price" type="number" min="0" inputmode="numeric" placeholder="89900" class="w-full surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none" /></label>
+        <label class="block"><span class="meta-label text-neutral-500 block mb-1.5 px-1">Costo del producto</span>
+          <input name="cost" type="number" min="0" inputmode="numeric" placeholder="28000" class="w-full surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none" /></label>
+        <label class="block"><span class="meta-label text-neutral-500 block mb-1.5 px-1">Flete de ida</span>
+          <input name="shipOut" type="number" min="0" inputmode="numeric" placeholder="12000" class="w-full surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none" /></label>
+        <label class="block"><span class="meta-label text-neutral-500 block mb-1.5 px-1">Flete de devolución</span>
+          <input name="shipBack" type="number" min="0" inputmode="numeric" placeholder="12000" class="w-full surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none" /></label>
+        <label class="block"><span class="meta-label text-neutral-500 block mb-1.5 px-1">Comisión</span>
+          <input name="fee" type="number" min="0" inputmode="numeric" placeholder="3000" class="w-full surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none" /></label>
+        <label class="block"><span class="meta-label text-neutral-500 block mb-1.5 px-1">CPA objetivo</span>
+          <input name="targetCpa" type="number" min="0" inputmode="numeric" placeholder="20000" class="w-full surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none" /></label>
+      </div>
+      <div class="grid sm:grid-cols-2 gap-3">
+        <label class="block"><span class="meta-label text-neutral-500 block mb-1.5 px-1">Proveedor</span>
+          <input name="supplier" placeholder="Opcional" class="w-full surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none" /></label>
+        <label class="block"><span class="meta-label text-neutral-500 block mb-1.5 px-1">Enlace</span>
+          <input name="link" type="url" placeholder="Opcional" class="w-full surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none" /></label>
+      </div>
+      <label class="block"><span class="meta-label text-neutral-500 block mb-1.5 px-1">Si lo descartas, ¿por qué?</span>
+        <input name="killReason" placeholder="Para no repetir el error dentro de seis meses" class="w-full surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none" /></label>
+      <div class="flex gap-3 pt-3">
+        <button type="button" class="flex-1 py-3 rounded-xl surface-soft hover:border-accent" data-close-modal>Cancelar</button>
+        <button type="submit" class="flex-1 py-3 rounded-xl bg-accent text-white font-bold mono text-[11px] uppercase tracking-[0.25em]">Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="campaign-modal" class="fixed inset-0 z-[70] hidden items-start justify-center bg-black/60 backdrop-blur p-6 overflow-y-auto">
+  <div class="surface rounded-2xl p-8 max-w-lg w-full my-8">
+    <h3 class="font-display font-bold text-xl mb-1">Registro de campaña</h3>
+    <p class="text-neutral-500 text-sm mb-6">Gasto y resultados de un día. Con esto el panel cruza tu CPA real contra el margen.</p>
+    <form id="campaign-form" class="space-y-3">
+      <div class="grid sm:grid-cols-2 gap-3">
+        <label class="block"><span class="meta-label text-neutral-500 block mb-1.5 px-1">Fecha</span>
+          <input name="date" type="date" required class="w-full surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none" /></label>
+        <label class="block"><span class="meta-label text-neutral-500 block mb-1.5 px-1">Plataforma</span>
+          <select name="platform" class="w-full surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none">
+            <option value="meta">Meta</option><option value="tiktok">TikTok</option><option value="otro">Otro</option>
+          </select></label>
+      </div>
+      <label class="block"><span class="meta-label text-neutral-500 block mb-1.5 px-1">Campaña</span>
+        <input name="name" required placeholder="VENTAS | Cinturón Térmico | CTWA" class="w-full surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none" /></label>
+      <label class="block"><span class="meta-label text-neutral-500 block mb-1.5 px-1">Producto</span>
+        <select name="productId" class="w-full surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none"></select></label>
+      <div class="grid sm:grid-cols-2 gap-3">
+        <label class="block"><span class="meta-label text-neutral-500 block mb-1.5 px-1">Gasto (COP)</span>
+          <input name="spend" type="number" min="0" inputmode="numeric" placeholder="16413" class="w-full surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none" /></label>
+        <label class="block"><span class="meta-label text-neutral-500 block mb-1.5 px-1">Resultados</span>
+          <input name="results" type="number" min="0" inputmode="numeric" placeholder="3" class="w-full surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none" /></label>
+      </div>
+      <div class="flex gap-3 pt-3">
+        <button type="button" class="flex-1 py-3 rounded-xl surface-soft hover:border-accent" data-close-modal>Cancelar</button>
+        <button type="submit" class="flex-1 py-3 rounded-xl bg-accent text-white font-bold mono text-[11px] uppercase tracking-[0.25em]">Añadir</button>
       </div>
     </form>
   </div>
@@ -1511,6 +1678,7 @@
 <script src="js/16-rules.js"></script>
 <script src="js/17-templates.js"></script>
 <script src="js/18-review.js"></script>
+<script src="js/19-dropship.js"></script>
 <script src="js/99-init.js"></script>
 </body>
 </html>

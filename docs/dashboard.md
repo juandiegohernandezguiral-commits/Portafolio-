@@ -104,6 +104,35 @@ enough, and it guarantees typing a full word ranks the literal match first.
   Node size and opacity scale with degree; unconnected notes render muted, which is itself the
   useful signal. Clicking a node opens that note. The repulsion loop is O(n²) — fine for
   hundreds of notes; past a few thousand it would need Barnes-Hut.
+- **Dropshipping** (`js/19-dropship.js`) — the business. Three tabs: Pedidos, Productos, Campañas.
+  Collections: `orders`, `shopProducts` (named so to avoid colliding with the unrelated
+  `projects`), `campaigns`.
+
+  **Delivery rate is computed over *resolved* orders only** — delivered ÷ (delivered + returned).
+  In-transit orders are excluded deliberately: counting them as failures would tank the rate every
+  time a batch ships, and counting them as successes would inflate it. An unresolved order simply
+  doesn't know what it is yet. Cancelled orders are excluded too — they never shipped, so they say
+  nothing about whether the carrier delivers.
+
+  **Unit economics** (`unitEconomics`) is the piece worth protecting. Reaching one delivery at a
+  return rate `r` takes `1/(1-r)` orders, and ads are paid on *all* of them:
+
+  ```
+  margen = precio − costo − comisión − fleteIda
+           − cpa/(1−r)                        ← publicidad de los que se devuelven
+           − (r/(1−r)) × (fleteIda + fleteVuelta)
+  ```
+
+  The returned product itself comes back to stock, so its cost isn't lost — the freight is. The
+  card also surfaces `cpaMaximo`, the bid ceiling at which margin hits zero; above it each order
+  loses money even while the campaign looks healthy in Ads Manager.
+
+  Return rate per product is **observed from the orders**, not typed in, unless
+  `returnRateOverride` is set. Same for CPA: `observedCpa()` divides campaign spend by orders
+  generated, falling back to the product's `targetCpa`.
+
+  Money is handled in **whole pesos**. COP has no cents in practice, and accumulating floats
+  across hundreds of rows produces few-peso discrepancies that are impossible to explain.
 - **Automatización** (`js/16-rules.js`, `js/17-templates.js`) — two tabs.
 
   **Reglas.** Typed rules, not a generic `when <field> <op> <value>` builder: for one person a

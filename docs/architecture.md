@@ -32,6 +32,7 @@ one:
 | `js/16-rules.js` | Automation rules engine + notice inbox. Defines `runRules`, `RULE_TYPES`, `noticesBlock` |
 | `js/17-templates.js` | Note/project templates + placeholders. Defines `applyTemplatePlaceholders`, `useNoteTemplate` |
 | `js/18-review.js` | Guided weekly review. Defines `openReview`, `reviewPromptBlock` |
+| `js/19-dropship.js` | COD orders, unit economics, campaigns. Defines `renderDropship`, `unitEconomics`, `deliveryRate` |
 | `js/99-init.js` | Dashboard seed + migrations, nav highlight, `#hoy` PWA shortcut. Must load last |
 
 Two consequences worth remembering when editing:

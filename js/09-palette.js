@@ -72,6 +72,8 @@ function paletteCommands() {
     { label: 'Ir a Hábitos',    hint: 'vista',   icon: '◈', run: () => showView('habits') },
     { label: 'Ir a Proyectos',  hint: 'vista',   icon: '▧', run: () => showView('projects') },
     { label: 'Ir a Notas',      hint: 'vista',   icon: '✎', run: () => showView('notes') },
+    { label: 'Ir a Dropshipping', hint: 'vista', icon: '▦', run: () => showView('dropship') },
+    { label: 'Registrar un pedido', hint: 'crear', icon: '+', run: () => { showView('dropship'); showDropTab('pedidos'); document.getElementById('new-order-btn')?.click(); } },
     { label: 'Ir a Automatización', hint: 'vista', icon: '⚡', run: () => showView('auto') },
     { label: 'Ir a Métricas',   hint: 'vista',   icon: '▥', run: () => showView('insights') },
     { label: 'Ir a Datos & Backup', hint: 'vista', icon: '▦', run: () => showView('data') },
