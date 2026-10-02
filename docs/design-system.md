@@ -24,7 +24,9 @@ per theme — the accent state is the same colour in both themes and should be d
 Applies to `.switch`, `.habit-check`, `.tag-chip` and `.review-dot`. When adding any new
 `html.dark .foo` base rule, check whether `.foo` has state variants.
 
-**Custom cursor caveat**: `body { cursor: none }` plus the `#cursor` ring means any new
-overlay needs to think about the pointer. The palette opts back into a normal cursor
-(`#palette, #palette * { cursor: default }`) because a 28px ring over a dense keyboard-driven
-list is noise. Do the same for any future dialog that's primarily keyboard-operated.
+**Pointer**: the site uses the system cursor. It previously shipped a custom one (`body
+{ cursor: none }` plus a ring and dot following the mouse); that was removed. Because
+Tailwind's reset leaves `<button>` on the arrow pointer — which went unnoticed while the real
+cursor was hidden — `styles.css` now sets `cursor: pointer` on buttons, `[role="button"]`,
+`label[for]` and `summary`. Non-button clickables (`.palette-row`, `.note-row`, `.heat-cell`,
+`.day-pick`) carry their own rule; give any new one the same treatment.

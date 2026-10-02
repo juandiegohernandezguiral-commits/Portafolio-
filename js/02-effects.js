@@ -1,29 +1,12 @@
-/* 02-effects.js - efectos ambientales: cursor personalizado, reproductor de
-   audio flotante y campo de flujo (canvas de particulas). */
+/* 02-effects.js - efectos ambientales: reproductor de audio flotante y campo
+   de flujo (canvas de particulas).
 
-/* ============ CURSOR ============ */
-(function() {
-  const c = document.getElementById('cursor');
-  const d = document.getElementById('cursor-dot');
-  if (!c) return;
-  let mx=0,my=0,cx=0,cy=0;
-  window.addEventListener('mousemove', e => {
-    mx=e.clientX; my=e.clientY;
-    d.style.transform=`translate(${mx}px,${my}px) translate(-50%,-50%)`;
-  });
-  function loop(){ cx+=(mx-cx)*0.2; cy+=(my-cy)*0.2; c.style.transform=`translate(${cx}px,${cy}px) translate(-50%,-50%)`; requestAnimationFrame(loop); }
-  loop();
-  function bindHover() {
-    document.querySelectorAll('a, button, input, select, textarea, .stack-it, .proj-card, .kanban-card, .reveal-row').forEach(el => {
-      if (el.dataset.hoverBound) return;
-      el.dataset.hoverBound = '1';
-      el.addEventListener('mouseenter', () => document.body.classList.add('cursor-hover'));
-      el.addEventListener('mouseleave', () => document.body.classList.remove('cursor-hover'));
-    });
-  }
-  bindHover();
-  window.bindHover = bindHover;
-})();
+   Aqui vivia tambien un cursor personalizado (un anillo que seguia al raton con
+   suavizado y crecia al pasar por encima de lo clicable). Se retiro a peticion
+   expresa: el sitio usa el puntero normal del sistema. Al quitarlo desaparecio
+   con el tambien `window.bindHover`, que solo existia para engancharle los
+   estados de hover, y las reglas CSS que lo ocultaban dentro de la paleta y del
+   grafo, que ya no tenian nada que contrarrestar. */
 
 /* ============ AUDIO PLAYER WIDGET ============ */
 (function() {

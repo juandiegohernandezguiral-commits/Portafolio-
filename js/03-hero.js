@@ -213,7 +213,6 @@ function initAnimations() {
   setupStackReveal();
   setupHorizontalScroll();
   setupCounters();
-  if (window.bindHover) window.bindHover();
 }
 
 function setupCounters() {

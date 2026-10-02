@@ -15,7 +15,7 @@ one:
 | File | Responsibility |
 |---|---|
 | `js/01-base.js` | PIN constant, theme toggle, loader, service worker registration |
-| `js/02-effects.js` | Custom cursor, audio player widget, flow-field canvas |
+| `js/02-effects.js` | Audio player widget, flow-field canvas |
 | `js/03-hero.js` | Scroll-expansion hero, video guards, Lenis, GSAP/ScrollTrigger setups |
 | `js/04-ui.js` | Magnetic buttons, contact form |
 | `js/05-dashboard.js` | PIN gate, view routing, CRUD, backup. Defines `store`, `uid`, `escapeHtml`, `touch`, `tombstone`, `saveAll` |
@@ -205,6 +205,5 @@ per task.
 
 ## Ambient effects
 - **Flow field** (`#flow-canvas`): full-page fixed canvas, particle simulation reacts to mouse; colors swap on theme change via MutationObserver
-- **Custom cursor**: `#cursor` (ring) + `#cursor-dot` (dot); hidden on touch devices; scales on hover via `.cursor-hover`
 - **Audio player** (`#audio-player`): floating widget, bottom-right — see [Customization](customization.md) for the source and [Dashboard](dashboard.md) for its prefs key
 - **Loader**: countdown animation from 00→100 over ~1.4s

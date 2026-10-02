@@ -9,14 +9,18 @@
   * { -webkit-font-smoothing: antialiased; }
   html { background: #ffffff; transition: background-color 0.4s ease; }
   html.dark { background: #000000; }
-  body { font-family: 'Inter', system-ui, sans-serif; overflow-x: hidden; cursor: none; transition: background-color 0.4s ease, color 0.4s ease; }
+  body { font-family: 'Inter', system-ui, sans-serif; overflow-x: hidden; transition: background-color 0.4s ease, color 0.4s ease; }
 
-  #cursor { position: fixed; top:0; left:0; width: 28px; height: 28px; border: 1px solid #2667ff; border-radius: 50%; pointer-events: none; z-index: 9999; transform: translate(-50%,-50%); mix-blend-mode: difference; transition: width .2s, height .2s; }
-  #cursor-dot { position: fixed; top:0; left:0; width: 4px; height: 4px; background: #000; border-radius: 50%; pointer-events: none; z-index: 10000; transform: translate(-50%,-50%); }
-  html.dark #cursor-dot { background: #fff; }
-  .cursor-hover #cursor { width: 64px; height: 64px; }
-  .cursor-hover #cursor-dot { background: #2667ff; box-shadow: 0 0 12px #2667ff; }
-  @media (max-width: 768px) { body { cursor: auto; } #cursor, #cursor-dot { display: none; } }
+  /* El sitio usa el puntero normal del sistema. Aqui habia un cursor
+     personalizado (body { cursor: none } mas un anillo y un punto siguiendo al
+     raton); se retiro por completo.
+
+     Esta regla no la traia el proyecto, pero hace falta ahora: el reset de
+     Tailwind deja los <button> con el puntero de flecha, y mientras existia el
+     anillo eso daba igual porque el cursor real estaba oculto. Sin el, lo
+     clicable tiene que verse clicable, que es justo lo que hace cualquier otra
+     pagina. */
+  button:not(:disabled), [role="button"], label[for], summary { cursor: pointer; }
 
   /* Loader */
   #loader { position: fixed; inset: 0; z-index: 99999; background: #fff; display: flex; align-items: center; justify-content: center; transition: opacity .9s ease, visibility .9s; }
@@ -225,11 +229,7 @@
   }
 
   /* ---- Paleta de comandos (Ctrl+K) ---- */
-  /* El cursor personalizado se oculta dentro de la paleta: es una interfaz de
-     teclado y el anillo de 28px estorba sobre una lista densa. */
-  #palette, #palette * { cursor: default; }
-  #palette input { cursor: text; }
-  .palette-row { transition: background .12s; }
+  .palette-row { transition: background .12s; cursor: pointer; }
   .palette-row:hover { background: rgba(38,103,255,0.06); }
   html.dark .palette-row:hover { background: rgba(38,103,255,0.10); }
   .palette-row.is-active { background: rgba(38,103,255,0.10); box-shadow: inset 2px 0 0 #2667ff; }
@@ -520,7 +520,8 @@
   .viz-tip.visible { opacity: 1; }
 
   /* ---- Grafo ---- */
-  #graph-overlay, #graph-overlay * { cursor: default; }
+  /* El canvas gestiona su propio cursor desde JS (pointer sobre un nodo,
+     default fuera) — ver graphCanvas.style.cursor en js/12-graph.js. */
   #graph-canvas { display: block; }
 
   @media (prefers-reduced-motion: reduce) {
