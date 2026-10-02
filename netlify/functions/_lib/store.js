@@ -27,17 +27,23 @@ const { getStore } = require('@netlify/blobs');
    código.
 
    Así que se usa el modo manual que documenta el propio error de la librería:
-   pasarle siteID y token a mano. El siteID lo da Netlify solo; el token es un
-   Personal Access Token puesto como variable de entorno NETLIFY_API_TOKEN.
+   pasarle siteID y token a mano. El siteID lo da Netlify solo (SITE_ID es una
+   de sus variables de sólo lectura); el token es un Personal Access Token.
 
-   Se intenta primero el modo automático: si algún día Netlify empieza a
-   inyectar el contexto, esto sigue funcionando sin tocar nada, y el token deja
-   de hacer falta. */
+   La variable se llama BLOBS_TOKEN y NO NETLIFY_API_TOKEN: el panel de Netlify
+   no deja crear variables con el prefijo NETLIFY_, reservado para las suyas, y
+   el intento se pierde en silencio — la variable sencillamente no aparece en la
+   lista. Se sigue aceptando el nombre antiguo por si alguien ya lo tenía
+   puesto en otro entorno. */
+
 function agendaStore() {
+  // Se intenta primero el modo automático: si algún día Netlify empieza a
+  // inyectar el contexto, esto sigue funcionando sin tocar nada y el token
+  // deja de usarse solo.
   if (process.env.NETLIFY_BLOBS_CONTEXT) return getStore('jdh-agenda');
 
-  const siteID = process.env.NETLIFY_SITE_ID || process.env.SITE_ID;
-  const token = process.env.NETLIFY_API_TOKEN;
+  const siteID = process.env.SITE_ID || process.env.NETLIFY_SITE_ID;
+  const token = process.env.BLOBS_TOKEN || process.env.NETLIFY_API_TOKEN;
   if (siteID && token) return getStore({ name: 'jdh-agenda', siteID, token });
 
   // Sin ninguna de las dos vías: que falle aquí con el error de la librería,
@@ -64,7 +70,7 @@ function blobsDiagnostics() {
   return {
     hasBlobsContext: !!process.env.NETLIFY_BLOBS_CONTEXT,
     hasSiteId: !!(process.env.SITE_ID || process.env.NETLIFY_SITE_ID),
-    hasApiToken: !!process.env.NETLIFY_API_TOKEN,
+    hasApiToken: !!(process.env.BLOBS_TOKEN || process.env.NETLIFY_API_TOKEN),
     nodeVersion: process.version,
   };
 }
