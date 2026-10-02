@@ -38,6 +38,12 @@
 
 [functions]
   node_bundler = "esbuild"
+
+  # DEPENDENCIAS: viven en el package.json de la RAÍZ del repositorio, no en uno
+  # dentro de netlify/functions. Netlify NO instala las de un package.json
+  # anidado en la carpeta de funciones — el bundler falla con "Could not resolve
+  # @netlify/blobs" y el despliegue entero se cae. Si añades una dependencia
+  # nueva al backend, va en /package.json.
   # Variables de entorno que este backend necesita (configúralas en el panel de
   # Netlify, NUNCA las escribas aquí ni en el código fuente):
   #
@@ -119,5 +125,11 @@
   status = 200
 
 # Nota: scheduled-check-deadlines.js NO necesita redirect — no es accesible por
-# HTTP desde el cliente, Netlify lo invoca internamente según el cron definido
-# en el propio archivo (ver @netlify/functions `schedule()`).
+# HTTP desde el cliente, Netlify lo invoca internamente según el cron de abajo.
+
+# Función programada: revisa vencimientos y dispara las notificaciones push.
+# El cron se declara AQUÍ y no con el helper schedule() de @netlify/functions,
+# para no arrastrar esa dependencia (sus versiones actuales exigen Node >= 22.12)
+# sólo para envolver un handler. Sintaxis cron estándar, siempre en UTC.
+[functions."scheduled-check-deadlines"]
+  schedule = "*/30 * * * *"

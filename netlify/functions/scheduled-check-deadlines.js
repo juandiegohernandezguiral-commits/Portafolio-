@@ -19,7 +19,13 @@
 // ============================================================================
 
 const webpush = require('web-push');
-const { schedule } = require('@netlify/functions');
+/* La periodicidad NO se declara aquí sino en netlify.toml, bajo
+   [functions."scheduled-check-deadlines"]. Antes se usaba el helper schedule()
+   de @netlify/functions, pero eso obligaba a arrastrar esa dependencia entera
+   (cuyas versiones actuales exigen Node >= 22.12) sólo para envolver el
+   handler. Declararlo en la configuración elimina la dependencia y además deja
+   el cron a la vista junto al resto del despliegue, en vez de enterrado al
+   final de este archivo. */
 const { fetchNotionTasks } = require('./_lib/notion');
 const { agendaStore } = require('./_lib/store');
 
@@ -123,8 +129,8 @@ async function run() {
   console.log(`[scheduled-check-deadlines] ${candidates.length} candidata(s) revisada(s), ${toNotify.length} notificada(s).`);
 }
 
-// Cada 30 minutos. Sintaxis cron estándar, en UTC (regla de Netlify Scheduled Functions).
-module.exports.handler = schedule('*/30 * * * *', async () => {
+// Invocada por Netlify según el cron de netlify.toml (cada 30 min, en UTC).
+module.exports.handler = async () => {
   await run();
   return { statusCode: 200 };
-});
+};

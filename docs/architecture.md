@@ -43,6 +43,17 @@ Two consequences worth remembering when editing:
   user can click anything — but those calls are guarded with `typeof fn === 'function'` so the
   dashboard keeps working if a later file is missing or throws while parsing.
 
+### Deploy gotchas
+
+- **Function dependencies go in the root `package.json`.** Netlify only installs from the
+  repository root; a `package.json` inside `netlify/functions/` is ignored, and esbuild then
+  fails to resolve the imports and takes the entire deploy down with it. This bit once already.
+- **The cron schedule is declared in `netlify.toml`**, under
+  `[functions."scheduled-check-deadlines"]`, not with `@netlify/functions`' `schedule()` helper.
+  That helper's current versions require Node ≥ 22.12, which is a lot of constraint to take on
+  just to wrap a handler. `@netlify/blobs` is deliberately pinned to `^8`: it needs only Node
+  ≥ 16 and pulls in zero transitive dependencies, where `^11` demands Node 22.12 and three.
+
 ## Tests
 
 - `node tests/merge.test.js` — the sync merge logic (last-write-wins per record, tombstones,
