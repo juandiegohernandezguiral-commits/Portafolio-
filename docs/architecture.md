@@ -102,9 +102,18 @@ Both are plain `node` scripts with no dependencies and no test runner.
   list: adding a JS file means adding it there too, or it won't be available offline.
 
 ## Backend serverless (Netlify Functions)
-A small, separate backend under `/netlify/` — deployed as its **own Netlify site** (not the
-portfolio itself, which stays a static, no-build-step deploy elsewhere, e.g. Hostinger). It
-exists because two things can't happen safely in the browser: calling the Notion API (would
+The backend lives under `/netlify/` and is deployed **by the same Netlify site that serves the
+portfolio** — one site, one domain, one `git push`. `netlify.toml` publishes the repo root as
+static files and registers `netlify/functions` as the function directory.
+
+It was originally designed as a second, separate site (portfolio on Hostinger, functions on
+Netlify). Consolidating removed three things at once: cross-origin requests and all the CORS
+plumbing they dragged along, the `ALLOWED_ORIGIN` variable, and uploading files by FTP on every
+change. The CORS headers in `_lib/cors.js` are now belt-and-braces rather than load-bearing —
+keep them, since they cost nothing and make the endpoints still work if the panel is ever served
+from somewhere else.
+
+It exists because two things can't happen safely in the browser: calling the Notion API (would
 expose the integration token) and sending real Web Push notifications (needs the private VAPID
 key + `web-push`, a Node library). Single-user app — no multi-tenant concerns anywhere here.
 

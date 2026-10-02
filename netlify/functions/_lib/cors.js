@@ -1,8 +1,12 @@
 // ============================================================================
-// CORS compartido: el portafolio (index.html) se sirve desde un origen
-// distinto al de este backend (p. ej. Hostinger vs. Netlify), así que toda
-// respuesta necesita cabeceras CORS, y las peticiones con Content-Type: JSON
-// disparan un preflight OPTIONS que hay que responder explícitamente.
+// CORS compartido.
+//
+// Desde que el portafolio y estas funciones se sirven desde el MISMO sitio de
+// Netlify (ver netlify.toml), el navegador ya no hace peticiones entre orígenes
+// y estas cabeceras dejaron de ser imprescindibles. Se mantienen porque no
+// cuestan nada y hacen que los endpoints sigan funcionando si algún día el
+// panel se sirve desde otro dominio o desde localhost durante el desarrollo —
+// que es justo cuando su ausencia daría un "Failed to fetch" sin explicación.
 //
 // '*' es intencional: es una API de solo un usuario sin cookies/sesión ni
 // datos sensibles expuestos vía CORS (el token de Notion nunca sale de aquí).

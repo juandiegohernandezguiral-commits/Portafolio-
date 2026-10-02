@@ -15,8 +15,10 @@ It is no longer a single file, though. `index.html` is markup only; styles live 
 adding a file, because load order *is* the dependency graph and new files need a `<script>` tag
 added by hand.
 
-The `/netlify` directory is a separate backend with its own `package.json`, deployed as its own
-Netlify site. The portfolio itself stays a plain static deploy.
+The `/netlify` directory holds the serverless backend (its own `package.json`). **Portfolio and
+backend deploy together from one Netlify site** — `netlify.toml` publishes the repo root as
+static files and registers `netlify/functions`. Same domain for both, so there are no
+cross-origin concerns and every `git push` redeploys everything.
 
 ## Run locally
 

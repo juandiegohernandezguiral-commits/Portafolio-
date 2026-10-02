@@ -1,32 +1,39 @@
 # ============================================================================
-# Netlify config — backend serverless de Juan Diego Hernández (Fase 3)
+# Netlify config — portafolio + backend, en UN SOLO SITIO
 # ============================================================================
-# IMPORTANTE: este archivo NO despliega el portafolio (index.html). El sitio
-# principal se sube aparte (p. ej. a Hostinger, vía FTP/panel de hosting) y no
-# necesita build step ni Netlify para nada.
+# Este archivo despliega las dos cosas a la vez desde el mismo dominio:
+#   - el portafolio estático (index.html, css/, js/, imágenes) servido tal cual,
+#     sin build step de ningún tipo
+#   - las funciones serverless de /netlify/functions (sync de datos del panel,
+#     proxy de Notion, suscripciones push) y el cron de vencimientos
 #
-# Este netlify.toml define un sitio Netlify DISTINTO y separado, cuyo único
-# trabajo es alojar:
-#   - las funciones serverless en /netlify/functions (proxy de Notion, registro
-#     de suscripciones push, sincronización ligera de Trello/Outlook)
-#   - el cron/scheduled function que revisa vencimientos y dispara los pushes
+# POR QUÉ UN SOLO SITIO Y NO DOS
+# El diseño original los separaba (portafolio en Hostinger, funciones en
+# Netlify). Unificarlos elimina de golpe tres cosas: las peticiones entre
+# orígenes distintos y toda la configuración de CORS que arrastraban, la
+# variable ALLOWED_ORIGIN, y subir archivos por FTP a mano cada vez que cambia
+# algo. Ahora cada `git push` despliega el sitio entero.
 #
-# Cómo desplegar (resumen — ver docs/architecture.md y el resumen final del
-# agente para la lista completa de pasos):
-#   1. Crea una cuenta gratuita en https://app.netlify.com
-#   2. "Add new site" → "Import an existing project" → conecta este repo de Git
-#   3. Cuando te pida el "Base directory" / "Publish directory", déjalo como
-#      está definido en este archivo (no hace falta tocarlo desde la UI)
-#   4. Configura las variables de entorno de la sección [functions] más abajo
-#      en Netlify → Site configuration → Environment variables
-#   5. Deploy. Netlify te dará una URL tipo https://tu-sitio.netlify.app —
-#      esa es la "URL del proxy" que se pega en el dashboard del portafolio.
+# Cómo desplegar:
+#   1. Cuenta gratuita en https://app.netlify.com
+#   2. "Add new site" → "Import an existing project" → conecta ESTE repo de Git.
+#      Importante: tiene que quedar enlazado al repositorio, no subido
+#      arrastrando una carpeta — si no, no se despliega solo en cada push.
+#   3. No toques "Base directory" ni "Publish directory" en la interfaz: este
+#      archivo ya los define.
+#   4. Configura las variables de entorno de la sección [functions] de abajo en
+#      Netlify → Site configuration → Environment variables, y lanza un deploy
+#      nuevo (las variables no se aplican al despliegue que ya estaba hecho).
+#   5. La URL que te da Netlify es a la vez tu portafolio y la "URL del proxy"
+#      que se pega en el panel → "Conectar cuentas".
 
 [build]
-  # No hay HTML/CSS/JS de frontend que compilar aquí — solo funciones.
-  # "publish" apunta a una carpeta placeholder (ver netlify/public/index.html)
-  # porque Netlify exige que el campo exista, aunque no sirva contenido real.
-  publish = "netlify/public"
+  # La raíz del repo: no hay nada que compilar, los archivos se sirven tal cual.
+  # Esto también publica docs/, tests/ y el código de las funciones como ficheros
+  # estáticos. No es un problema de seguridad — el repositorio ya es público y
+  # ningún secreto vive en el código (todos son variables de entorno) — pero
+  # tenlo presente si alguna vez añades algo que no deba verse.
+  publish = "."
   functions = "netlify/functions"
 
 [functions]
@@ -71,10 +78,11 @@
   #                                  node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
   #                                y pega la misma cadena en el panel →
   #                                "Conectar cuentas" → Sincronización.
-  #   ALLOWED_ORIGIN            — (opcional, default '*') restringe CORS a tu
-  #                                dominio exacto, p. ej. https://tudominio.com.
-  #                                Recomendado ahora que el backend sirve datos
-  #                                personales: reduce la superficie a tu sitio.
+  #   ALLOWED_ORIGIN            — (opcional) ya NO hace falta: con el portafolio
+  #                                y las funciones en el mismo dominio, el
+  #                                navegador no hace peticiones entre orígenes y
+  #                                CORS deja de intervenir. Sólo tiene sentido
+  #                                si algún día sirves el panel desde otro sitio.
   #
   # Cómo generar las VAPID keys (no las inventes, corre esto tú mismo):
   #   npx web-push generate-vapid-keys

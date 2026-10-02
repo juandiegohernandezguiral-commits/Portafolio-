@@ -5,7 +5,7 @@ function initDashboard() {
   if (!localStorage.getItem('jdh_seeded')) {
     tasks = [
       { id: uid(), title: 'Diseñar wireframes para cliente', desc: 'Reunión inicial completada', priority: 'high', status: 'todo' },
-      { id: uid(), title: 'Subir portafolio a Hostinger', priority: 'high', status: 'doing' },
+      { id: uid(), title: 'Publicar el portafolio', priority: 'high', status: 'doing' },
       { id: uid(), title: 'Estudiar para parcial de algoritmos', priority: 'med', status: 'todo' },
     ];
     projects = [{ id: uid(), name: 'Portafolio personal', client: '', desc: 'Sitio cinematográfico con dashboard privado.', deadline: '', stages: STAGES.map((s, i) => ({ name: s, done: i < 3 })) }];
