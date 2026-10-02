@@ -193,10 +193,14 @@
           <!-- ⚠ Copia tu archivo a esta carpeta como 'intro.mp4' -->
           <source src="intro.mp4" type="video/mp4">
         </video>
+        <!-- Sólo se muestra si el vídeo falla de verdad (error de carga o códec
+             no soportado), nunca por ir lento. El texto va dirigido a quien
+             visita la página, no a quien la programa: el detalle técnico se
+             escribe en la consola. -->
         <div id="video-fallback">
-          <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.25em;text-transform:uppercase;color:#2667ff;margin-bottom:12px">// video no detectado</div>
-          <div style="font-family:'Inter Tight',sans-serif;font-weight:800;font-size:22px;letter-spacing:-0.03em">Coloca intro.mp4</div>
-          <div style="font-size:12px;color:rgba(255,255,255,0.6);margin-top:6px">en la misma carpeta que index.html</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.25em;text-transform:uppercase;color:#2667ff;margin-bottom:12px">// Juan Diego Hernández</div>
+          <div style="font-family:'Inter Tight',sans-serif;font-weight:800;font-size:22px;letter-spacing:-0.03em">Software Engineer</div>
+          <div style="font-size:12px;color:rgba(255,255,255,0.6);margin-top:6px">Medellín, Colombia</div>
         </div>
       </div>
 

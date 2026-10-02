@@ -72,16 +72,29 @@ const contentSpacer = document.getElementById('intro-content-spacer');
   video.load();
   tryPlay();
 
-  // 5s safety net
+  /* Red de seguridad.
+     Antes esto corría a los 5 s y, si todavía no había metadatos, daba el vídeo
+     por ausente. Era un error de diagnóstico: "aún no han llegado los metadatos"
+     y "el archivo no existe" no son lo mismo. Con intro.mp4 pesando 12 MB, una
+     conexión lenta tarda bastante más de 5 s, y el visitante acababa viendo un
+     mensaje de depuración en la portada aunque todo estuviera bien.
+
+     Un archivo que falta o que no se puede decodificar YA lo detectan los
+     eventos 'error' del <video> y del <source>, que son la señal fiable. Aquí
+     sólo queda el caso que esos eventos no cubren: el vídeo carga, declara
+     metadatos, pero sus dimensiones son cero — síntoma de un códec que el
+     navegador no sabe pintar (típicamente HEVC/H.265). Si ni siquiera han
+     llegado los metadatos, no se concluye nada: se deja seguir cargando. */
   setTimeout(() => {
-    if (!video.duration || isNaN(video.duration)) {
-      showFallback('no metadata after 5s — file missing or unreadable');
-    } else if (video.videoWidth === 0) {
-      showFallback('codec unsupported');
+    // readyState >= 1 (HAVE_METADATA): ya sabemos de verdad cómo es el vídeo.
+    if (video.readyState >= 1 && video.videoWidth === 0) {
+      showFallback('codec no soportado (videoWidth=0) — reencodea el archivo como H.264');
+    } else if (video.readyState === 0) {
+      console.warn('[intro-video] sin metadatos todavía; probablemente sigue descargando. No se muestra fallback.');
     } else if (video.paused) {
-      console.warn('[intro-video] still paused after 5s — autoplay blocked. Click anywhere to play.');
+      console.warn('[intro-video] en pausa — autoplay bloqueado. Un clic en cualquier parte lo arranca.');
     }
-  }, 5000);
+  }, 15000);
 })();
 
 let scrollProgress = 0;
