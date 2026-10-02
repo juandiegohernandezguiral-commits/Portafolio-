@@ -37,8 +37,14 @@
   functions = "netlify/functions"
 
 [functions]
-  node_bundler = "esbuild"
-
+  # Sin node_bundler explícito: se usa el de Netlify por defecto.
+  #
+  # Antes estaba forzado a "esbuild", que empaqueta las dependencias dentro del
+  # archivo de la función. Eso complica que Netlify detecte, al construir, que
+  # el backend usa Netlify Blobs — y esa detección es la que hace que inyecte
+  # NETLIFY_BLOBS_CONTEXT en tiempo de ejecución. Sin esa variable, getStore()
+  # falla con MissingBlobsEnvironmentError aunque todo lo demás esté bien.
+  #
   # DEPENDENCIAS: viven en el package.json de la RAÍZ del repositorio, no en uno
   # dentro de netlify/functions. Netlify NO instala las de un package.json
   # anidado en la carpeta de funciones — el bundler falla con "Could not resolve
