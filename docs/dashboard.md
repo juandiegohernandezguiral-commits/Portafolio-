@@ -350,6 +350,57 @@ enough, and it guarantees typing a full word ranks the literal match first.
   These are market references, not laws. Where the panel has enough of the user's own data it
   prefers it and says so; where it doesn't, it says that too instead of filling the gap with
   someone else's average.
+- **Estudio** (`js/22-study.js`) — two sub-tabs: **Universidad** (ITM) and **Desarrollo de
+  Software**. Collections: `studySubjects`, `studyItems`.
+
+  **One item, not two collections.** A parcial is a pending thing in March and a grade in April —
+  the same object at two points in its life. Splitting "tasks" from "grades" would mean typing
+  every exam twice. So `studyItems` carries an optional `weight` and `grade`, and an item moves
+  pendiente → done → calificado.
+
+  **"¿Con cuánto paso?"** is the calculation that matters mid-semester, and it's exact rather than
+  a rule of thumb. With `S = Σ(weight × grade)` over graded items and `R` the remaining weight:
+
+  ```
+  nota final = Σ(peso × nota) / 100
+  necesita   = (3.0 × 100 − S) / R
+  ```
+
+  Colombian scale (0.0–5.0, pass at 3.0) lives in `NOTA_MAX` / `NOTA_APRUEBA` at the top of the
+  file, not buried in an `if`. The verdict distinguishes *asegurada* (passes even with 0.0 on
+  everything left), *en juego*, and *imposible* (would need more than 5.0) — that last one is
+  worth saying out loud rather than showing a number nobody can reach.
+
+  The semester average weights each subject by its credits, which is how the university computes it.
+
+  **Campus Virtual del ITM** — `cvirtual.itm.edu.co` runs Moodle, and Moodle publishes a private
+  per-user iCal URL (Calendario → Exportar calendario). The user generates it once and pastes it
+  in; the token lives in the URL, so **no ITM password is stored anywhere** and there's no Office
+  365 SSO dance. Several feeds are supported because the DCEB is a separate Moodle install.
+
+  It goes through `netlify/functions/study-ical.js` rather than a direct browser fetch because
+  Moodle sends no CORS headers on that endpoint — the browser would block it before reading a byte.
+
+  **Refreshing never overwrites your own data.** The feed can update a title and a due date;
+  it will not touch `grade`, `weight`, `done` or the subject you assigned. If a professor moves a
+  deadline you want to know, but if syncing wiped the 4.5 you'd already been given, the panel
+  would be a trap.
+
+  **Foto y voz** (`netlify/functions/study-parse.js`) — a photo of a notebook page or a dictated
+  message becomes a filled-in form. The audio **never leaves the device**: Chrome's
+  `SpeechRecognition` transcribes locally in `es-CO` and only the text travels. Photos are
+  downscaled to 1600px and recompressed client-side first — a phone photo is several MB and base64
+  adds a third on top.
+
+  The AI **never writes to the data**. It fills the normal form and you confirm. A model writing
+  straight into storage is wrong silently; this way a misread date is visible before it's saved.
+  When one photo yields several tasks, they come back as a checklist to review.
+
+  Runs on `claude-opus-5` with adaptive thinking at **low effort** — Netlify functions are cut off
+  at 10 seconds, and this is a short bounded extraction, not a reasoning problem. Roughly US$0.015
+  per photo. Needs `ANTHROPIC_API_KEY`; without it that one function returns a 503 explaining what's
+  missing and the rest of the tab keeps working.
+
 - **Automatización** (`js/16-rules.js`, `js/17-templates.js`) — two tabs.
 
   **Reglas.** Typed rules, not a generic `when <field> <op> <value>` builder: for one person a
@@ -617,6 +668,10 @@ The user connecting Outlook/To Do must register their own app in
 | `jdh_dropTab` | Last active Dropshipping tab |
 | `jdh_mapaCapa` | Active layer of the Zonas map (`'referencia'` / `'datos'`) |
 | `jdh_inboxLastSync` | ISO timestamp of the last order-inbox collection |
+| `jdh_studySubjects` | Materias del semestre (synced) — `{ name, teacher, credits, alias }`. `alias` is how the course is named in Moodle, used to auto-attach incoming items |
+| `jdh_studyItems` | Tareas, parciales y quizzes (synced). `weight` + `grade` turn one into a graded evaluation; `externalId` is `feedId:uid` for anything from Moodle |
+| `jdh_studyTab` | Last active Estudio sub-tab (`'uni'` / `'dev'`) |
+| `jdh_moodleLastSync` | ISO timestamp of the last Campus Virtual sync |
 
 Not in `localStorage`: the `FileSystemFileHandle` for auto-backup lives in IndexedDB
 (`jdh-fs` → `handles` → `backupFile`), because handles can't be serialized to JSON.

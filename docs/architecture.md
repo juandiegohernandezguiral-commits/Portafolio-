@@ -35,6 +35,7 @@ one:
 | `js/19-dropship.js` | COD orders, unit economics, campaigns. Defines `renderDropship`, `unitEconomics`, `deliveryRate`, `BENCHMARKS` |
 | `js/20-dropship-tools.js` | Confirmation queue, zone analysis, price calculator, product scorecard. Defines `renderConfirmacion`, `renderZonas`, `renderCalculadora`, `renderScorecard`, `calcEconomics`, `solvePrice`, `resolveCity`, `waPhone`, `scoreProduct`. **Must load after 19** — it reuses its helpers |
 | `js/21-colombia-geo.js` | Department geometry for the Zonas map: SVG paths, centroids, San Andrés inset. Pure data (`COLOMBIA_GEO`), ~48 KB. Loads *after* its consumer on purpose — 20 reads it lazily, so anything new that touches `COLOMBIA_GEO` must do the same |
+| `js/22-study.js` | Estudio: Universidad (ITM) y Desarrollo de Software. Defines `renderStudy`, `subjectStats`, `syncMoodle`, `interpretarCaptura` |
 | `js/99-init.js` | Dashboard seed + migrations, nav highlight, `#hoy` PWA shortcut. Must load last |
 
 Two consequences worth remembering when editing:
@@ -74,7 +75,12 @@ Two consequences worth remembering when editing:
   trusting a figure nobody can audit. It also round-trips every solved price back through the
   model, and pins the `observedCpa` zero-vs-null regression.
 
-All three are plain `node` scripts with no dependencies and no test runner. `npm test` runs them
+- `node tests/ical.test.js` — the Moodle calendar parser. Same reason again: a line-folding bug
+  truncates a task title mid-word and a timezone bug puts a deadline on the wrong day, and neither
+  throws. It already caught one: `final` in the "parcial" pattern was swallowing "Proyecto
+  final" before the proyecto rule could match.
+
+All four are plain `node` scripts with no dependencies and no test runner. `npm test` runs them
 in sequence.
 
 ## External dependencies (CDN, no local copies)

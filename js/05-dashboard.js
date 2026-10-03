@@ -93,6 +93,10 @@ let campaigns = store.get('campaigns', []);
 // su propia colección y no dentro del producto porque la calculadora también se
 // usa para productos que todavía no existen: estás tanteando si vale la pena.
 let priceScenarios = store.get('priceScenarios', []);
+// Estudio (ver js/22-study.js). `studySubjects` y no `subjects` para que se lea
+// de que modulo es, igual que shopProducts.
+let studySubjects = store.get('studySubjects', []);
+let studyItems = store.get('studyItems', []);
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
 
 /* ---- Registro de colecciones ----
@@ -112,6 +116,7 @@ const DATA_COLLECTIONS = [
   // `shopProducts` y no `products` para no confundirlo con `projects`, que ya
   // existe y significa otra cosa.
   'orders', 'shopProducts', 'campaigns', 'priceScenarios',
+  'studySubjects', 'studyItems',
 ];
 
 function getCollection(name) {
@@ -129,6 +134,8 @@ function getCollection(name) {
     case 'shopProducts': return shopProducts;
     case 'campaigns': return campaigns;
     case 'priceScenarios': return priceScenarios;
+    case 'studySubjects': return studySubjects;
+    case 'studyItems': return studyItems;
     default: return null;
   }
 }
@@ -149,6 +156,8 @@ function setCollection(name, value) {
     case 'shopProducts': shopProducts = list; break;
     case 'campaigns': campaigns = list; break;
     case 'priceScenarios': priceScenarios = list; break;
+    case 'studySubjects': studySubjects = list; break;
+    case 'studyItems': studyItems = list; break;
   }
 }
 
@@ -221,6 +230,7 @@ function showView(name) {
   if (name === 'agenda') { renderEvents(); showAgendaTab(localStorage.getItem('jdh_agendaTab') || 'calendar'); }
   if (name === 'tasks') renderTasks();
   if (name === 'dropship' && typeof renderDropship === 'function') renderDropship();
+  if (name === 'study' && typeof renderStudy === 'function') renderStudy();
   if (name === 'habits' && typeof renderHabits === 'function') renderHabits();
   if (name === 'auto' && typeof showAutoTab === 'function') showAutoTab(store.get('autoTab', 'rules'));
   if (name === 'projects') renderProjects();

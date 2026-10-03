@@ -101,6 +101,14 @@
   #                                OJO con el nombre: el panel de Netlify NO deja
   #                                crear variables que empiecen por NETLIFY_, y
   #                                el intento se pierde sin avisar.
+  #   ANTHROPIC_API_KEY         — clave de la API de Anthropic, para interpretar
+  #                                con IA las fotos y los dictados de la pestaña
+  #                                Estudio (/study/parse). Se saca en
+  #                                console.anthropic.com. Con ella se gasta
+  #                                dinero de tu cuenta, así que vive aquí y
+  #                                nunca en el navegador. Sin ella, esa función
+  #                                responde 503 explicando que falta, y el resto
+  #                                de la pestaña sigue funcionando.
   #   SYNC_TOKEN                — token compartido que protege /data/pull y
   #                                /data/push (el sync de tareas, notas, eventos
   #                                y proyectos del panel entre dispositivos).
@@ -157,6 +165,19 @@
 [[redirects]]
   from = "/orders/intake"
   to = "/.netlify/functions/orders-intake"
+  status = 200
+
+# Calendario del Campus Virtual del ITM (Moodle, iCal). Vive en el servidor
+# porque Moodle no manda cabeceras CORS: el navegador no puede leerlo directo.
+[[redirects]]
+  from = "/study/ical"
+  to = "/.netlify/functions/study-ical"
+  status = 200
+
+# Interpretacion de foto o voz con IA para subir tareas de la U.
+[[redirects]]
+  from = "/study/parse"
+  to = "/.netlify/functions/study-parse"
   status = 200
 
 # Campañas de Meta Ads en vivo para el Centro de campañas del panel.

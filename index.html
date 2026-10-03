@@ -702,6 +702,10 @@
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="shrink-0"><path d="M1 3h15v13H1zM16 8h4l3 3v5h-7z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
           <span class="hidden lg:inline">Dropshipping</span>
         </button>
+        <button type="button" class="dash-nav w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm hover:bg-neutral-100 dark:hover:bg-white/5 transition" data-view="study">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="shrink-0"><path d="M22 10L12 5 2 10l10 5 10-5z"/><path d="M6 12v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5"/></svg>
+          <span class="hidden lg:inline">Estudio</span>
+        </button>
         <button type="button" class="dash-nav w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm hover:bg-neutral-100 dark:hover:bg-white/5 transition" data-view="habits">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="shrink-0"><path d="M3 17l5-5 4 4 9-9"/><path d="M21 7h-5M21 7v5"/></svg>
           <span class="hidden lg:inline">Hábitos</span>
@@ -971,6 +975,24 @@
           </div>
 
           <div id="drop-panel"></div>
+        </section>
+
+        <!-- Estudio: Universidad (ITM) y Desarrollo de Software. Ver js/22-study.js -->
+        <section class="dash-view hidden" data-view="study">
+          <div class="flex items-end justify-between mb-6 flex-wrap gap-4">
+            <div>
+              <div class="meta-label text-neutral-500 mb-2">/ formación</div>
+              <h1 class="display text-3xl md:text-5xl">Estudio</h1>
+              <p class="text-neutral-500 mt-2 max-w-2xl" id="study-sub"></p>
+            </div>
+          </div>
+
+          <div class="inline-flex p-1 rounded-full surface-soft mb-6" role="tablist">
+            <button type="button" role="tab" class="study-tab-btn bg-accent text-white px-5 py-2 rounded-full text-xs font-bold mono uppercase tracking-[0.15em] transition" data-study-tab="uni">Universidad</button>
+            <button type="button" role="tab" class="study-tab-btn text-neutral-500 px-5 py-2 rounded-full text-xs font-bold mono uppercase tracking-[0.15em] transition" data-study-tab="dev">Desarrollo de Software</button>
+          </div>
+
+          <div id="study-panel"></div>
         </section>
 
         <!-- Hábitos: rachas y mapa de calor anual. Ver js/13-habits.js -->
@@ -1387,6 +1409,136 @@
   </div>
 </div>
 
+<!-- ESTUDIO — materias, pendientes y captura con IA. Ver js/22-study.js -->
+
+<div id="subject-modal" class="fixed inset-0 z-[70] hidden items-start justify-center bg-black/60 backdrop-blur p-6 overflow-y-auto">
+  <div class="surface rounded-2xl p-8 max-w-md w-full my-8">
+    <h3 class="font-display font-bold text-xl mb-1">Materia</h3>
+    <p class="text-neutral-500 text-sm mb-6">Todo lo demas cuelga de aqui: pendientes, parciales, notas y apuntes.</p>
+    <form id="subject-form" class="space-y-3">
+      <label class="block"><span class="meta-label text-neutral-500 block mb-1.5 px-1">Nombre</span>
+        <input name="name" required placeholder="Calculo Diferencial" class="w-full surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none" /></label>
+      <div class="grid sm:grid-cols-2 gap-3">
+        <label class="block"><span class="meta-label text-neutral-500 block mb-1.5 px-1">Profesor</span>
+          <input name="teacher" placeholder="Opcional" class="w-full surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none" /></label>
+        <label class="block"><span class="meta-label text-neutral-500 block mb-1.5 px-1">Creditos</span>
+          <input name="credits" type="number" min="0" max="12" placeholder="3" class="w-full surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none" /></label>
+      </div>
+      <label class="block"><span class="meta-label text-neutral-500 block mb-1.5 px-1">Como aparece en el Campus Virtual</span>
+        <input name="alias" placeholder="Opcional: el nombre exacto del curso en Moodle" class="w-full surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none" />
+        <span class="text-neutral-500 text-[11px] block mt-1.5 px-1">Sirve para que lo que llegue del ITM se enganche solo a esta materia.</span></label>
+      <div class="flex gap-3 pt-3">
+        <button type="button" class="flex-1 py-3 rounded-xl surface-soft hover:border-accent" data-close-modal>Cancelar</button>
+        <button type="submit" class="flex-1 py-3 rounded-xl bg-accent text-white font-bold mono text-[11px] uppercase tracking-[0.25em]">Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="study-item-modal" class="fixed inset-0 z-[70] hidden items-start justify-center bg-black/60 backdrop-blur p-6 overflow-y-auto">
+  <div class="surface rounded-2xl p-8 max-w-lg w-full my-8">
+    <h3 class="font-display font-bold text-xl mb-1" id="study-item-title">Pendiente</h3>
+    <p class="text-neutral-500 text-sm mb-6" id="study-item-sub">Una tarea, un parcial, un quiz o una entrega.</p>
+    <form id="study-item-form" class="space-y-3">
+      <label class="block"><span class="meta-label text-neutral-500 block mb-1.5 px-1">Que es</span>
+        <input name="title" required placeholder="Taller de derivadas, puntos 1 al 12" class="w-full surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none" /></label>
+      <div class="grid sm:grid-cols-2 gap-3">
+        <label class="block"><span class="meta-label text-neutral-500 block mb-1.5 px-1">Materia</span>
+          <select name="subjectId" class="w-full surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none"></select></label>
+        <label class="block"><span class="meta-label text-neutral-500 block mb-1.5 px-1">Tipo</span>
+          <select name="kind" class="w-full surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none">
+            <option value="tarea">Tarea</option><option value="parcial">Parcial</option>
+            <option value="quiz">Quiz</option><option value="proyecto">Proyecto</option>
+            <option value="exposicion">Exposicion</option><option value="otro">Otro</option>
+          </select></label>
+      </div>
+      <div class="grid sm:grid-cols-2 gap-3">
+        <label class="block"><span class="meta-label text-neutral-500 block mb-1.5 px-1">Para cuando</span>
+          <input name="due" type="datetime-local" class="w-full surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none" /></label>
+        <label class="block"><span class="meta-label text-neutral-500 block mb-1.5 px-1">Peso en la nota (%)</span>
+          <input name="weight" type="number" min="0" max="100" step="1" placeholder="20" class="w-full surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none" /></label>
+      </div>
+      <label class="block"><span class="meta-label text-neutral-500 block mb-1.5 px-1">Nota obtenida</span>
+        <input name="grade" type="number" min="0" max="5" step="0.01" placeholder="Dejalo vacio mientras no te la hayan dado" class="w-full surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none" /></label>
+      <label class="block"><span class="meta-label text-neutral-500 block mb-1.5 px-1">Detalles</span>
+        <textarea name="notes" rows="3" placeholder="Lo que haya que recordar: paginas, formato de entrega, con quien va..." class="w-full surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none resize-y"></textarea></label>
+      <div class="flex gap-3 pt-3">
+        <button type="button" class="flex-1 py-3 rounded-xl surface-soft hover:border-accent" data-close-modal>Cancelar</button>
+        <button type="submit" class="flex-1 py-3 rounded-xl bg-accent text-white font-bold mono text-[11px] uppercase tracking-[0.25em]">Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="moodle-feeds-modal" class="fixed inset-0 z-[70] hidden items-start justify-center bg-black/60 backdrop-blur p-6 overflow-y-auto">
+  <div class="surface rounded-2xl p-8 max-w-lg w-full my-8">
+    <h3 class="font-display font-bold text-xl mb-1">Calendarios del ITM</h3>
+    <p class="text-neutral-500 text-sm mb-5">
+      En Moodle: Calendario → <strong>Exportar calendario</strong> → "Todos los eventos" + "Proximos 60 dias"
+      → <strong>Obtener URL del calendario</strong>. Pega aqui esa URL completa.
+    </p>
+    <div class="rounded-xl p-3 mb-5" style="border-left:3px solid #f59e0b;background:#f59e0b10">
+      <p class="text-[11px] leading-relaxed" style="color:#a16207">
+        Esa URL lleva tu token dentro: trata cada una como una contrase&ntilde;a. Se guardan en este
+        navegador y viajan con tu sincronizacion, nunca se publican.
+      </p>
+    </div>
+
+    <div id="moodle-feeds-list" class="space-y-2 mb-5"></div>
+
+    <form id="moodle-feed-form" class="space-y-3">
+      <div class="grid sm:grid-cols-[150px_1fr] gap-3">
+        <label class="block"><span class="meta-label text-neutral-500 block mb-1.5 px-1">Nombre</span>
+          <input name="label" required placeholder="Campus Virtual" class="w-full surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none" /></label>
+        <label class="block"><span class="meta-label text-neutral-500 block mb-1.5 px-1">URL del calendario</span>
+          <input name="url" required type="url" placeholder="https://cvirtual.itm.edu.co/calendar/export_execute.php?userid=..."
+            class="w-full surface-soft rounded-xl px-4 py-3 text-xs mono focus:border-accent focus:outline-none" /></label>
+      </div>
+      <div class="flex gap-3 pt-2">
+        <button type="button" class="flex-1 py-3 rounded-xl surface-soft hover:border-accent" data-close-modal>Cerrar</button>
+        <button type="submit" class="flex-1 py-3 rounded-xl bg-accent text-white font-bold mono text-[11px] uppercase tracking-[0.25em]">Anadir</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Captura con IA. NO guarda nada por su cuenta: rellena el formulario de
+     arriba y te lo abre para que lo revises. Una IA que escribe directo en tus
+     datos se equivoca en silencio; asi, si entendio mal la fecha, lo ves. -->
+<div id="capture-modal" class="fixed inset-0 z-[70] hidden items-start justify-center bg-black/60 backdrop-blur p-6 overflow-y-auto">
+  <div class="surface rounded-2xl p-8 max-w-lg w-full my-8">
+    <h3 class="font-display font-bold text-xl mb-1">Subir con foto o voz</h3>
+    <p class="text-neutral-500 text-sm mb-6">Toma una foto del cuaderno o del tablero, o dictalo. La IA saca que es, de que materia y para cuando — y te lo deja listo para que lo revises antes de guardar.</p>
+
+    <div class="grid sm:grid-cols-2 gap-3 mb-5">
+      <label class="surface-soft rounded-2xl p-5 text-center cursor-pointer hover:border-accent transition block">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="mx-auto mb-2 text-accent"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+        <span class="font-semibold text-sm block">Foto</span>
+        <span class="text-neutral-500 text-[11px] block mt-0.5">Del cuaderno o del tablero</span>
+        <input type="file" id="capture-photo" accept="image/*" capture="environment" class="hidden" />
+      </label>
+      <button type="button" id="capture-voice" class="surface-soft rounded-2xl p-5 text-center hover:border-accent transition">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="mx-auto mb-2 text-accent"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8"/></svg>
+        <span class="font-semibold text-sm block" id="capture-voice-label">Dictar</span>
+        <span class="text-neutral-500 text-[11px] block mt-0.5" id="capture-voice-hint">Habla y se transcribe solo</span>
+      </button>
+    </div>
+
+    <label class="block mb-4">
+      <span class="meta-label text-neutral-500 block mb-1.5 px-1">O escribelo</span>
+      <textarea id="capture-text" rows="3" placeholder="Para el viernes hay taller de calculo, los puntos 1 al 12 del capitulo 3, vale el 15%"
+        class="w-full surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none resize-y"></textarea>
+    </label>
+
+    <div id="capture-status" class="hidden mb-4"></div>
+
+    <div class="flex gap-3">
+      <button type="button" class="flex-1 py-3 rounded-xl surface-soft hover:border-accent" data-close-modal>Cancelar</button>
+      <button type="button" id="capture-send" class="flex-1 py-3 rounded-xl bg-accent text-white font-bold mono text-[11px] uppercase tracking-[0.25em]">Interpretar</button>
+    </div>
+  </div>
+</div>
+
 <!-- Scorecard de producto. Los criterios economicos (margen, precio, ganancia por
      pedido) NO estan aqui: se calculan solos desde los costos del producto. Aqui
      solo va lo que el panel no puede saber por su cuenta. Ver js/20-dropship-tools.js -->
@@ -1769,6 +1921,8 @@
      perezosa (depPorNombre), no al cargar. OJO si anades codigo nuevo: leer
      COLOMBIA_GEO en el cuerpo de 20 o en un IIFE encontraria undefined. -->
 <script src="js/21-colombia-geo.js"></script>
+<!-- Estudio: Universidad (ITM) y Desarrollo de Software. Ver js/22-study.js -->
+<script src="js/22-study.js"></script>
 <script src="js/99-init.js"></script>
 </body>
 </html>
