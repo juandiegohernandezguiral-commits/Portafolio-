@@ -89,6 +89,10 @@ let rules = store.get('rules', []); let templates = store.get('templates', []);
 // Dropshipping (ver js/19-dropship.js)
 let orders = store.get('orders', []); let shopProducts = store.get('shopProducts', []);
 let campaigns = store.get('campaigns', []);
+// Escenarios de precio de la calculadora (ver js/20-dropship-tools.js). Viven en
+// su propia colección y no dentro del producto porque la calculadora también se
+// usa para productos que todavía no existen: estás tanteando si vale la pena.
+let priceScenarios = store.get('priceScenarios', []);
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
 
 /* ---- Registro de colecciones ----
@@ -107,7 +111,7 @@ const DATA_COLLECTIONS = [
   'tasks', 'events', 'projects', 'notes', 'habits', 'habitLog', 'sessions', 'rules', 'templates',
   // `shopProducts` y no `products` para no confundirlo con `projects`, que ya
   // existe y significa otra cosa.
-  'orders', 'shopProducts', 'campaigns',
+  'orders', 'shopProducts', 'campaigns', 'priceScenarios',
 ];
 
 function getCollection(name) {
@@ -124,6 +128,7 @@ function getCollection(name) {
     case 'orders': return orders;
     case 'shopProducts': return shopProducts;
     case 'campaigns': return campaigns;
+    case 'priceScenarios': return priceScenarios;
     default: return null;
   }
 }
@@ -143,6 +148,7 @@ function setCollection(name, value) {
     case 'orders': orders = list; break;
     case 'shopProducts': shopProducts = list; break;
     case 'campaigns': campaigns = list; break;
+    case 'priceScenarios': priceScenarios = list; break;
   }
 }
 

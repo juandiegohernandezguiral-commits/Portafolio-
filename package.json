@@ -3,7 +3,7 @@
   "private": true,
   "description": "Dependencias de las funciones serverless de /netlify/functions. El portafolio y el panel NO usan npm ni build step: son HTML/CSS/JS servidos tal cual. Este archivo existe solo porque Netlify instala dependencias desde la raiz del repositorio.",
   "scripts": {
-    "test": "node tests/merge.test.js && node tests/markdown.test.js"
+    "test": "node tests/merge.test.js && node tests/markdown.test.js && node tests/pricing.test.js"
   },
   "dependencies": {
     "@netlify/blobs": "^11.1.3",

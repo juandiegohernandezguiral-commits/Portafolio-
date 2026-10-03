@@ -730,6 +730,37 @@ function renderDropship() {
   const sel = document.getElementById('drop-range');
   if (sel) sel.value = String(dropUi.rangeDays);
 
+  // Contador de pendientes por confirmar en la propia pestaña: la cola sólo
+  // sirve si se ve que hay trabajo sin entrar a mirar.
+  const badge = document.getElementById('drop-confirm-count');
+  if (badge) {
+    const n = typeof pendingConfirmations === 'function' ? pendingConfirmations().length : 0;
+    badge.textContent = n;
+    badge.classList.toggle('hidden', n === 0);
+  }
+
+  /* Las pestañas nuevas viven en js/20-dropship-tools.js, que carga DESPUÉS de
+     este archivo. No es un problema de orden porque esto se ejecuta al pulsar
+     una pestaña, mucho después de que todos los scripts estén cargados; el
+     `typeof` es sólo un seguro para que el panel no se rompa entero si ese
+     archivo falta o falla al parsearse. */
+  const externas = {
+    confirmar: 'renderConfirmacion',
+    zonas: 'renderZonas',
+    scorecard: 'renderScorecard',
+    calculadora: 'renderCalculadora',
+  };
+  const fn = externas[dropUi.tab];
+  if (fn) {
+    if (typeof window[fn] === 'function') window[fn]();
+    else {
+      const box = document.getElementById('drop-panel');
+      if (box) box.innerHTML = `<div class="surface rounded-2xl p-10 text-center text-neutral-500 text-sm">
+        No se pudo cargar esta herramienta. Falta <code class="mono">js/20-dropship-tools.js</code>.</div>`;
+    }
+    return;
+  }
+
   if (dropUi.tab === 'pedidos') renderPedidos();
   else if (dropUi.tab === 'productos') renderProductos();
   else renderCampanas();
@@ -766,7 +797,7 @@ function openDropModal(id, prepare) {
 }
 
 function closeDropModals() {
-  ['order-modal', 'product-modal', 'campaign-modal'].forEach(id => {
+  ['order-modal', 'product-modal', 'campaign-modal', 'score-modal'].forEach(id => {
     const m = document.getElementById(id);
     if (m) { m.classList.add('hidden'); m.classList.remove('flex'); }
   });

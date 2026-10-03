@@ -957,10 +957,17 @@
             </label>
           </div>
 
-          <div class="inline-flex p-1 rounded-full surface-soft mb-6" role="tablist">
-            <button type="button" role="tab" class="drop-tab-btn bg-accent text-white px-5 py-2 rounded-full text-xs font-bold mono uppercase tracking-[0.15em] transition" data-drop-tab="pedidos">Pedidos</button>
-            <button type="button" role="tab" class="drop-tab-btn text-neutral-500 px-5 py-2 rounded-full text-xs font-bold mono uppercase tracking-[0.15em] transition" data-drop-tab="productos">Productos</button>
-            <button type="button" role="tab" class="drop-tab-btn text-neutral-500 px-5 py-2 rounded-full text-xs font-bold mono uppercase tracking-[0.15em] transition" data-drop-tab="campanas">Campañas</button>
+          <!-- flex-wrap y no inline-flex: con siete pestañas una sola fila se sale
+               del ancho en movil. Envolver mantiene todas visibles sin scroll
+               horizontal ni contenido escondido. -->
+          <div class="flex flex-wrap gap-1 p-1 rounded-2xl surface-soft mb-6" role="tablist">
+            <button type="button" role="tab" class="drop-tab-btn bg-accent text-white px-4 py-2 rounded-xl text-xs font-bold mono uppercase tracking-[0.12em] transition" data-drop-tab="pedidos">Pedidos</button>
+            <button type="button" role="tab" class="drop-tab-btn text-neutral-500 px-4 py-2 rounded-xl text-xs font-bold mono uppercase tracking-[0.12em] transition" data-drop-tab="confirmar">Confirmar<span id="drop-confirm-count" class="hidden ml-1.5 px-1.5 py-0.5 rounded-full bg-amber-500 text-white text-[9px]"></span></button>
+            <button type="button" role="tab" class="drop-tab-btn text-neutral-500 px-4 py-2 rounded-xl text-xs font-bold mono uppercase tracking-[0.12em] transition" data-drop-tab="zonas">Zonas</button>
+            <button type="button" role="tab" class="drop-tab-btn text-neutral-500 px-4 py-2 rounded-xl text-xs font-bold mono uppercase tracking-[0.12em] transition" data-drop-tab="productos">Productos</button>
+            <button type="button" role="tab" class="drop-tab-btn text-neutral-500 px-4 py-2 rounded-xl text-xs font-bold mono uppercase tracking-[0.12em] transition" data-drop-tab="scorecard">Scorecard</button>
+            <button type="button" role="tab" class="drop-tab-btn text-neutral-500 px-4 py-2 rounded-xl text-xs font-bold mono uppercase tracking-[0.12em] transition" data-drop-tab="calculadora">Calculadora</button>
+            <button type="button" role="tab" class="drop-tab-btn text-neutral-500 px-4 py-2 rounded-xl text-xs font-bold mono uppercase tracking-[0.12em] transition" data-drop-tab="campanas">Campañas</button>
           </div>
 
           <div id="drop-panel"></div>
@@ -1380,6 +1387,81 @@
   </div>
 </div>
 
+<!-- Scorecard de producto. Los criterios economicos (margen, precio, ganancia por
+     pedido) NO estan aqui: se calculan solos desde los costos del producto. Aqui
+     solo va lo que el panel no puede saber por su cuenta. Ver js/20-dropship-tools.js -->
+<div id="score-modal" class="fixed inset-0 z-[70] hidden items-start justify-center bg-black/60 backdrop-blur p-6 overflow-y-auto">
+  <div class="surface rounded-2xl p-8 max-w-xl w-full my-8">
+    <h3 class="font-display font-bold text-xl mb-1">Evaluar producto</h3>
+    <p class="text-neutral-500 text-sm mb-6" id="score-modal-sub">Responde lo que el panel no puede calcular. El margen y el precio los saca de los costos que ya registraste.</p>
+    <form id="score-form" class="space-y-4">
+      <label class="block"><span class="meta-label text-neutral-500 block mb-1.5 px-1">¿Resuelve un problema o engancha emocionalmente?</span>
+        <select name="gancho" class="w-full surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none">
+          <option value="fuerte">Sí, es evidente en 3 segundos de video</option>
+          <option value="medio">Algo, pero hay que explicarlo</option>
+          <option value="debil">No, es un producto más</option>
+        </select></label>
+
+      <label class="block"><span class="meta-label text-neutral-500 block mb-1.5 px-1">Peso y fragilidad</span>
+        <select name="peso" class="w-full surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none">
+          <option value="bueno">Liviano y resistente</option>
+          <option value="medio">Mediano, aguanta el transporte</option>
+          <option value="malo">Pesado, voluminoso o frágil</option>
+        </select>
+        <span class="text-neutral-500 text-[11px] block mt-1.5 px-1">Encarece el flete y sube las devoluciones por daño.</span></label>
+
+      <label class="block"><span class="meta-label text-neutral-500 block mb-1.5 px-1">¿Verificaste la demanda?</span>
+        <select name="demanda" class="w-full surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none">
+          <option value="tres">Sí, en tres fuentes (Trends, MercadoLibre y TikTok)</option>
+          <option value="una">En una o dos fuentes</option>
+          <option value="ninguna">No lo he verificado</option>
+        </select>
+        <span class="text-neutral-500 text-[11px] block mt-1.5 px-1">Google Trends Colombia, los más vendidos de MercadoLibre y las visualizaciones en TikTok Colombia.</span></label>
+
+      <label class="block"><span class="meta-label text-neutral-500 block mb-1.5 px-1">Proveedor y despacho</span>
+        <select name="proveedor" class="w-full surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none">
+          <option value="nacional">Proveedor nacional con stock</option>
+          <option value="lento">Nacional pero con demoras</option>
+          <option value="importado">Importado, semanas de espera</option>
+          <option value="ninguno">Sin proveedor confirmado</option>
+        </select></label>
+
+      <label class="block"><span class="meta-label text-neutral-500 block mb-1.5 px-1">Saturación en pauta</span>
+        <select name="saturacion" class="w-full surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none">
+          <option value="baja">Pocos anunciantes, veo espacio</option>
+          <option value="media">Varios anunciantes activos</option>
+          <option value="alta">Muy saturado, todos lo tienen</option>
+        </select>
+        <span class="text-neutral-500 text-[11px] block mt-1.5 px-1">Míralo en la Biblioteca de anuncios de Meta antes de responder.</span></label>
+
+      <div class="rounded-xl p-4" style="border-left:3px solid #ef4444;background:#ef444410">
+        <p class="mono text-[10px] uppercase tracking-[0.15em] text-red-500 mb-3">Bloqueadores legales</p>
+        <div class="space-y-3">
+          <label class="block"><span class="meta-label text-neutral-500 block mb-1.5 px-1">Registro INVIMA</span>
+            <select name="invima" class="w-full surface-soft rounded-xl px-4 py-2.5 focus:border-accent focus:outline-none">
+              <option value="no-aplica">No aplica (no es cosmético, alimento ni dispositivo médico)</option>
+              <option value="con-registro">Aplica y el proveedor tiene registro</option>
+              <option value="sin-registro">Aplica y no hay registro</option>
+            </select></label>
+          <label class="block"><span class="meta-label text-neutral-500 block mb-1.5 px-1">Propiedad intelectual</span>
+            <select name="marca" class="w-full surface-soft rounded-xl px-4 py-2.5 focus:border-accent focus:outline-none">
+              <option value="original">Producto genérico u original</option>
+              <option value="replica">Es réplica o imitación de una marca</option>
+            </select></label>
+        </div>
+      </div>
+
+      <label class="block"><span class="meta-label text-neutral-500 block mb-1.5 px-1">Notas</span>
+        <input name="notes" placeholder="Opcional: de dónde lo sacaste, qué te llamó la atención" class="w-full surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none" /></label>
+
+      <div class="flex gap-3 pt-2">
+        <button type="button" class="flex-1 py-3 rounded-xl surface-soft hover:border-accent" data-close-modal>Cancelar</button>
+        <button type="submit" class="flex-1 py-3 rounded-xl bg-accent text-white font-bold mono text-[11px] uppercase tracking-[0.25em]">Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <div id="template-modal" class="fixed inset-0 z-[70] hidden items-start justify-center bg-black/60 backdrop-blur p-6 overflow-y-auto">
   <div class="surface rounded-2xl p-8 max-w-lg w-full my-8">
     <h3 class="font-display font-bold text-xl mb-6" id="template-modal-title">Nueva plantilla</h3>
@@ -1679,6 +1761,9 @@
 <script src="js/17-templates.js"></script>
 <script src="js/18-review.js"></script>
 <script src="js/19-dropship.js"></script>
+<!-- Herramientas del negocio: confirmacion, zonas, calculadora y scorecard.
+     Carga DESPUES de 19 porque reutiliza unitEconomics, deliveryRate y BENCHMARKS. -->
+<script src="js/20-dropship-tools.js"></script>
 <script src="js/99-init.js"></script>
 </body>
 </html>

@@ -24,7 +24,7 @@ from one Netlify site** — `netlify.toml` publishes the repo root as static fil
 Netlify does *not* install from a `package.json` nested in the functions directory — the
 bundler fails with `Could not resolve "@netlify/blobs"` and the whole deploy dies. The frontend
 still uses no npm and no build step; that root `package.json` exists only to feed the
-functions. `npm test` runs both test suites.
+functions. `npm test` runs the three test suites.
 
 ## Run locally
 
@@ -42,13 +42,23 @@ manifest don't work from `file://`.
 ## Tests
 
 ```
-node tests/merge.test.js
+npm test     # corre las tres suites
 ```
 
-Covers the cloud-sync merge logic (last-write-wins per record, tombstones, TTL pruning) by
-loading `js/07-sync.js` in a sandboxed VM with stubbed browser globals. Run it after touching
-that file — it's the one place where a bug means silently losing data rather than an
-error message.
+Three plain `node` scripts, no runner and no dependencies. Each covers a place where a bug is
+*silent* rather than loud:
+
+- `tests/merge.test.js` — cloud-sync merge (last-write-wins per record, tombstones, TTL pruning),
+  loading `js/07-sync.js` in a sandboxed VM with stubbed browser globals. A bug here loses data
+  instead of raising an error.
+- `tests/markdown.test.js` — the in-house markdown renderer, mostly escaping: its output goes
+  straight into `innerHTML`.
+- `tests/pricing.test.js` — the money arithmetic of `js/20-dropship-tools.js`. A wrong margin
+  doesn't throw; it prints a believable number that a pricing decision gets made on.
+
+Note that `const` declarations in a loaded script are **not** properties of the VM context
+(only `function` declarations and `var` are). To read one from a test, use
+`vm.runInContext('NOMBRE', sandbox)`.
 
 ## Gotchas
 

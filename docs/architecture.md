@@ -32,7 +32,8 @@ one:
 | `js/16-rules.js` | Automation rules engine + notice inbox. Defines `runRules`, `RULE_TYPES`, `noticesBlock` |
 | `js/17-templates.js` | Note/project templates + placeholders. Defines `applyTemplatePlaceholders`, `useNoteTemplate` |
 | `js/18-review.js` | Guided weekly review. Defines `openReview`, `reviewPromptBlock` |
-| `js/19-dropship.js` | COD orders, unit economics, campaigns. Defines `renderDropship`, `unitEconomics`, `deliveryRate` |
+| `js/19-dropship.js` | COD orders, unit economics, campaigns. Defines `renderDropship`, `unitEconomics`, `deliveryRate`, `BENCHMARKS` |
+| `js/20-dropship-tools.js` | Confirmation queue, zone analysis, price calculator, product scorecard. Defines `renderConfirmacion`, `renderZonas`, `renderCalculadora`, `renderScorecard`, `calcEconomics`, `solvePrice`, `resolveCity`, `waPhone`, `scoreProduct`. **Must load after 19** — it reuses its helpers |
 | `js/99-init.js` | Dashboard seed + migrations, nav highlight, `#hoy` PWA shortcut. Must load last |
 
 Two consequences worth remembering when editing:
@@ -64,8 +65,16 @@ Two consequences worth remembering when editing:
   are about escaping, because `renderMarkdown()`'s output goes straight into `innerHTML`: the
   invariant is that nothing the user types can arrive as live HTML. Run it after touching
   `js/10-markdown.js`.
+- `node tests/pricing.test.js` — the money arithmetic of `js/20-dropship-tools.js` and
+  `unitEconomics()`. It exists because an error here is invisible: a wrong margin doesn't throw,
+  it prints a plausible number that a pricing decision then gets made on. The load-bearing
+  assertion is that the breakdown shown on screen sums *exactly* to the margin shown on screen —
+  a breakdown that doesn't reconcile with its own total is worse than none, because it invites
+  trusting a figure nobody can audit. It also round-trips every solved price back through the
+  model, and pins the `observedCpa` zero-vs-null regression.
 
-Both are plain `node` scripts with no dependencies and no test runner.
+All three are plain `node` scripts with no dependencies and no test runner. `npm test` runs them
+in sequence.
 
 ## External dependencies (CDN, no local copies)
 - **Tailwind CSS** — configured inline via `tailwind.config`; dark mode uses the `class` strategy

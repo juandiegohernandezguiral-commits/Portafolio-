@@ -13,7 +13,7 @@
  * invalida la caché anterior y fuerza a los clientes a recoger la nueva.
  */
 
-const SW_VERSION = 'jdh-sw-v5';
+const SW_VERSION = 'jdh-sw-v6';
 const SHELL_CACHE = `${SW_VERSION}-shell`;
 const RUNTIME_CACHE = `${SW_VERSION}-runtime`;
 
@@ -45,6 +45,7 @@ const SHELL_ASSETS = [
   './js/17-templates.js',
   './js/18-review.js',
   './js/19-dropship.js',
+  './js/20-dropship-tools.js',
   './js/99-init.js',
   './icon.svg',
   './icon-192.png',

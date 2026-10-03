@@ -104,9 +104,10 @@ enough, and it guarantees typing a full word ranks the literal match first.
   Node size and opacity scale with degree; unconnected notes render muted, which is itself the
   useful signal. Clicking a node opens that note. The repulsion loop is O(n²) — fine for
   hundreds of notes; past a few thousand it would need Barnes-Hut.
-- **Dropshipping** (`js/19-dropship.js`) — the business. Three tabs: Pedidos, Productos, Campañas.
-  Collections: `orders`, `shopProducts` (named so to avoid colliding with the unrelated
-  `projects`), `campaigns`.
+- **Dropshipping** (`js/19-dropship.js` + `js/20-dropship-tools.js`) — the business. Seven tabs:
+  Pedidos, Confirmar, Zonas, Productos, Scorecard, Calculadora, Campañas. Collections: `orders`,
+  `shopProducts` (named so to avoid colliding with the unrelated `projects`), `campaigns`,
+  `priceScenarios`.
 
   **Delivery rate is computed over *resolved* orders only** — delivered ÷ (delivered + returned).
   In-transit orders are excluded deliberately: counting them as failures would tank the rate every
@@ -181,6 +182,91 @@ enough, and it guarantees typing a full word ranks the literal match first.
   The client **upserts by `externalId` + today's date** rather than appending: syncing twice in
   one day would otherwise double the recorded spend and halve every CPA. Campaign→product
   association stays manual; guessing it from the campaign name would fail silently.
+
+  ### Business tools (`js/20-dropship-tools.js`)
+
+  Four more tabs, in a separate file so `19-dropship.js` stays readable. Loads **after** it and
+  reuses `BENCHMARKS`, `deliveryRate`, `unitEconomics`, `observedCpa`, `statTile`, `rateBar`.
+  `renderDropship()` dispatches to them through a `typeof window[fn]` guard, so a parse error in
+  this file degrades those four tabs instead of taking down the whole panel.
+
+  **Confirmar** — work queue of `nuevo` orders, newest first, because intent cools in minutes.
+  Each card builds a `wa.me` deep link with the message pre-written. `waPhone()` returns `null`
+  rather than a half-built number for a 7-digit landline: `wa.me` with an invalid number opens
+  WhatsApp on a confusing error, and "falta celular" is the honest answer. Opening the chat
+  counts as an attempt (`confirmAttempts`, `lastAttemptAt`); at `MAX_INTENTOS_CONFIRMACION = 2`
+  the card turns red and says not to ship — two freights cost more than the order was worth.
+
+  **Zonas** — the metric COD guides name explicitly as one of the few that matter, and the data
+  was already being captured. `normalizeCity()` strips accents, case and punctuation so
+  "Medellín", "medellin" and "MEDELLIN" stop being three zones with samples too small to read.
+  `CIUDADES` maps ~75 canonical municipalities to a departamento; **anything not in the table
+  keeps its own name and lands in "Sin clasificar" instead of being fuzzy-matched** — folding
+  Cartagena del Chairá (Caquetá) into Cartagena (Bolívar) would dirty the exact data this tab
+  exists to clean. Zones are judged against the user's **own global rate** (±`DELTA_ZONA`), not
+  an absolute threshold, and need `MUESTRA_MINIMA_ZONA = 8` resolved orders first — higher than
+  the 5 used for the confirmation banner because comparing dozens of cities at once makes an
+  extreme reading by chance much more likely.
+
+  **Calculadora** — the full cost model, solved backwards. Everything is expressed per *delivered*
+  order, with three classes of cost that behave differently:
+
+  | Class | Multiplier | Items |
+  |---|---|---|
+  | Paid per attempt | `1/(1−r)` | outbound freight, packaging, confirmation, ads (unless the CPA is already per delivery) |
+  | Paid only on returns | `r/(1−r)` | return freight, product that comes back unsellable |
+  | Paid only on delivery | `×1` | product cost, COD collection fee, 4×1000, tax provision |
+
+  Separating what depends on the price from what doesn't is what lets the price be solved in one
+  line instead of by trial and error. With `K` the fixed cost per delivery and `v` the sum of the
+  percentages charged on the price:
+
+  ```
+  margen(P) = P·(1 − v) − K
+  P = K / (1 − v − m)        for a target net margin m
+  ```
+
+  `solvePrice()` returns `null` when `1 − v − m ≤ 0` — raising the price also raises those costs,
+  so no price works and returning a big number would look like an answer. `maxReturnRate()` uses
+  bisection rather than algebra: `r` appears in three places at once and the closed form would be
+  unreviewable, while the margin is monotonically decreasing in `r`, so bisection always converges.
+
+  The **"this CPA is already per delivery" checkbox** is the one control that matters most. Meta
+  reports cost per order *received*; the panel divides that by the delivery rate. Ticking it when
+  it doesn't apply is the single error that makes an unprofitable product look profitable.
+
+  **Scorecard** — 40 points computed from the costs already on record (margin, price in the COD
+  band, profit per order) + 60 from a questionnaire (`p.score`). Unanswered criteria are excluded
+  from **both** numerator and denominator: scoring them zero would punish not having answered yet,
+  and scoring them full would inflate an unevaluated product. Below `MIN_PESO_VEREDICTO = 60`
+  evaluated the verdict reads "Evaluación incompleta" — without that guard a product with costs
+  filled in and the questionnaire blank scored "100 — Lanzar" off the economic criteria alone.
+
+  Two **hard blockers** — INVIMA registration required but absent, and brand replica — override
+  the score rather than averaging into it. A replica is not a mediocre product, it is one that
+  can get the ad account closed, and a high average elsewhere compensates for none of that.
+
+  `tests/pricing.test.js` covers this arithmetic (91 assertions): the displayed breakdown must sum
+  *exactly* to the displayed margin, every solved price round-trips to its target margin, the CPA
+  and return-rate ceilings round-trip to zero margin, and the `observedCpa` zero-vs-null bug has a
+  named regression test.
+
+  ### Sources for the business module
+
+  Everything above that is a number came from published material on Colombian COD rather than
+  from feel. Beyond the `BENCHMARKS` table earlier in this document:
+
+  | Used for | Source |
+  |---|---|
+  | Cost structure of a COD price calculator (product, freight, return rate, real CPA, target margin) | [Andrey Business — Calculadora precio de venta](https://www.andreybusiness.com/colombia/herramientas/calculadora-precio-venta-colombia) |
+  | Collection commission, packaging, reverse-logistics and warehousing as real cost lines; rejection rate by **zone** named as a key COD metric | [Melonn](https://www.melonn.com/colombia/fulfillment/costos-3pl-vs-propio/), [Daniel Bonilla](https://danytraveloficial.com/blog/posts/20260611-cash-on-delivery-en-dropshipping-baja-tu-tasa-de-devolucion.html) |
+  | Confirmation script, the three address fields to verify, "no answer after two attempts doesn't ship", effective-delivery-rate framing | [One Percent — Reducir devoluciones COD](https://www.onepercent.bot/academia/dropshipping-cod/reducir-devoluciones-cod) |
+  | 4 in 10 confirming customers correct their address; excluding structurally high-return zones | [Envíoclick](https://blog.envioclick.com/pago-contra-entrega-en-colombia-por-que-cada-rechazo-te-cuesta-mas-de-lo-que-ganaste/) |
+  | Product validation criteria: ≥40% net margin, 50k–200k price band, not heavy/fragile, demand verified in Trends + MercadoLibre + TikTok, INVIMA and IP exclusions | [Belarcelis](https://belarcelis.com/como-validar-productos-ganadores-ecommerce/), [Andrey Business](https://www.andreybusiness.com/colombia/blog/5-errores-fatales-que-estas-cometiendo-al-escoger-un-producto-ganador) |
+
+  These are market references, not laws. Where the panel has enough of the user's own data it
+  prefers it and says so; where it doesn't, it says that too instead of filling the gap with
+  someone else's average.
 - **Automatización** (`js/16-rules.js`, `js/17-templates.js`) — two tabs.
 
   **Reglas.** Typed rules, not a generic `when <field> <op> <value>` builder: for one person a
@@ -440,6 +526,12 @@ The user connecting Outlook/To Do must register their own app in
 | `jdh_ruleSeen` | Notice dedupe keys (`rule:entity:day`), pruned after 14 days |
 | `jdh_lastReviewAt` | ISO timestamp of the last weekly review |
 | `jdh_autoTab` | Last active Automatización tab |
+| `jdh_orders` | COD orders (synced). Beyond the obvious fields: `confirmed` (permanent flag, not the current status), `confirmAttempts` / `lastAttemptAt` (confirmation queue), `resolvedAt` (stamped on delivered/returned, used for days-in-transit) |
+| `jdh_shopProducts` | Products with their costs (synced). `score` holds the scorecard answers; `returnRateOverride` pins the return rate instead of observing it from orders |
+| `jdh_campaigns` | Daily ad spend per campaign (synced). `externalId` + `source: 'meta-api'` mark rows that came from the Meta sync and may be overwritten by it |
+| `jdh_priceScenarios` | Saved price-calculator scenarios (synced) — `{ name, inputs, createdAt }`. Separate collection rather than a product field because the calculator is also used for products that don't exist yet |
+| `jdh_calcState` | Current calculator inputs — **device-local, not synced**. It's a scratchpad, not data |
+| `jdh_dropTab` | Last active Dropshipping tab |
 
 Not in `localStorage`: the `FileSystemFileHandle` for auto-backup lives in IndexedDB
 (`jdh-fs` → `handles` → `backupFile`), because handles can't be serialized to JSON.
