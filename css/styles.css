@@ -527,3 +527,92 @@
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
   }
+
+/* ============================================================================
+   MAPA 3D DE COLOMBIA (pestana Zonas) — ver js/20-dropship-tools.js
+   ============================================================================
+   La sensacion de volumen no viene de WebGL sino de dos cosas baratas: el plano
+   entero inclinado con perspectiva CSS, y cada departamento dibujado varias
+   veces con un desplazamiento en Y y un tono mas oscuro, que leido en escorzo
+   se ve como la pared de un bloque extruido.
+
+   Se hizo asi a proposito. three.js son ~600 KB en un sitio que no tiene build
+   step y que se cachea entero como PWA — demasiado peso para un mapa. Esto son
+   unas pocas reglas de CSS y funciona sin conexion. */
+
+/* Altura fija y centrado en vez de dejar que el SVG imponga su alto. Colombia es
+   mucho mas alta que ancha (viewBox 770x1040), asi que a ancho completo el mapa
+   media mas de 1000px y se salia del contenedor: habia que hacer scroll para
+   verlo entero y el panel de detalle quedaba fuera de pantalla justo cuando
+   explorabas el sur. */
+.mapa-escena {
+  perspective: 1500px;
+  perspective-origin: 50% 40%;
+  height: 580px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mapa-plano {
+  transform: rotateX(38deg) rotateZ(-6deg);
+  transform-style: preserve-3d;
+  transition: transform .5s cubic-bezier(.22,.61,.36,1);
+}
+
+/* Al pasar el raton el mapa se endereza un poco. Es la pista de que se puede
+   explorar, y de paso deja leer mejor los departamentos pequenos del centro. */
+.mapa-escena:hover .mapa-plano { transform: rotateX(26deg) rotateZ(-3deg); }
+
+.mapa-svg {
+  /* Alto explicito en px y ancho deducido del viewBox. Con height:100% a traves
+     de una cadena de contenedores flex el SVG acababa en una caja casi cuadrada
+     y se dibujaba con bandas vacias arriba y abajo, mas pequeno de lo que cabia. */
+  height: 560px;
+  width: auto;
+  max-width: 100%;
+  display: block;
+  overflow: visible;
+  /* La sombra proyectada asienta el mapa sobre el fondo en vez de dejarlo
+     recortado y pegado. */
+  filter: drop-shadow(0 26px 22px rgba(0,0,0,.22));
+}
+
+.mapa-depto { cursor: pointer; }
+
+.mapa-cara {
+  stroke: rgba(255,255,255,.55);
+  stroke-width: .8;
+  stroke-linejoin: round;
+  transition: filter .15s ease;
+}
+html.dark .mapa-cara { stroke: rgba(0,0,0,.35); }
+
+/* Realce al pasar por encima. Se usa brightness y no un cambio de color para
+   no pisar el significado de la escala: el color ES el dato. */
+.mapa-depto:hover .mapa-cara,
+.mapa-depto.is-sel .mapa-cara {
+  filter: brightness(1.18);
+  stroke: #2667ff;
+  stroke-width: 1.6;
+}
+
+.mapa-inset-label {
+  font-size: 11px;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  letter-spacing: .04em;
+  opacity: .55;
+}
+
+/* En movil el escorzo fuerte deja los departamentos del centro ilegibles y no
+   hay hover que lo arregle, asi que se aplana bastante. */
+@media (max-width: 1023px) {
+  .mapa-escena { height: 440px; }
+  .mapa-svg { height: 420px; }
+  .mapa-plano { transform: rotateX(22deg); }
+  .mapa-escena:hover .mapa-plano { transform: rotateX(16deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mapa-plano { transition: none; }
+}

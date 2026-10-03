@@ -34,6 +34,7 @@ one:
 | `js/18-review.js` | Guided weekly review. Defines `openReview`, `reviewPromptBlock` |
 | `js/19-dropship.js` | COD orders, unit economics, campaigns. Defines `renderDropship`, `unitEconomics`, `deliveryRate`, `BENCHMARKS` |
 | `js/20-dropship-tools.js` | Confirmation queue, zone analysis, price calculator, product scorecard. Defines `renderConfirmacion`, `renderZonas`, `renderCalculadora`, `renderScorecard`, `calcEconomics`, `solvePrice`, `resolveCity`, `waPhone`, `scoreProduct`. **Must load after 19** — it reuses its helpers |
+| `js/21-colombia-geo.js` | Department geometry for the Zonas map: SVG paths, centroids, San Andrés inset. Pure data (`COLOMBIA_GEO`), ~48 KB. Loads *after* its consumer on purpose — 20 reads it lazily, so anything new that touches `COLOMBIA_GEO` must do the same |
 | `js/99-init.js` | Dashboard seed + migrations, nav highlight, `#hoy` PWA shortcut. Must load last |
 
 Two consequences worth remembering when editing:

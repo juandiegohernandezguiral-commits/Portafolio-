@@ -104,7 +104,7 @@ enough, and it guarantees typing a full word ranks the literal match first.
   Node size and opacity scale with degree; unconnected notes render muted, which is itself the
   useful signal. Clicking a node opens that note. The repulsion loop is O(n²) — fine for
   hundreds of notes; past a few thousand it would need Barnes-Hut.
-- **Dropshipping** (`js/19-dropship.js` + `js/20-dropship-tools.js`) — the business. Seven tabs:
+- **Dropshipping** (`js/19-dropship.js` + `js/20-dropship-tools.js` + `js/21-colombia-geo.js`) — the business. Seven tabs:
   Pedidos, Confirmar, Zonas, Productos, Scorecard, Calculadora, Campañas. Collections: `orders`,
   `shopProducts` (named so to avoid colliding with the unrelated `projects`), `campaigns`,
   `priceScenarios`.
@@ -250,6 +250,89 @@ enough, and it guarantees typing a full word ranks the literal match first.
   *exactly* to the displayed margin, every solved price round-trips to its target margin, the CPA
   and return-rate ceilings round-trip to zero margin, and the `observedCpa` zero-vs-null bug has a
   named regression test.
+
+  ### The 3D map (`js/21-colombia-geo.js` + `renderMapa3D`)
+
+  Real department geometry, from the public DANE-based GeoJSON, simplified with
+  Douglas-Peucker at ~1.2 km tolerance: 1.5 MB → 48 KB. San Andrés is drawn in its own inset
+  box — it sits ~700 km offshore and including it in the main frame would shrink the mainland
+  to nothing.
+
+  **No three.js.** The depth comes from two cheap tricks: the whole plane tilted with CSS
+  `perspective` + `rotateX`, and each department drawn several times offset in SVG-Y with a
+  progressively darker fill, which in foreshortening reads as the wall of an extruded block.
+  `<use href>` against a single `<defs>` keeps ~360 elements at a few KB of DOM. three.js would
+  be ~600 KB on a site with no build step that caches its whole shell as a PWA.
+
+  Departments are painted **north to south** on purpose: a department's wall extends downward
+  and has to be covered by whatever is south of it, or you get walls floating over the
+  neighbour's territory.
+
+  **The two layers never mix.** `Referencia` shows a risk *level* (1–4), never a percentage —
+  see the long comment at the top of the Zonas section in `js/20-dropship-tools.js` for why.
+  `Mis datos` shows the measured rate, and paints grey anything under `MUESTRA_MINIMA_ZONA`
+  resolved orders rather than inventing a figure. Height encodes risk level in the first layer
+  and order volume in the second.
+
+  `depPorNombre()` is built **lazily**, not in an IIFE — and this is load-bearing, not style.
+  `21-colombia-geo.js` loads *after* `20-dropship-tools.js` (the numbering is the load order, as
+  everywhere else in this project), so an IIFE ran while `COLOMBIA_GEO` was still undefined and
+  froze the lookup table empty. The map still drew — `renderMapa3D` checks the geometry when it's
+  called — but no order ever found its department and everything stayed grey no matter how many
+  orders existed. Anything new that reads `COLOMBIA_GEO` from file 20 has to read it lazily too.
+
+  ### Order inbox (`netlify/functions/orders-intake.js`)
+
+  Lets an external system drop orders into the panel without anyone typing them. Built for
+  **Sofia**, a WhatsApp chatbot that runs on Juan Diego's own machine and already extracts
+  structured order data from the conversation.
+
+  **It writes to its own blob key (`orders-inbox`), never to the sync snapshot.** Writing into
+  `user-data` would race with the browser's optimistic-concurrency push: the panel reads `rev`,
+  then writes; a server-side write in between either gets the panel a 409 or — worse — gets
+  silently overwritten, losing the order with nobody noticing. With a separate key there is
+  nothing to coordinate: the backend only appends, the panel only reads, and the merge happens
+  client-side keyed by `id` like everything else.
+
+  **`externalId` is required.** Sofia runs on a laptop with whatever connection it has; a POST
+  that lands but whose response is lost will be retried, and a duplicated COD order means
+  shipping twice. The record `id` is *derived* from `externalId` (`sha256` prefix), so even if
+  the same order arrived by two different paths the two records would collapse into one on merge.
+  A retry returns `200 {duplicate: true}`, not an error.
+
+  | | |
+  |---|---|
+  | `POST /orders/intake` | Sofia leaves an order. `201` new, `200` duplicate. |
+  | `GET /orders/intake` | The panel collects pending orders ("Recoger ahora" in the Confirmar tab). |
+  | Auth | `X-Sync-Token`, the same `SYNC_TOKEN` as the rest. |
+  | Retention | 30 days or 500 items, newest kept. |
+
+  **To connect Sofia** (nothing in Sofia has been modified — this is the snippet to add
+  wherever she finishes taking an order):
+
+  ```js
+  await fetch('https://TU-SITIO.netlify.app/orders/intake', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Sync-Token': process.env.SYNC_TOKEN },
+    body: JSON.stringify({
+      externalId: mensajeId,      // OBLIGATORIO y estable: id del mensaje o de la conversación
+      customer:   'Ana Gómez',
+      phone:      '3001234567',
+      city:       'Medellín',
+      address:    'Cra 70 #45-12, barrio Laureles',
+      productName:'Cinturón térmico',   // se empareja solo con tu producto del panel
+      qty:        1,
+      price:      89900,
+      source:     'meta',          // meta | tiktok | organico | otro
+      status:     'nuevo',
+      notes:      'Pregunta si llega antes del viernes',
+    }),
+  });
+  ```
+
+  Only `externalId` and `price` are validated strictly — the rest degrades gracefully, because
+  a missing city only means that order sits out of the zone map until it's completed by hand,
+  while a missing `externalId` can cause a double shipment.
 
   ### Sources for the business module
 
@@ -532,6 +615,8 @@ The user connecting Outlook/To Do must register their own app in
 | `jdh_priceScenarios` | Saved price-calculator scenarios (synced) — `{ name, inputs, createdAt }`. Separate collection rather than a product field because the calculator is also used for products that don't exist yet |
 | `jdh_calcState` | Current calculator inputs — **device-local, not synced**. It's a scratchpad, not data |
 | `jdh_dropTab` | Last active Dropshipping tab |
+| `jdh_mapaCapa` | Active layer of the Zonas map (`'referencia'` / `'datos'`) |
+| `jdh_inboxLastSync` | ISO timestamp of the last order-inbox collection |
 
 Not in `localStorage`: the `FileSystemFileHandle` for auto-backup lives in IndexedDB
 (`jdh-fs` → `handles` → `backupFile`), because handles can't be serialized to JSON.

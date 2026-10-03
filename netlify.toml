@@ -151,6 +151,14 @@
   to = "/.netlify/functions/data-sync"
   status = 200
 
+# Buzón de pedidos: un sistema externo (Sofia, el chatbot de WhatsApp) deja aquí
+# los pedidos y el panel los recoge al sincronizar. POST para dejar, GET para
+# leer. Protegido con el mismo SYNC_TOKEN — son datos de clientes.
+[[redirects]]
+  from = "/orders/intake"
+  to = "/.netlify/functions/orders-intake"
+  status = 200
+
 # Campañas de Meta Ads en vivo para el Centro de campañas del panel.
 # Protegido con SYNC_TOKEN: expone cuánto gastas en publicidad.
 [[redirects]]

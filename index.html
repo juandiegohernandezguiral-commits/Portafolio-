@@ -1764,6 +1764,11 @@
 <!-- Herramientas del negocio: confirmacion, zonas, calculadora y scorecard.
      Carga DESPUES de 19 porque reutiliza unitEconomics, deliveryRate y BENCHMARKS. -->
 <script src="js/20-dropship-tools.js"></script>
+<!-- Geometria de los departamentos para el mapa de Zonas. Carga DESPUES de 20,
+     que es quien la usa, y eso esta bien porque 20 la consulta de forma
+     perezosa (depPorNombre), no al cargar. OJO si anades codigo nuevo: leer
+     COLOMBIA_GEO en el cuerpo de 20 o en un IIFE encontraria undefined. -->
+<script src="js/21-colombia-geo.js"></script>
 <script src="js/99-init.js"></script>
 </body>
 </html>

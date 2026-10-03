@@ -264,6 +264,119 @@ function agoShort(ms) {
 }
 
 /* ============================================================================
+   BUZÓN DE PEDIDOS (lo que deja Sofia)
+   ============================================================================
+
+   El backend (netlify/functions/orders-intake.js) guarda en una clave aparte los
+   pedidos que llegan de fuera. Aquí se recogen y se fusionan con los locales.
+
+   La fusión es por `id`, y ese id viene derivado del externalId en el servidor,
+   así que traerse el buzón dos veces no duplica nada: el segundo pase encuentra
+   el pedido ya presente y lo deja como está. Lo que SÍ se respeta es lo que
+   hayas tocado tú — si marcaste un pedido como entregado en el panel, volver a
+   sincronizar no lo devuelve a "nuevo".
+   ============================================================================ */
+
+const inboxState = { status: 'idle', error: null, lastSync: store.get('inboxLastSync', null) };
+
+function inboxBaseUrl() {
+  return ((integrations.sync?.url || integrations.notion?.proxyUrl || '') + '').trim().replace(/\/$/, '');
+}
+function isInboxConfigured() { return !!(inboxBaseUrl() && (integrations.sync?.token || '').trim()); }
+
+/** Empareja el nombre de producto que manda Sofia con un producto del panel. */
+function productoPorNombre(nombre) {
+  const n = normalizeCity(nombre);   // sirve igual: quita acentos y normaliza
+  if (!n) return null;
+  return shopProducts.find(p => normalizeCity(p.name) === n)
+      || shopProducts.find(p => normalizeCity(p.name).includes(n) || n.includes(normalizeCity(p.name)))
+      || null;
+}
+
+async function syncOrdersInbox({ interactive = false } = {}) {
+  if (!isInboxConfigured()) {
+    if (interactive) alert('Primero configura la URL del backend y el SYNC_TOKEN en "Conectar cuentas" → Sincronización.');
+    return false;
+  }
+  inboxState.status = 'loading';
+  inboxState.error = null;
+  if (isDashboardOpen && isDashboardOpen()) renderDropship();
+
+  try {
+    const res = await fetch(`${inboxBaseUrl()}/orders/intake`, {
+      headers: { 'X-Sync-Token': (integrations.sync.token || '').trim() },
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || `El servidor respondió ${res.status}`);
+
+    let nuevos = 0;
+    (data.items || []).forEach(item => {
+      if (!item || !item.id) return;
+      if (orders.some(o => o.id === item.id)) return;   // ya está: no se toca
+
+      const p = item.productId ? productById(item.productId) : productoPorNombre(item.productName);
+      orders.push(touch({
+        ...item,
+        productId: p ? p.id : '',
+        // Si Sofia no supo el precio pero el producto sí lo tiene, se usa el de
+        // lista. Mejor eso que un pedido de $0 ensuciando los ingresos.
+        price: item.price > 0 ? item.price : (p ? (Number(p.price) || 0) * (item.qty || 1) : 0),
+      }));
+      nuevos++;
+    });
+
+    if (nuevos) saveAll();
+    inboxState.status = 'ok';
+    inboxState.lastSync = new Date().toISOString();
+    store.set('inboxLastSync', inboxState.lastSync);
+    if (isDashboardOpen && isDashboardOpen()) renderDropship();
+    if (nuevos) toast(`${nuevos} pedido${nuevos > 1 ? 's' : ''} nuevo${nuevos > 1 ? 's' : ''} de Sofia`);
+    else if (interactive) toast('No hay pedidos nuevos');
+    return true;
+  } catch (err) {
+    console.warn('[inbox] no se pudo recoger:', err);
+    inboxState.status = 'error';
+    inboxState.error = err.message;
+    if (isDashboardOpen && isDashboardOpen()) renderDropship();
+    if (interactive) alert('No se pudo recoger el buzón: ' + err.message);
+    return false;
+  }
+}
+
+function inboxBanner() {
+  if (!isInboxConfigured()) {
+    return `<div class="surface rounded-2xl px-6 py-4 mb-4 flex items-center gap-4 flex-wrap">
+      <div class="flex-1 min-w-[240px]">
+        <h3 class="font-display font-bold text-sm">Pedidos automáticos</h3>
+        <p class="text-neutral-500 text-xs mt-0.5 leading-relaxed">
+          El backend puede recibir pedidos de Sofia y traerlos solos. Necesita la URL y el
+          SYNC_TOKEN configurados. Las instrucciones para conectarla están en docs/dashboard.md.
+        </p>
+      </div>
+      <button type="button" data-open-integrations="sync" class="meta-label !text-accent shrink-0">Configurar →</button>
+    </div>`;
+  }
+  const estados = {
+    idle: ['bg-neutral-400', 'text-neutral-500', inboxState.lastSync ? `Última vez ${relativeTime(inboxState.lastSync)}` : 'Sin recoger todavía'],
+    loading: ['bg-accent animate-pulse', 'text-accent', 'Recogiendo…'],
+    ok: ['bg-accent', 'text-accent', `Recogido ${relativeTime(inboxState.lastSync)}`],
+    error: ['bg-red-500', 'text-red-500', inboxState.error || 'Error'],
+  };
+  const [dot, txt, msg] = estados[inboxState.status] || estados.idle;
+  return `<div class="surface rounded-2xl px-6 py-4 mb-4 flex items-center gap-4 flex-wrap">
+    <span class="w-1.5 h-1.5 rounded-full ${dot} shrink-0"></span>
+    <div class="flex-1 min-w-[200px]">
+      <h3 class="font-display font-bold text-sm">Pedidos de Sofia</h3>
+      <p class="meta-label ${txt} mt-0.5">${escapeHtml(msg)}</p>
+    </div>
+    <button type="button" id="inbox-sync-btn" ${inboxState.status === 'loading' ? 'disabled' : ''}
+      class="px-4 py-2 rounded-xl bg-accent text-white font-bold mono text-[10px] uppercase tracking-[0.15em] shrink-0 ${inboxState.status === 'loading' ? 'opacity-50' : ''}">
+      ↻ Recoger ahora
+    </button>
+  </div>`;
+}
+
+/* ============================================================================
    PESTAÑA: CONFIRMAR
    ============================================================================ */
 
@@ -297,7 +410,7 @@ function renderConfirmacion() {
   const bloqueados = cola.filter(o => (o.confirmAttempts || 0) >= MAX_INTENTOS_CONFIRMACION);
 
   if (!orders.length) {
-    box.innerHTML = emptyState(
+    box.innerHTML = inboxBanner() + emptyState(
       'Sin pedidos que confirmar',
       'Cuando registres pedidos aparecerán aquí en orden de llegada, con el mensaje listo para enviar por WhatsApp. Confirmar antes de despachar es la única palanca que sube la entrega sin gastar un peso más en pauta.',
       '+ Registrar un pedido', 'id="new-order-btn"');
@@ -305,6 +418,7 @@ function renderConfirmacion() {
   }
 
   box.innerHTML = `
+    ${inboxBanner()}
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
       ${statTile('Por confirmar', String(cola.length),
         cola.length ? 'esperando tu mensaje' : 'cola limpia',
@@ -414,7 +528,85 @@ function renderConfirmCard(o) {
 
 /* ============================================================================
    PESTAÑA: ZONAS
+   ============================================================================
+
+   EL MAPA Y DE DÓNDE SALEN SUS COLORES — léelo antes de tocar los niveles
+
+   Busqué un dato público de tasa de entrega o devolución por departamento en
+   Colombia y NO EXISTE. Las transportadoras no lo publican, el DANE no lo mide
+   y ninguna de las guías de COD da porcentajes por región. Pintar el mapa con
+   cifras inventadas habría sido lo más fácil y lo peor posible: son los números
+   con los que se decide a qué zonas dejar de pautar.
+
+   Así que el mapa tiene DOS capas y nunca las mezcla:
+
+     · REFERENCIA — un nivel de riesgo (1 a 4), no un porcentaje. Sale de
+       factores que sí están documentados: qué departamentos señalan los
+       practicantes de COD como problemáticos, la densidad de cobertura de las
+       transportadoras, y los tiempos de ruta terciaria. Es cualitativo y la
+       interfaz lo dice.
+
+     · MEDIDO — la tasa real de tus propios pedidos, en cuanto un departamento
+       llega a MUESTRA_MINIMA_ZONA resueltos. Cuando existe, manda sobre la
+       referencia y se marca como medido.
+
+   Factores que sustentan la clasificación:
+     - Chocó y La Guajira aparecen señalados explícitamente como zonas de
+       rechazo alto y flete elevado para contra entrega.
+     - Cobertura: Servientrega ~1.400 municipios, Dropi ~1.123,
+       Interrapidísimo ~1.014, sobre ~1.100 municipios del país. Los
+       departamentos de la Amazonía y la Orinoquía son los que quedan fuera.
+     - Las rutas terciarias (municipios rurales y apartados) tardan de 8 a 10
+       días hábiles, y a más días en tránsito, más devoluciones.
+     - Barranquilla, Cali y Medellín tienen devolución alta por direcciones
+       incompletas o mal escritas (nomenclatura compleja), que es un riesgo
+       DISTINTO al de lejanía: su logística es buena. Va como bandera aparte.
+
+   Fuentes en docs/dashboard.md → "Sources for the business module".
    ============================================================================ */
+
+const RIESGO_NIVELES = {
+  1: { label: 'Bajo',     color: '#10b981', desc: 'Corredor urbano principal, cobertura densa, 1–3 días' },
+  2: { label: 'Medio',    color: '#eab308', desc: 'Ciudades intermedias, buena cobertura, 2–5 días' },
+  3: { label: 'Alto',     color: '#f97316', desc: 'Cobertura delgada y rutas largas' },
+  4: { label: 'Muy alto', color: '#dc2626', desc: 'Rutas terciarias, cobertura mínima, 8–10+ días' },
+};
+
+/* Nivel de referencia por código DANE. Cualitativo: NO es un porcentaje.
+   La escala va de verde azulado a rojo y evita el par verde/rojo puro, que es
+   justo el que no distingue la forma más común de daltonismo; además el nivel
+   siempre aparece escrito, nunca sólo en color. */
+const RIESGO_DEPTO = {
+  // 1 — bajo
+  '11': 1, '25': 1, '05': 1, '76': 1, '66': 1, '63': 1, '17': 1, '68': 1, '08': 1,
+  // 2 — medio
+  '54': 2, '73': 2, '41': 2, '15': 2, '50': 2, '20': 2, '23': 2, '70': 2,
+  '47': 2, '13': 2, '52': 2, '19': 2,
+  // 3 — alto
+  '44': 3, '27': 3, '18': 3, '85': 3, '81': 3, '86': 3, '88': 3,
+  // 4 — muy alto
+  '91': 4, '94': 4, '95': 4, '97': 4, '99': 4,
+};
+
+/* Razón concreta donde la hay, para que el color no sea una afirmación sin
+   argumento. Lo que no está aquí hereda la descripción de su nivel. */
+const RIESGO_NOTA = {
+  '27': 'Señalado como zona de rechazo alto y flete elevado en contra entrega.',
+  '44': 'Señalado como zona de rechazo alto y flete elevado en contra entrega.',
+  '88': 'Isla: el flete es aéreo o marítimo y ninguna transportadora lo trata como envío nacional normal.',
+  '91': 'Gran parte del departamento sólo tiene acceso fluvial o aéreo.',
+  '94': 'Fuera de la cobertura terrestre de la mayoría de transportadoras.',
+  '97': 'Fuera de la cobertura terrestre de la mayoría de transportadoras.',
+  '99': 'Rutas terciarias largas y pocos puntos de entrega.',
+  '95': 'Cobertura concentrada en la capital; el resto es ruta terciaria.',
+};
+
+/* Departamentos cuyas capitales tienen devolución alta por direcciones mal
+   escritas, no por lejanía. Su logística es buena: el problema se arregla
+   pidiendo barrio y punto de referencia al confirmar, no excluyendo la zona. */
+const RIESGO_DIRECCION = {
+  '08': 'Barranquilla', '76': 'Cali', '05': 'Medellín',
+};
 
 /** Días que tardó un pedido en resolverse. null si falta alguna de las dos marcas. */
 function diasEnTransito(o) {
@@ -472,19 +664,63 @@ function mejorTransportadora(items) {
   return conDatos.length >= 2 ? conDatos : null;
 }
 
+/**
+ * Nombre de departamento → código DANE, para cruzar las zonas con el mapa.
+ *
+ * Se construye PEREZOSAMENTE, en la primera llamada, y no en un IIFE al cargar
+ * el archivo. La diferencia no es de estilo: js/21-colombia-geo.js carga después
+ * de este archivo, así que un IIFE se ejecutaría cuando COLOMBIA_GEO todavía no
+ * existe y dejaría la tabla vacía para siempre. El mapa se seguía dibujando
+ * —renderMapa3D comprueba la geometría cuando lo llaman, no al cargar— pero
+ * ningún pedido encontraba su departamento y todo salía gris.
+ */
+let _depPorNombre = null;
+function depPorNombre() {
+  if (_depPorNombre) return _depPorNombre;
+  if (typeof COLOMBIA_GEO === 'undefined') return {};   // sin memoizar: aún puede llegar
+  _depPorNombre = {};
+  COLOMBIA_GEO.deptos.forEach(d => { _depPorNombre[d.nombre] = d.code; });
+  return _depPorNombre;
+}
+
+/** Agrega los pedidos por departamento y le pega la referencia de riesgo. */
+function datosPorDepartamento(lista) {
+  const tabla = depPorNombre();
+  const porCode = new Map();
+  lista.forEach(o => {
+    const c = resolveCity(o.city);
+    const code = tabla[c.dep];
+    if (!code) return;                       // "Sin clasificar": no va al mapa
+    if (!porCode.has(code)) porCode.set(code, []);
+    porCode.get(code).push(o);
+  });
+
+  const out = {};
+  (typeof COLOMBIA_GEO !== 'undefined' ? COLOMBIA_GEO.deptos : []).forEach(d => {
+    const items = porCode.get(d.code) || [];
+    const dr = deliveryRate(items);
+    const dias = items.map(diasEnTransito).filter(x => x !== null);
+    out[d.code] = {
+      ...d,
+      items,
+      ...dr,
+      total: items.length,
+      medido: dr.resolved >= MUESTRA_MINIMA_ZONA,
+      diasProm: dias.length ? dias.reduce((a, b) => a + b, 0) / dias.length : null,
+      perdido: costoDevoluciones(items),
+      riesgo: RIESGO_DEPTO[d.code] || 2,
+      nota: RIESGO_NOTA[d.code] || null,
+      ciudadDireccion: RIESGO_DIRECCION[d.code] || null,
+    };
+  });
+  return out;
+}
+
 function renderZonas() {
   const box = document.getElementById('drop-panel');
   if (!box) return;
 
   const lista = ordersInRange(dropUi.rangeDays);
-  if (!lista.length) {
-    box.innerHTML = emptyState(
-      'Sin pedidos en este rango',
-      'Las zonas se calculan con los pedidos que ya registraste. En contra entrega la tasa de rechazo por zona geográfica es una de las métricas que más plata mueve: hay ciudades que entregan al 85% y otras al 50%, y la diferencia se arregla excluyéndolas de la segmentación.',
-      '+ Registrar un pedido', 'id="new-order-btn"');
-    return;
-  }
-
   const global = deliveryRate(lista);
   const zonas = zoneStats(lista);
   const conMuestra = zonas.filter(z => z.suficiente);
@@ -512,7 +748,12 @@ function renderZonas() {
   const diasTodos = lista.map(diasEnTransito).filter(x => x !== null);
   const diasProm = diasTodos.length ? diasTodos.reduce((a, b) => a + b, 0) / diasTodos.length : null;
 
+  const deps = datosPorDepartamento(lista);
+  const medidos = Object.values(deps).filter(d => d.medido).length;
+
   box.innerHTML = `
+    ${renderMapa3D(deps, medidos)}
+
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
       ${statTile('Tasa global', global.rate === null ? '—' : pct(global.rate),
         `${global.delivered}/${global.resolved} resueltos`)}
@@ -525,7 +766,17 @@ function renderZonas() {
 
     ${renderZonasAccion(malas, buenas, global)}
 
-    <div class="surface rounded-2xl overflow-hidden mb-6">
+    ${!lista.length ? `
+      <div class="surface rounded-2xl p-8 text-center">
+        <p class="text-neutral-500 text-sm max-w-xl mx-auto leading-relaxed">
+          Todavía no tienes pedidos en este rango, así que el mapa está mostrando sólo la capa de
+          referencia. En cuanto registres pedidos, cada departamento que llegue a
+          ${MUESTRA_MINIMA_ZONA} resueltos cambia de color solo y pasa a mostrar <strong>tu</strong>
+          tasa real en vez de la referencia.
+        </p>
+      </div>` : ''}
+
+    <div class="surface rounded-2xl overflow-hidden mb-6 ${!lista.length ? 'hidden' : ''}">
       <div class="px-6 py-4 border-b border-neutral-200 dark:border-white/5">
         <h3 class="font-display font-bold">Por ciudad</h3>
         <p class="meta-label text-neutral-500 mt-0.5">Hace falta ${MUESTRA_MINIMA_ZONA} pedidos resueltos para sacar conclusiones</p>
@@ -594,6 +845,201 @@ function renderZonas() {
       </div>` : ''}
 
     ${renderCarrierPorZona(conMuestra, lista)}`;
+}
+
+/* ---- Mapa 3D ---- */
+
+/* El último cálculo por departamento, para que el panel de detalle no tenga que
+   rehacerlo en cada movimiento del ratón sobre el mapa. */
+let mapaDeps = {};
+
+/** Oscurece un color hex. Se usa para las paredes de la extrusión. */
+function oscurecer(hex, f) {
+  const n = parseInt(hex.slice(1), 16);
+  const r = Math.round(((n >> 16) & 255) * f);
+  const g = Math.round(((n >> 8) & 255) * f);
+  const b = Math.round((n & 255) * f);
+  return '#' + ((1 << 24) | (r << 16) | (g << 8) | b).toString(16).slice(1);
+}
+
+/** Color de un departamento según la capa activa. */
+function colorDepto(d, capa) {
+  if (capa === 'datos') {
+    if (!d.medido) return '#9ca3af';            // gris: sin muestra, no se inventa
+    const b = BENCHMARKS.entrega;
+    return d.rate >= b.bueno ? '#10b981'
+      : d.rate >= b.normal ? '#84cc16'
+      : d.rate >= b.critico ? '#f97316' : '#dc2626';
+  }
+  return RIESGO_NIVELES[d.riesgo].color;
+}
+
+/** Altura de la extrusión en unidades del viewBox. */
+function alturaDepto(d, capa, maxPedidos) {
+  if (capa === 'datos') {
+    if (!d.total) return 3;
+    return 5 + Math.round((d.total / Math.max(maxPedidos, 1)) * 26);
+  }
+  // En la capa de referencia la altura es el propio nivel de riesgo: lo malo
+  // sobresale literalmente del mapa.
+  return 4 + d.riesgo * 7;
+}
+
+function renderMapa3D(deps, medidos) {
+  if (typeof COLOMBIA_GEO === 'undefined') {
+    return `<div class="surface rounded-2xl p-8 text-center mb-6">
+      <p class="text-neutral-500 text-sm">No se pudo cargar la geometría del mapa
+      (<code class="mono">js/21-colombia-geo.js</code>).</p></div>`;
+  }
+
+  mapaDeps = deps;
+  const capa = dropUi.mapaCapa || 'referencia';
+  const lista = Object.values(deps);
+  const maxPedidos = Math.max(...lista.map(d => d.total), 1);
+
+  /* Se dibuja de norte a sur: la pared de un departamento se extiende hacia
+     abajo y tiene que quedar TAPADA por el departamento que tiene debajo, o se
+     ven paredes flotando sobre tierra ajena. */
+  const ordenados = lista.slice().sort((a, b) => a.c[1] - b.c[1]);
+
+  const defs = ordenados.map(d => `<path id="dep-${d.code}" d="${d.d}"/>`).join('');
+
+  const cuerpo = ordenados.map(d => {
+    const color = colorDepto(d, capa);
+    const h = alturaDepto(d, capa, maxPedidos);
+    const paredes = [];
+    // Una copia cada 2 unidades: suficiente para que no se vean escalones y
+    // mucho más barato que una por píxel.
+    for (let y = h; y >= 1; y -= 2) {
+      const f = 0.45 + 0.3 * (1 - y / h);
+      paredes.push(`<use href="#dep-${d.code}" y="${y}" fill="${oscurecer(color, f)}"/>`);
+    }
+    return `<g class="mapa-depto" data-dep="${d.code}">
+      ${paredes.join('')}
+      <use href="#dep-${d.code}" fill="${color}" class="mapa-cara"/>
+    </g>`;
+  }).join('');
+
+  const sa = lista.find(d => d.inset);
+  const marco = sa ? `<rect x="${sa.inset[0]}" y="${sa.inset[1]}" width="${sa.inset[2]}" height="${sa.inset[3]}"
+      fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="3 3" class="text-neutral-400" opacity="0.5"/>
+    <text x="${sa.inset[0] + sa.inset[2] / 2}" y="${sa.inset[1] + sa.inset[3] + 12}" text-anchor="middle"
+      class="mapa-inset-label" fill="currentColor">San Andrés</text>` : '';
+
+  const leyenda = capa === 'datos'
+    ? [['#10b981', `≥ ${BENCHMARKS.entrega.bueno}%`], ['#84cc16', `${BENCHMARKS.entrega.normal}–${BENCHMARKS.entrega.bueno}%`],
+       ['#f97316', `${BENCHMARKS.entrega.critico}–${BENCHMARKS.entrega.normal}%`], ['#dc2626', `< ${BENCHMARKS.entrega.critico}%`],
+       ['#9ca3af', 'sin muestra']]
+    : [1, 2, 3, 4].map(n => [RIESGO_NIVELES[n].color, RIESGO_NIVELES[n].label]);
+
+  return `
+    <div class="surface rounded-2xl overflow-hidden mb-6">
+      <div class="flex items-start justify-between gap-4 px-6 py-5 flex-wrap border-b border-neutral-200 dark:border-white/5">
+        <div class="min-w-0">
+          <h3 class="font-display font-bold text-lg">Colombia</h3>
+          <p class="text-neutral-500 text-xs mt-1 max-w-xl leading-relaxed">
+            ${capa === 'datos'
+              ? `Tu tasa de entrega real por departamento. En gris los que todavía no llegan a
+                 ${MUESTRA_MINIMA_ZONA} pedidos resueltos — ahí el panel no inventa un número.
+                 ${medidos ? `Llevas <strong>${medidos}</strong> departamento${medidos > 1 ? 's' : ''} con muestra suficiente.` : ''}`
+              : `Riesgo logístico de referencia, construido con lo que sí está documentado sobre
+                 contra entrega en Colombia: cobertura de las transportadoras, tiempos de ruta y
+                 las zonas que los practicantes señalan. <strong>Es un nivel, no un porcentaje</strong> —
+                 nadie publica tasas de entrega por departamento.`}
+          </p>
+        </div>
+        <div class="flex p-1 rounded-xl surface-soft shrink-0" role="group">
+          ${[['referencia', 'Referencia'], ['datos', 'Mis datos']].map(([k, l]) => `
+            <button type="button" data-mapa-capa="${k}"
+              class="px-3 py-1.5 rounded-lg text-[10px] font-bold mono uppercase tracking-[0.12em] transition ${
+                capa === k ? 'bg-accent text-white' : 'text-neutral-500 hover:text-accent'}">${l}</button>`).join('')}
+        </div>
+      </div>
+
+      <div class="grid lg:grid-cols-[1fr_300px] gap-0">
+        <!-- La leyenda va FUERA de .mapa-escena: la escena es un contenedor flex
+             centrado y cualquier hermano suyo se coloca al lado del mapa en vez
+             de debajo, robandole ancho. -->
+        <div class="p-4">
+          <div class="mapa-escena">
+            <div class="mapa-plano">
+              <svg viewBox="0 0 ${COLOMBIA_GEO.w} ${COLOMBIA_GEO.h}" class="mapa-svg" role="img"
+                   aria-label="Mapa de Colombia por departamento">
+                <defs>${defs}</defs>
+                ${marco}
+                ${cuerpo}
+              </svg>
+            </div>
+          </div>
+          <div class="flex flex-wrap items-center gap-x-5 gap-y-2 justify-center mt-3">
+            ${leyenda.map(([c, l]) => `
+              <span class="flex items-center gap-1.5">
+                <span class="w-3 h-3 rounded-sm shrink-0" style="background:${c}"></span>
+                <span class="meta-label text-neutral-500">${l}</span>
+              </span>`).join('')}
+          </div>
+        </div>
+
+        <div id="mapa-detalle" class="p-6 border-t lg:border-t-0 lg:border-l border-neutral-200 dark:border-white/5 lg:sticky lg:top-0 lg:self-start">
+          ${detalleDepto(null)}
+        </div>
+      </div>
+    </div>`;
+}
+
+/** Panel lateral del mapa. Con `null` muestra la invitación a explorar. */
+function detalleDepto(code) {
+  const d = code ? mapaDeps[code] : null;
+  if (!d) {
+    return `<div class="text-center lg:text-left">
+      <div class="meta-label text-neutral-500 mb-2">Detalle</div>
+      <p class="text-neutral-500 text-sm leading-relaxed">
+        Pasa el cursor o toca un departamento para ver su nivel de riesgo, por qué tiene ese
+        nivel, y tu propia tasa de entrega allí si ya tienes pedidos suficientes.
+      </p>
+    </div>`;
+  }
+
+  const nivel = RIESGO_NIVELES[d.riesgo];
+  return `
+    <div class="meta-label text-neutral-500 mb-2">Detalle</div>
+    <h4 class="font-display font-bold text-lg leading-tight mb-3">${escapeHtml(d.nombre)}</h4>
+
+    <div class="flex items-center gap-2 mb-3">
+      <span class="w-2.5 h-2.5 rounded-sm shrink-0" style="background:${nivel.color}"></span>
+      <span class="text-sm font-semibold" style="color:${nivel.color}">Riesgo ${nivel.label.toLowerCase()}</span>
+      <span class="mono text-[10px] uppercase tracking-widest px-1.5 py-0.5 rounded bg-neutral-100 dark:bg-white/10 text-neutral-500">referencia</span>
+    </div>
+    <p class="text-neutral-500 text-xs leading-relaxed mb-4">${escapeHtml(d.nota || nivel.desc)}</p>
+
+    ${d.ciudadDireccion ? `
+      <div class="rounded-xl p-3 mb-4" style="border-left:3px solid #eab308;background:#eab30810">
+        <p class="text-[11px] leading-relaxed" style="color:#a16207">
+          En ${escapeHtml(d.ciudadDireccion)} la devolución sube por direcciones incompletas o mal
+          escritas, no por lejanía. Se arregla pidiendo barrio y punto de referencia al confirmar,
+          no excluyendo la zona.
+        </p>
+      </div>` : ''}
+
+    <div class="border-t border-neutral-200 dark:border-white/5 pt-4">
+      <div class="flex items-center gap-2 mb-2">
+        <span class="meta-label text-neutral-500">Tus datos</span>
+        ${d.medido ? '<span class="mono text-[10px] uppercase tracking-widest px-1.5 py-0.5 rounded bg-accent/15 text-accent">medido</span>' : ''}
+      </div>
+      ${d.medido ? `
+        <div class="display text-2xl mb-1">${pct(d.rate)}</div>
+        <p class="text-neutral-500 text-xs leading-relaxed">
+          ${d.delivered} entregados de ${d.resolved} resueltos · ${d.total} pedidos en total
+          ${d.diasProm !== null ? `<br>${Math.round(d.diasProm * 10) / 10} días en tránsito de media` : ''}
+          ${d.perdido ? `<br><span class="text-red-500">${cop(d.perdido)} en fletes de devoluciones</span>` : ''}
+        </p>`
+        : `<p class="text-neutral-500 text-xs leading-relaxed">
+             ${d.total
+               ? `${d.total} pedido${d.total > 1 ? 's' : ''} registrado${d.total > 1 ? 's' : ''}, ${d.resolved} resuelto${d.resolved === 1 ? '' : 's'}.
+                  Faltan ${MUESTRA_MINIMA_ZONA - d.resolved} para que el panel se atreva a dar una tasa.`
+               : 'Todavía no has registrado pedidos aquí.'}
+           </p>`}
+    </div>`;
 }
 
 /** Lo que hay que hacer con lo que dice la tabla. Sin esto son números bonitos. */
@@ -752,6 +1198,10 @@ const CALC_DEFAULTS = {
 };
 
 const calcState = Object.assign({}, CALC_DEFAULTS, store.get('calcState', {}));
+
+// Capa activa del mapa de Zonas. Vive en dropUi (definido en 19) para que viaje
+// con el resto del estado de la vista, y se recupera del store al cargar.
+dropUi.mapaCapa = store.get('mapaCapa', 'referencia');
 
 function calcNum(v, fallback) {
   const n = Number(v);
@@ -1465,6 +1915,8 @@ function renderScoreCard(p, r) {
    ============================================================================ */
 
 document.addEventListener('click', e => {
+  if (e.target.closest('#inbox-sync-btn')) { syncOrdersInbox({ interactive: true }); return; }
+
   /* ---- Cola de confirmación ---- */
 
   // Abrir WhatsApp cuenta como intento. No se hace preventDefault: el <a> abre
@@ -1602,6 +2054,26 @@ document.addEventListener('click', e => {
     return;
   }
 
+  /* ---- Mapa ---- */
+
+  const capa = e.target.closest('[data-mapa-capa]');
+  if (capa) {
+    dropUi.mapaCapa = capa.dataset.mapaCapa;
+    store.set('mapaCapa', dropUi.mapaCapa);
+    renderDropship();
+    return;
+  }
+
+  // En móvil no hay hover: tocar un departamento fija su detalle.
+  const dep = e.target.closest('[data-dep]');
+  if (dep) {
+    const panel = document.getElementById('mapa-detalle');
+    if (panel) panel.innerHTML = detalleDepto(dep.dataset.dep);
+    document.querySelectorAll('.mapa-depto.is-sel').forEach(g => g.classList.remove('is-sel'));
+    dep.classList.add('is-sel');
+    return;
+  }
+
   /* ---- Scorecard ---- */
 
   const sc = e.target.closest('[data-score-edit]');
@@ -1619,6 +2091,16 @@ document.addEventListener('click', e => {
       if (sub) sub.textContent = `${p.name} — responde lo que el panel no puede calcular. El margen y el precio los saca de los costos que ya registraste.`;
     });
   }
+});
+
+/* Hover sobre el mapa. Va con `mouseover` delegado y no con un listener por
+   departamento: son 33 grupos que se vuelven a crear en cada render, y colgarles
+   listeners individuales los dejaría huérfanos en cada redibujado. */
+document.addEventListener('mouseover', e => {
+  const dep = e.target.closest('.mapa-depto');
+  if (!dep) return;
+  const panel = document.getElementById('mapa-detalle');
+  if (panel) panel.innerHTML = detalleDepto(dep.dataset.dep);
 });
 
 /* La calculadora se recalcula en cada tecla, pero sólo redibuja los resultados:
