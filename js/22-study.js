@@ -680,6 +680,291 @@ function moodleBanner() {
 
 const captureState = { imagen: null, escuchando: false, reco: null, pendientes: [] };
 
+/* ============================================================================
+   INTÉRPRETE LOCAL — texto dictado o escrito, sin API
+   ============================================================================
+
+   Devuelve exactamente la misma forma que el modelo, así que el resto del flujo
+   (revisar en el formulario, lista de casillas si hay varias) no distingue de
+   dónde salió cada tarea.
+
+   Esto NO pretende competir con un modelo. Un modelo entiende cualquier frase;
+   esto entiende las formas en que de verdad se dicta una tarea. La diferencia
+   importa menos de lo que parece porque de todas maneras revisas antes de
+   guardar: un fallo del intérprete se ve y se corrige en el formulario, no se
+   cuela a los datos.
+
+   A cambio es instantáneo, gratis, funciona sin internet y nada sale del
+   equipo. Para la foto sí hace falta un modelo de verdad — leer letra
+   manuscrita no se resuelve con reglas.
+   ============================================================================ */
+
+/* Mapa de acentos 1:1 en vez de normalize('NFD'). La diferencia es crítica
+   aquí: NFD descompone 'á' en dos caracteres y CAMBIA LA LONGITUD, con lo que
+   los índices dejan de coincidir con el texto original y recortar por posición
+   devuelve basura. Sustituyendo carácter por carácter, las posiciones se
+   mantienen alineadas y se puede detectar sobre la versión sin acentos pero
+   cortar sobre la original. */
+const ACENTOS = { 'á': 'a', 'é': 'e', 'í': 'i', 'ó': 'o', 'ú': 'u', 'ü': 'u', 'ñ': 'n',
+                  'Á': 'A', 'É': 'E', 'Í': 'I', 'Ó': 'O', 'Ú': 'U', 'Ü': 'U', 'Ñ': 'N' };
+function aplanar(s) { return String(s || '').replace(/[áéíóúüñÁÉÍÓÚÜÑ]/g, c => ACENTOS[c]); }
+
+const DIAS_SEMANA = { domingo: 0, lunes: 1, martes: 2, miercoles: 3, jueves: 4, viernes: 5, sabado: 6 };
+const MESES = { enero: 0, febrero: 1, marzo: 2, abril: 3, mayo: 4, junio: 5, julio: 6,
+                agosto: 7, septiembre: 8, setiembre: 8, octubre: 9, noviembre: 10, diciembre: 11 };
+
+const NUM_PALABRA = { un: 1, una: 1, dos: 2, tres: 3, cuatro: 4, cinco: 5, seis: 6 };
+
+function conHora(d, h, m) { const x = new Date(d); x.setHours(h, m, 0, 0); return x; }
+
+/** Hora dicha en la frase, o null. Devuelve [hora, minuto]. */
+function buscarHora(low) {
+  const m = /\ba\s+las?\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm|de\s+la\s+(?:manana|tarde|noche))?/.exec(low);
+  if (!m) return null;
+  let h = Number(m[1]);
+  const min = Number(m[2] || 0);
+  const suf = m[3] || '';
+  if (/pm|tarde|noche/.test(suf) && h < 12) h += 12;
+  if (/am|manana/.test(suf) && h === 12) h = 0;
+  // "a las 3" sin sufijo, en contexto de clase, casi siempre son las 15:00.
+  if (!suf && h >= 1 && h <= 7) h += 12;
+  return [Math.min(h, 23), min];
+}
+
+/**
+ * Encuentra una expresión de fecha y la resuelve.
+ * Devuelve { ini, fin, fecha } con los índices sobre el texto aplanado.
+ *
+ * Las reglas van de MÁS a MENOS específica: "15 de marzo" tiene que ganarle a
+ * "el 15", y "pasado mañana" a "mañana", o la primera coincidencia se queda con
+ * media expresión y la fecha sale mal.
+ */
+function buscarFecha(low, ahora) {
+  const hoy = new Date(ahora); hoy.setHours(0, 0, 0, 0);
+  const hora = buscarHora(low);
+  const sellar = d => hora ? conHora(d, hora[0], hora[1]) : conHora(d, 23, 59);
+
+  let m;
+
+  // 15 de marzo [de 2026]
+  m = /\b(\d{1,2})\s+de\s+([a-z]+)(?:\s+de\s+(\d{4}))?/.exec(low);
+  if (m && MESES[m[2]] !== undefined) {
+    const anio = m[3] ? Number(m[3]) : hoy.getFullYear();
+    let d = new Date(anio, MESES[m[2]], Number(m[1]));
+    // Sin año explícito y ya pasó: se asume el año que viene.
+    if (!m[3] && d < hoy) d = new Date(anio + 1, MESES[m[2]], Number(m[1]));
+    return { ini: m.index, fin: m.index + m[0].length, fecha: sellar(d) };
+  }
+
+  // 15/03 o 15-03-2026
+  m = /\b(\d{1,2})[/-](\d{1,2})(?:[/-](\d{2,4}))?\b/.exec(low);
+  if (m) {
+    let anio = m[3] ? Number(m[3]) : hoy.getFullYear();
+    if (anio < 100) anio += 2000;
+    let d = new Date(anio, Number(m[2]) - 1, Number(m[1]));
+    if (!m[3] && d < hoy) d = new Date(anio + 1, Number(m[2]) - 1, Number(m[1]));
+    return { ini: m.index, fin: m.index + m[0].length, fecha: sellar(d) };
+  }
+
+  // pasado mañana — antes que "mañana", que es subcadena suya
+  m = /\bpasado\s+manana\b/.exec(low);
+  if (m) {
+    const d = new Date(hoy); d.setDate(d.getDate() + 2);
+    return { ini: m.index, fin: m.index + m[0].length, fecha: sellar(d) };
+  }
+
+  m = /\bmanana\b/.exec(low);
+  if (m) {
+    const d = new Date(hoy); d.setDate(d.getDate() + 1);
+    return { ini: m.index, fin: m.index + m[0].length, fecha: sellar(d) };
+  }
+
+  m = /\bhoy\b/.exec(low);
+  if (m) return { ini: m.index, fin: m.index + m[0].length, fecha: sellar(hoy) };
+
+  // en 3 días / en dos semanas
+  m = /\ben\s+(\d+|un|una|dos|tres|cuatro|cinco|seis)\s+(dias?|semanas?)\b/.exec(low);
+  if (m) {
+    const n = /^\d+$/.test(m[1]) ? Number(m[1]) : (NUM_PALABRA[m[1]] || 1);
+    const d = new Date(hoy);
+    d.setDate(d.getDate() + n * (/semana/.test(m[2]) ? 7 : 1));
+    return { ini: m.index, fin: m.index + m[0].length, fecha: sellar(d) };
+  }
+
+  // la otra semana / la próxima semana
+  m = /\bla\s+(otra|proxima|siguiente)\s+semana\b/.exec(low);
+  if (m) {
+    const d = new Date(hoy); d.setDate(d.getDate() + 7);
+    return { ini: m.index, fin: m.index + m[0].length, fecha: sellar(d) };
+  }
+
+  /* Día de la semana. Siempre se resuelve al PRÓXIMO, nunca a hoy: si hoy es
+     viernes y dictas "el viernes", te refieres al de la semana que viene — el
+     de hoy ya habría pasado. Resolver a hoy pondría la entrega como vencida en
+     el mismo momento de crearla. */
+  m = /\b(?:el\s+|este\s+|el\s+proximo\s+|proximo\s+)?(lunes|martes|miercoles|jueves|viernes|sabado|domingo)\b/.exec(low);
+  if (m) {
+    const objetivo = DIAS_SEMANA[m[1]];
+    const d = new Date(hoy);
+    let delta = (objetivo - d.getDay() + 7) % 7;
+    if (delta === 0) delta = 7;
+    d.setDate(d.getDate() + delta);
+    return { ini: m.index, fin: m.index + m[0].length, fecha: sellar(d) };
+  }
+
+  // el 15 (día del mes). Va de último: es la más ambigua.
+  m = /\bel\s+(\d{1,2})\b(?!\s*%)/.exec(low);
+  if (m) {
+    const dia = Number(m[1]);
+    if (dia >= 1 && dia <= 31) {
+      let d = new Date(hoy.getFullYear(), hoy.getMonth(), dia);
+      if (d < hoy) d = new Date(hoy.getFullYear(), hoy.getMonth() + 1, dia);
+      return { ini: m.index, fin: m.index + m[0].length, fecha: sellar(d) };
+    }
+  }
+
+  return null;
+}
+
+/** Peso en la nota. */
+function buscarPeso(low) {
+  const m = /\b(\d{1,3})\s*(?:%|por\s*ciento)/.exec(low);
+  if (!m) return null;
+  const n = Number(m[1]);
+  if (n <= 0 || n > 100) return null;
+  // Se come también el "vale el" / "equivale al" de delante, que si no queda
+  // colgando en el título.
+  let ini = m.index;
+  const antes = low.slice(Math.max(0, m.index - 24), m.index);
+  const pre = /(?:que\s+)?(?:vale|equivale|cuenta)\s+(?:el\s+|al\s+|un\s+)?$/.exec(antes);
+  if (pre) ini = m.index - pre[0].length;
+  return { ini, fin: m.index + m[0].length, peso: n };
+}
+
+/** Materia mencionada, contra las que el usuario tiene registradas. */
+function buscarMateria(low, materias) {
+  let mejor = null;
+  materias.forEach(nombre => {
+    const n = aplanar(nombre).toLowerCase().trim();
+    if (!n) return;
+    // Primero el nombre completo; si no, la palabra más larga ("cálculo" de
+    // "Cálculo Diferencial"), que es como se nombra en el habla.
+    let idx = low.indexOf(n);
+    let usado = n;
+    if (idx < 0) {
+      const palabras = n.split(/\s+/).filter(p => p.length >= 5).sort((a, b) => b.length - a.length);
+      for (const p of palabras) {
+        const i = low.indexOf(p);
+        if (i >= 0) { idx = i; usado = p; break; }
+      }
+    }
+    if (idx < 0) return;
+    /* Se absorbe la preposición de delante. Sin esto, quitar "cálculo" de
+       "taller de cálculo" deja "taller de" con la preposición colgando y sin
+       nada detrás, que es justo lo que no se quiere leer en un título. */
+    let ini = idx;
+    const pre = /\s+de(?:l)?(?:\s+la|\s+los|\s+las)?\s+$/.exec(low.slice(0, idx));
+    if (pre) ini = idx - pre[0].length;
+    if (!mejor || usado.length > mejor.usado.length) {
+      mejor = { nombre, ini, fin: idx + usado.length, usado };
+    }
+  });
+  return mejor;
+}
+
+const KIND_PISTAS = [
+  [/\bproyecto\b|\bentrega\s+final\b/, 'proyecto'],
+  [/\bexposicion\b|\bsustentacion\b|\bpresentacion\b/, 'exposicion'],
+  [/\bquiz\b|\bprueba\s+corta\b|\bcuestionario\b/, 'quiz'],
+  [/\bparcial(?:es)?\b|\bexamen\b|\b(?:evaluacion|prueba)\s+final\b/, 'parcial'],
+  [/\btaller\b|\btarea\b|\blaboratorio\b|\bentrega\b|\binforme\b|\bactividad\b/, 'tarea'],
+];
+
+/** Limpia lo que queda tras quitar fecha, peso y materia. */
+function limpiarTexto(s) {
+  let t = s.replace(/\s{2,}/g, ' ')
+           .replace(/\s+([,.;])/g, '$1')
+           .replace(/^[\s,;.:]+|[\s,;.:]+$/g, '')
+           .trim();
+
+  /* Muletillas con las que empieza casi todo dictado.
+     La `i` es imprescindible y faltaba: la frase empieza en mayúscula, así que
+     "Para el viernes…" no casaba con "para\s+" y el "Para" se quedaba pegado
+     delante del título. */
+  const lead = /^(?:y\s+|ademas\s+|tambien\s+|para\s+|que\s+|el\s+|la\s+|los\s+|las\s+|hay\s+que\s+|hay\s+|tengo\s+que\s+|tengo\s+|toca\s+|debo\s+|me\s+dejaron\s+|nos\s+dejaron\s+|dejaron\s+|pusieron\s+|tenemos\s+|de\s+)/i;
+  let antes;
+  do { antes = t; t = t.replace(lead, '').trim(); } while (t !== antes && t.length > 3);
+
+  /* Preposiciones que quedan huérfanas al recortar un trozo del medio o del
+     final ("taller de" + nada detrás). Se limpian aquí además de absorberlas al
+     cortar, porque pueden quedar colgando por más de un camino. */
+  t = t.replace(/\s+de(?:l)?(?:\s+la|\s+los|\s+las)?\s*([,;.])/gi, '$1')
+       .replace(/\s+de(?:l)?(?:\s+la|\s+los|\s+las)?\s*$/i, '')
+       .replace(/\s{2,}/g, ' ')
+       .replace(/\s+([,.;])/g, '$1')
+       .replace(/^[\s,;.:]+|[\s,;.:]+$/g, '')
+       .trim();
+
+  return t.charAt(0).toUpperCase() + t.slice(1);
+}
+
+/** Parte un dictado largo en frases, que suelen ser una tarea cada una. */
+function partirFrases(texto) {
+  return texto
+    .split(/[.;\n]+/)
+    // "... y el martes parcial de progra": al dictar se encadena con "y" en vez
+    // de puntuar, así que también se corta ahí cuando sigue algo temporal.
+    .flatMap(p => p.split(/\s+y\s+(?=(?:el|la|para|este|proximo|manana|hoy|pasado|en)\b)/i))
+    .map(p => p.trim())
+    .filter(p => p.length >= 8);
+}
+
+/**
+ * Punto de entrada. Devuelve la misma forma que el modelo:
+ * { title, kind, subject, dueISO, weight, notes, confidence }
+ */
+function parsearLocal(texto, materias, ahora) {
+  const base = ahora ? new Date(ahora) : new Date();
+  const lista = Array.isArray(materias) ? materias : [];
+  const salida = [];
+
+  partirFrases(String(texto || '')).forEach(frase => {
+    const plano = aplanar(frase);
+    const low = plano.toLowerCase();
+
+    const f = buscarFecha(low, base);
+    const p = buscarPeso(low);
+    const mat = buscarMateria(low, lista);
+
+    let kind = 'tarea';
+    for (const [re, k] of KIND_PISTAS) if (re.test(low)) { kind = k; break; }
+
+    /* Se recortan los trozos ya consumidos para que no se repitan en el título.
+       De atrás hacia adelante: cortar de delante primero desplazaría todos los
+       índices siguientes y se acabaría cortando por donde no es. */
+    const cortes = [f, p, mat].filter(Boolean).sort((a, b) => b.ini - a.ini);
+    let resto = frase;
+    cortes.forEach(c => { resto = resto.slice(0, c.ini) + ' ' + resto.slice(c.fin); });
+
+    const title = limpiarTexto(resto) || limpiarTexto(frase);
+    if (!title) return;
+
+    // La confianza es honesta: cuanto menos se reconoció, más hay que revisar.
+    const aciertos = (f ? 1 : 0) + (mat ? 1 : 0);
+    salida.push({
+      title,
+      kind,
+      subject: mat ? mat.nombre : '',
+      dueISO: f ? f.fecha.toISOString() : '',
+      weight: p ? p.peso : 0,
+      notes: '',
+      confidence: aciertos === 2 ? 'alta' : aciertos === 1 ? 'media' : 'baja',
+    });
+  });
+
+  return salida;
+}
+
 /** Reduce y recomprime una imagen antes de mandarla. */
 function prepararImagen(file, maxLado = 1600) {
   return new Promise((resolve, reject) => {
@@ -760,10 +1045,6 @@ function toggleDictado() {
 }
 
 async function interpretarCaptura() {
-  if (!isStudyBackendReady()) {
-    alert('Primero configura la URL del backend y el SYNC_TOKEN en "Conectar cuentas" → Sincronización.');
-    return;
-  }
   const texto = (document.getElementById('capture-text')?.value || '').trim();
   if (!texto && !captureState.imagen) {
     captureStatus('<p class="text-sm">Toma una foto, dicta algo o escríbelo.</p>', '#f59e0b');
@@ -771,7 +1052,28 @@ async function interpretarCaptura() {
   }
 
   if (captureState.escuchando) captureState.reco?.stop();
-  captureStatus('<p class="text-sm">Interpretando…</p>', '#2667ff');
+
+  /* SIN FOTO = SIN RED. El texto se interpreta aquí mismo: es instantáneo, no
+     cuesta nada, funciona sin internet y no sale del equipo. Sólo la foto
+     necesita un modelo, porque leer letra manuscrita no se hace con reglas. */
+  if (!captureState.imagen) {
+    const items = parsearLocal(texto, studySubjects.map(s => s.name));
+    if (!items.length) {
+      captureStatus(`<p class="text-sm">No pude sacar nada de ahí. Prueba algo como
+        "para el viernes hay taller de cálculo, vale el 15%".</p>`, '#f59e0b');
+      return;
+    }
+    if (items.length === 1) { rellenarConItem(items[0]); return; }
+    mostrarVarios(items);
+    return;
+  }
+
+  if (!isStudyBackendReady()) {
+    alert('Para interpretar una foto hace falta el backend configurado en "Conectar cuentas" → Sincronización. El dictado sí funciona sin nada de eso.');
+    return;
+  }
+
+  captureStatus('<p class="text-sm">Leyendo la foto…</p>', '#2667ff');
 
   try {
     const res = await fetch(`${studyBaseUrl()}/study/parse`, {
@@ -796,7 +1098,14 @@ async function interpretarCaptura() {
     if (items.length === 1) { rellenarConItem(items[0]); return; }
     mostrarVarios(items);
   } catch (err) {
-    captureStatus(`<p class="text-sm text-red-500">No se pudo interpretar: ${escapeHtml(err.message)}</p>`, '#ef4444');
+    // Que falle la foto no debería dejarte parado: el dictado no depende de
+    // nada de esto y hace el mismo trabajo para lo que puedes decir en voz.
+    captureStatus(`
+      <p class="text-sm text-red-500 mb-2">No se pudo leer la foto: ${escapeHtml(err.message)}</p>
+      <p class="text-xs text-neutral-500 leading-relaxed">
+        El <strong>dictado sigue funcionando</strong> — ese no pasa por ningún servidor. Toca
+        "Dictar" o escribe abajo lo que hay que hacer y dale a Interpretar.
+      </p>`, '#ef4444');
   }
 }
 

@@ -80,7 +80,14 @@ Two consequences worth remembering when editing:
   throws. It already caught one: `final` in the "parcial" pattern was swallowing "Proyecto
   final" before the proyecto rule could match.
 
-All four are plain `node` scripts with no dependencies and no test runner. `npm test` runs them
+- `node tests/study-parse.test.js` — the offline dictation interpreter. Dates are the whole
+  point: resolve "el viernes" to the Friday that already passed and the task is born overdue.
+  The base date is pinned to a known Thursday so results don't drift with the day the suite runs.
+  It caught two bugs the first time it was pointed at the real output — a lead-filler regex
+  missing the `i` flag, so a capitalised "Para" survived, and a dangling preposition left behind
+  when the subject was cut out of the middle of a phrase.
+
+All five are plain `node` scripts with no dependencies and no test runner. `npm test` runs them
 in sequence.
 
 ## External dependencies (CDN, no local copies)

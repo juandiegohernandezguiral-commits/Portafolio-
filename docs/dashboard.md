@@ -386,11 +386,37 @@ enough, and it guarantees typing a full word ranks the literal match first.
   deadline you want to know, but if syncing wiped the 4.5 you'd already been given, the panel
   would be a trap.
 
-  **Foto y voz** (`netlify/functions/study-parse.js`) — a photo of a notebook page or a dictated
-  message becomes a filled-in form. The audio **never leaves the device**: Chrome's
-  `SpeechRecognition` transcribes locally in `es-CO` and only the text travels. Photos are
-  downscaled to 1600px and recompressed client-side first — a phone photo is several MB and base64
-  adds a third on top.
+  **Foto y voz** — a photo of a notebook page or a dictated message becomes a filled-in form.
+  Two different paths, and the split matters:
+
+  **Dictated or typed text never leaves the device.** Chrome's `SpeechRecognition` transcribes
+  locally in `es-CO`, and `parsearLocal()` in `js/22-study.js` turns the text into fields right
+  there — no network, no API key, no cost, works offline. It resolves Spanish date expressions
+  ("el viernes", "pasado mañana", "en dos semanas", "el 15 de marzo", "a las 3"), matches the
+  subject against the user's registered ones, and pulls the weight out of "vale el 15%".
+
+  It is **not** trying to beat a model — it understands the ways a task actually gets dictated,
+  not arbitrary prose. That matters less than it sounds because the result goes to the form for
+  review either way: a miss is visible and fixable before anything is saved.
+
+  Two implementation details that are load-bearing:
+
+  - **Accents are flattened with a 1:1 character map, not `normalize('NFD')`.** NFD decomposes
+    `á` into two code points and *changes the string length*, so every index computed on the
+    flattened text would be offset against the original and slicing by position would return
+    garbage. The map keeps positions aligned, so detection runs on the unaccented copy while
+    cutting happens on the original.
+  - **Date rules run most-specific first.** "15 de marzo" has to beat "el 15", and "pasado
+    mañana" has to beat "mañana" — which is a substring of it. Reversed, the first match eats
+    half an expression and the date comes out wrong.
+
+  A weekday always resolves to the **next** one, never today: dictating "el viernes" on a Friday
+  means next week's, and resolving it to today would create the task already overdue.
+
+  **Only the photo goes to a model** (`netlify/functions/study-parse.js`), because reading
+  handwriting is not a rules problem. Photos are downscaled to 1600px and recompressed
+  client-side first — a phone photo is several MB and base64 adds a third on top. If that call
+  fails, the UI says so *and* points at dictation, which doesn't depend on any of it.
 
   The AI **never writes to the data**. It fills the normal form and you confirm. A model writing
   straight into storage is wrong silently; this way a misread date is visible before it's saved.

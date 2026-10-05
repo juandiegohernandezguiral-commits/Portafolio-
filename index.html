@@ -1508,7 +1508,11 @@
 <div id="capture-modal" class="fixed inset-0 z-[70] hidden items-start justify-center bg-black/60 backdrop-blur p-6 overflow-y-auto">
   <div class="surface rounded-2xl p-8 max-w-lg w-full my-8">
     <h3 class="font-display font-bold text-xl mb-1">Subir con foto o voz</h3>
-    <p class="text-neutral-500 text-sm mb-6">Toma una foto del cuaderno o del tablero, o dictalo. La IA saca que es, de que materia y para cuando — y te lo deja listo para que lo revises antes de guardar.</p>
+    <p class="text-neutral-500 text-sm mb-6">
+      Dicta o escribe lo que hay que hacer y se interpreta <strong>aqui mismo, al instante</strong>:
+      saca que es, de que materia, para cuando y cuanto vale. La foto del cuaderno si necesita un
+      modelo. En los dos casos lo revisas antes de guardar.
+    </p>
 
     <div class="grid sm:grid-cols-2 gap-3 mb-5">
       <label class="surface-soft rounded-2xl p-5 text-center cursor-pointer hover:border-accent transition block">
@@ -1535,10 +1539,10 @@
     <!-- El aviso va aqui y no solo en los docs: se decide que mandar justo en
          este momento, no leyendo un README. -->
     <p class="text-neutral-500 text-[11px] leading-relaxed mb-4">
-      El dictado se transcribe en tu navegador y no sale de aqui. La <strong>foto</strong> si se
-      manda a Gemini, y en su plan gratuito Google puede usarla para mejorar sus productos y un
-      revisor humano puede llegar a verla. Sirve para apuntes de clase; no mandes documentos
-      personales.
+      El <strong>dictado y el texto no salen de tu equipo</strong>: se transcriben y se interpretan
+      en el navegador, sin red. Solo la <strong>foto</strong> se manda a Gemini, y en su plan
+      gratuito Google puede usarla para mejorar sus productos y un revisor humano puede llegar a
+      verla. Sirve para apuntes de clase; no mandes documentos personales.
     </p>
 
     <div class="flex gap-3">
