@@ -100,6 +100,45 @@ exports.handler = async (event) => {
   const unauthorized = requireSyncToken(event);
   if (unauthorized) return withCors(unauthorized);
 
+  /* ---- Diagnóstico: GET /study/parse?diag=1 ----
+     Pregunta a Google qué modelos acepta ESTA clave. Es lo que separa "el
+     modelo que pedí no existe para ti" de "tu proyecto entero está bloqueado",
+     que son dos problemas con soluciones distintas y el mismo mensaje de error.
+     No gasta cuota de generación: sólo lista modelos. */
+  if (event.httpMethod === 'GET' && (event.queryStringParameters || {}).diag) {
+    if (!process.env.GEMINI_API_KEY) {
+      return json(503, { error: 'ai_not_configured', message: 'Falta GEMINI_API_KEY.' });
+    }
+    try {
+      const r = await fetch(
+        'https://generativelanguage.googleapis.com/v1beta/models?pageSize=100&key=' +
+        encodeURIComponent(process.env.GEMINI_API_KEY));
+      const d = await r.json();
+      if (!r.ok) {
+        return json(200, {
+          ok: false,
+          http: r.status,
+          modeloConfigurado: MODELO,
+          errorDeGoogle: d?.error?.message || null,
+          estado: d?.error?.status || null,
+          // Si ni siquiera listar modelos funciona, el problema no es el modelo.
+          interpretacion: 'La clave no puede ni listar modelos, así que el bloqueo es del proyecto o de la clave, no del modelo elegido.',
+        });
+      }
+      const nombres = (d.models || [])
+        .filter(m => (m.supportedGenerationMethods || []).includes('generateContent'))
+        .map(m => m.name.replace(/^models\//, ''));
+      return json(200, {
+        ok: true,
+        modeloConfigurado: MODELO,
+        estaDisponible: nombres.includes(MODELO),
+        disponibles: nombres,
+      });
+    } catch (err) {
+      return json(502, { error: 'diag_failed', message: err.message });
+    }
+  }
+
   if (event.httpMethod !== 'POST') return json(405, { error: 'method_not_allowed' });
 
   if (!process.env.GEMINI_API_KEY) {
@@ -195,6 +234,17 @@ exports.handler = async (event) => {
       return json(502, {
         error: 'ai_model',
         message: `El modelo "${MODELO}" no está disponible para tu clave. Cambia GEMINI_MODEL en Netlify (prueba gemini-2.5-flash).`,
+      });
+    }
+    /* 403 PERMISSION_DENIED. Google manda el mismo texto para causas muy
+       distintas — API sin habilitar, restricciones en la clave, región o
+       facturación — así que en vez de adivinar cuál es, se apunta al
+       diagnóstico, que sí lo distingue. */
+    if (/403|PERMISSION_DENIED|denied access/i.test(msg)) {
+      return json(403, {
+        error: 'ai_permission',
+        message: 'Google rechazó la clave con PERMISSION_DENIED. Abre /study/parse?diag=1 con tu token para ver si el problema es el modelo o el proyecto entero.',
+        detalle: msg,
       });
     }
     return json(502, { error: 'ai_failed', message: msg || 'Falló la llamada al modelo.' });
