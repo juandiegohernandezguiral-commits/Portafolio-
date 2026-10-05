@@ -139,6 +139,58 @@ exports.handler = async (event) => {
     }
   }
 
+  /* ---- Sonda: GET /study/parse?probe=1 ----
+     Listar modelos NO basta. Google lista modelos que luego rechaza al generar
+     (un preview puede aparecer en el catálogo y aun así exigir plan de pago),
+     y entonces el 403 llega con el mismo texto que un proyecto bloqueado. Esto
+     intenta una generación mínima contra cada candidato y dice cuál responde
+     de verdad. Gasta unos pocos tokens, que es mucho menos que media hora
+     buscando a ciegas en la consola de Google Cloud. */
+  if (event.httpMethod === 'GET' && (event.queryStringParameters || {}).probe) {
+    if (!process.env.GEMINI_API_KEY) {
+      return json(503, { error: 'ai_not_configured', message: 'Falta GEMINI_API_KEY.' });
+    }
+    const candidatos = [MODELO, 'gemini-2.5-flash', 'gemini-flash-latest',
+                        'gemini-2.5-flash-lite', 'gemini-2.5-pro'];
+    const vistos = new Set();
+    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+    const resultados = [];
+
+    for (const m of candidatos) {
+      if (vistos.has(m)) continue;
+      vistos.add(m);
+      try {
+        const r = await ai.models.generateContent({
+          model: m,
+          contents: [{ text: 'Responde unicamente con: ok' }],
+        });
+        resultados.push({ modelo: m, funciona: true, respuesta: (r.text || '').trim().slice(0, 20) });
+      } catch (err) {
+        const msg = String(err?.message || '');
+        resultados.push({
+          modelo: m,
+          funciona: false,
+          // Se recorta: el mensaje de Google trae el JSON entero y no aporta.
+          motivo: /PERMISSION_DENIED|403/.test(msg) ? 'PERMISSION_DENIED'
+                : /NOT_FOUND|404/.test(msg) ? 'NOT_FOUND'
+                : /RESOURCE_EXHAUSTED|429|quota/i.test(msg) ? 'CUOTA_AGOTADA'
+                : msg.slice(0, 120),
+        });
+      }
+    }
+
+    const sirve = resultados.filter(r => r.funciona).map(r => r.modelo);
+    return json(200, {
+      modeloConfigurado: MODELO,
+      resultados,
+      recomendacion: sirve.length
+        ? (sirve.includes(MODELO)
+            ? `"${MODELO}" funciona. Si fallaba antes, era otra cosa.`
+            : `Pon GEMINI_MODEL="${sirve[0]}" en Netlify y vuelve a desplegar.`)
+        : 'Ninguno respondió. El problema no es el modelo: es la clave o el proyecto.',
+    });
+  }
+
   if (event.httpMethod !== 'POST') return json(405, { error: 'method_not_allowed' });
 
   if (!process.env.GEMINI_API_KEY) {
