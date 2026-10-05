@@ -396,10 +396,25 @@ enough, and it guarantees typing a full word ranks the literal match first.
   straight into storage is wrong silently; this way a misread date is visible before it's saved.
   When one photo yields several tasks, they come back as a checklist to review.
 
-  Runs on `claude-opus-5` with adaptive thinking at **low effort** — Netlify functions are cut off
-  at 10 seconds, and this is a short bounded extraction, not a reasoning problem. Roughly US$0.015
-  per photo. Needs `ANTHROPIC_API_KEY`; without it that one function returns a 503 explaining what's
-  missing and the rest of the tab keeps working.
+  Runs on **Gemini** (`gemini-3-flash-preview` by default, overridable with `GEMINI_MODEL`) via
+  `@google/genai`, with `responseJsonSchema` for structured output. Gemini was chosen over Claude
+  for one reason: it has a free tier and this is a student's tool — Anthropic has no free tier, so
+  the real cost of entry there is the US$5 credit minimum, not the ~1.5 cents per photo.
+
+  **The trade-off is documented in Google's own terms** and was accepted knowingly: on the unpaid
+  tier Google uses submitted content to improve its products, and *"human reviewers may read,
+  annotate, and process your API input and output"*. The EEA/Switzerland/UK carve-out that grants
+  paid-tier protections does **not** cover Colombia. So this endpoint is fine for photos of class
+  notes and is not the place for anything sensitive — which is also why the function's header says
+  so out loud.
+
+  Needs `GEMINI_API_KEY` (free, no card, from aistudio.google.com). Without it that one function
+  returns a 503 explaining what's missing and the rest of the tab keeps working. Free-tier quota
+  exhaustion surfaces as a 429 with a plain-language message rather than a stack trace — on a free
+  tier that's an everyday occurrence, not an exception.
+
+  Swapping provider touches **only this file**: the client posts to `/study/parse` and neither knows
+  nor cares who answers.
 
 - **Automatización** (`js/16-rules.js`, `js/17-templates.js`) — two tabs.
 

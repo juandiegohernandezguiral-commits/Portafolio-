@@ -101,14 +101,24 @@
   #                                OJO con el nombre: el panel de Netlify NO deja
   #                                crear variables que empiecen por NETLIFY_, y
   #                                el intento se pierde sin avisar.
-  #   ANTHROPIC_API_KEY         — clave de la API de Anthropic, para interpretar
-  #                                con IA las fotos y los dictados de la pestaña
-  #                                Estudio (/study/parse). Se saca en
-  #                                console.anthropic.com. Con ella se gasta
-  #                                dinero de tu cuenta, así que vive aquí y
-  #                                nunca en el navegador. Sin ella, esa función
-  #                                responde 503 explicando que falta, y el resto
-  #                                de la pestaña sigue funcionando.
+  #   GEMINI_API_KEY            — clave de la API de Gemini, para interpretar con
+  #                                IA las fotos y los dictados de la pestaña
+  #                                Estudio (/study/parse). Se saca GRATIS en
+  #                                aistudio.google.com → Get API key, sin tarjeta.
+  #                                Vive aquí y nunca en el navegador. Sin ella esa
+  #                                función responde 503 explicando que falta, y el
+  #                                resto de la pestaña sigue funcionando igual.
+  #
+  #                                OJO con el plan gratuito: según los términos de
+  #                                Google, el contenido enviado se usa para mejorar
+  #                                sus productos y revisores humanos pueden leer la
+  #                                entrada y la salida. La excepción de la UE/Suiza/
+  #                                Reino Unido NO aplica en Colombia. Sirve para
+  #                                fotos de apuntes de clase; no mandes por aquí
+  #                                nada sensible.
+  #   GEMINI_MODEL              — (opcional) para probar otro modelo sin tocar el
+  #                                código. Por defecto gemini-3-flash-preview; si
+  #                                tu clave no lo tiene, prueba gemini-2.5-flash.
   #   SYNC_TOKEN                — token compartido que protege /data/pull y
   #                                /data/push (el sync de tareas, notas, eventos
   #                                y proyectos del panel entre dispositivos).
