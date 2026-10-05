@@ -229,5 +229,119 @@ grupo('Casos límite');
   ok('pero el título sale igual', sinFecha.title.length > 0, sinFecha.title);
 }
 
-console.log(`\n${pasadas} pasadas, ${falladas} falladas`);
-process.exit(falladas ? 1 : 0);
+/* ============================================================================
+   FUSION DEL CALENDARIO DEL ITM (syncMoodle)
+   ============================================================================
+   Esta parte existe porque yo habia AFIRMADO en los docs que "refrescar nunca
+   pisa tus notas" sin haberlo comprobado nunca: solo estaba probado el parser
+   del servidor, no la fusion en el cliente. Una afirmacion asi, si es falsa,
+   borra una nota real la primera vez que se pulsa el boton.
+
+   Se simula la respuesta del backend; no se toca el ITM. */
+async function pruebasSync() {
+  grupo('Calendario del ITM - primera sincronizacion');
+
+  sandbox.studySubjects.length = 0;
+  sandbox.studyItems.length = 0;
+  sandbox.studySubjects.push(
+    { id: 'm0', name: 'Calculo Diferencial', credits: 4 },
+    // Como se llama el curso en Moodle, que casi nunca coincide con el nombre corto.
+    { id: 'm1', name: 'Programacion I', alias: 'PROGRAMACION I - GRUPO 02', credits: 4 });
+
+  sandbox.integrations.sync = { url: 'https://falso.test', token: 't' };
+  sandbox.integrations.moodle = { feeds: [{ id: 'f1', label: 'Campus Virtual', url: 'https://x/calendar/export_execute.php?authtoken=x' }] };
+
+  let feed = [
+    { externalId: 'uid-1', title: 'Taller 1',  course: 'Calculo Diferencial',        due: '2026-11-20T04:59:00.000Z', kind: 'tarea',   notes: '' },
+    { externalId: 'uid-2', title: 'Parcial 1', course: 'PROGRAMACION I - GRUPO 02',  due: '2026-11-25T12:00:00.000Z', kind: 'parcial', notes: '' },
+    { externalId: 'uid-3', title: 'Quiz',      course: 'Materia Desconocida',        due: '2026-11-22T12:00:00.000Z', kind: 'quiz',    notes: '' },
+  ];
+  sandbox.fetch = async () => ({ ok: true, json: async () => ({ items: feed }) });
+
+  await sandbox.syncMoodle();
+  const items = sandbox.studyItems;
+
+  igual('crea los tres', items.length, 3);
+  igual('engancha por nombre de materia', items.find(i => i.title === 'Taller 1').subjectId, 'm0');
+  igual('engancha por el alias de Moodle', items.find(i => i.title === 'Parcial 1').subjectId, 'm1');
+  igual('lo que no reconoce queda sin materia, no inventada',
+    items.find(i => i.title === 'Quiz').subjectId, '');
+  igual('el externalId lleva prefijo del feed', items[0].externalId, 'f1:uid-1');
+  igual('queda marcado como venido del ITM', items[0].source, 'moodle');
+
+  grupo('Refrescar - no duplica y NO pisa lo tuyo');
+
+  await sandbox.syncMoodle();
+  igual('sincronizar dos veces no duplica', sandbox.studyItems.length, 3);
+
+  // El usuario pone su nota, su peso y lo marca entregado.
+  const taller = sandbox.studyItems.find(i => i.externalId === 'f1:uid-1');
+  taller.grade = 4.5;
+  taller.weight = 20;
+  taller.done = true;
+  taller.subjectId = 'm1';          // lo reasigna a mano
+
+  // El profesor mueve la entrega y le cambia el nombre.
+  feed = feed.map(e => e.externalId === 'uid-1'
+    ? Object.assign({}, e, { title: 'Taller 1 (corregido)', due: '2026-11-27T04:59:00.000Z' }) : e);
+  await sandbox.syncMoodle();
+
+  const tras = sandbox.studyItems.find(i => i.externalId === 'f1:uid-1');
+  igual('la nota sobrevive', tras.grade, 4.5);
+  igual('el peso sobrevive', tras.weight, 20);
+  igual('el "entregado" sobrevive', tras.done, true);
+  igual('la materia que reasignaste sobrevive', tras.subjectId, 'm1');
+  igual('pero el titulo nuevo del profe si entra', tras.title, 'Taller 1 (corregido)');
+  /* `due` se guarda en hora LOCAL para el <input datetime-local>, no en UTC. El
+     feed manda 2026-11-27T04:59Z, que en Colombia (UTC-5) es el 26 a las 23:59.
+     La primera version de esta asercion comparaba contra la fecha UTC y fallaba
+     teniendo el codigo razon. */
+  ok('y la fecha nueva tambien, convertida a hora local',
+    tras.due.startsWith('2026-11-26T23:59'), tras.due);
+  ok('y es distinta de la que tenia', tras.due !== '2026-11-19T23:59', tras.due);
+
+  grupo('Varios Moodle a la vez');
+
+  sandbox.integrations.moodle = { feeds: [
+    { id: 'f1', label: 'Campus Virtual', url: 'https://x/calendar/export_execute.php?authtoken=x' },
+    { id: 'f2', label: 'DCEB',           url: 'https://y/calendar/export_execute.php?authtoken=y' },
+  ]};
+  sandbox.studyItems.length = 0;
+  feed = [{ externalId: 'uid-1', title: 'Taller 1', course: 'Calculo Diferencial', due: '2026-11-20T04:59:00.000Z', kind: 'tarea', notes: '' }];
+  await sandbox.syncMoodle();
+
+  /* El MISMO uid en dos Moodle distintos son dos tareas distintas. Sin el
+     prefijo del feed, el segundo calendario pisaria al primero y perderias la
+     mitad de tus entregas sin ningun error a la vista. */
+  igual('el mismo uid en dos feeds no colisiona', sandbox.studyItems.length, 2);
+  ok('cada uno con su prefijo',
+    sandbox.studyItems.some(i => i.externalId === 'f1:uid-1') &&
+    sandbox.studyItems.some(i => i.externalId === 'f2:uid-1'),
+    sandbox.studyItems.map(i => i.externalId).join(', '));
+
+  grupo('Un feed caido no tumba al otro');
+
+  sandbox.studyItems.length = 0;
+  let n = 0;
+  sandbox.fetch = async () => {
+    n++;
+    if (n === 1) return { ok: false, json: async () => ({ message: 'token caducado' }) };
+    return { ok: true, json: async () => ({ items: feed }) };
+  };
+  await sandbox.syncMoodle();
+  igual('el segundo feed si entra', sandbox.studyItems.length, 1);
+  /* moodleState es un `const` del script: NO queda como propiedad del contexto
+     (solo las `function` y las `var`). Hay que evaluarlo dentro. Es la tercera
+     vez que esto muerde en este proyecto; esta anotado en CLAUDE.md. */
+  const estado = vm.runInContext('moodleState', sandbox);
+  ok('y el error del primero se reporta', /token caducado/.test(estado.error || ''),
+    String(estado.error));
+}
+
+pruebasSync().then(() => {
+  console.log('\n' + pasadas + ' pasadas, ' + falladas + ' falladas');
+  process.exit(falladas ? 1 : 0);
+}).catch(err => {
+  console.error('\nLa prueba de sincronizacion revento:', err);
+  process.exit(1);
+});
