@@ -60,6 +60,26 @@ Note that `const` declarations in a loaded script are **not** properties of the 
 (only `function` declarations and `var` are). To read one from a test, use
 `vm.runInContext('NOMBRE', sandbox)`.
 
+## Despliegues: agrupar, no empujar por cada cambio
+
+**El plan gratuito de Netlify da 300 créditos/mes y cada despliegue a producción
+cuesta 15.** Eso son **20 despliegues al mes**, y no hay aviso previo: cuando se
+acaban, los deploys pasan a `Skipped due to account credit usage exceeded` y el
+sitio se queda servido en el último commit publicado. Ya pasó una vez (octubre
+de 2026), por hacer `git push` después de cada arreglo.
+
+Los créditos operativos que quedan **no sirven** para desplegar: sólo mantienen
+el sitio en línea.
+
+Así que: commitear libremente, pero **empujar una vez por bloque de trabajo
+terminado**, no por cada corrección. Para verificar algo no hace falta
+producción — `npm test` y `python -m http.server 8091` cubren casi todo.
+
+Cuando los deploys estén pausados, el trabajo sigue en local sin gastar nada:
+las funciones del backend que ya estén desplegadas siguen respondiendo, y
+`_lib/cors.js` permite llamarlas desde `localhost` (por eso existen esas
+cabeceras aunque el sitio sea de un solo dominio).
+
 ## Gotchas
 
 - **Bump `SW_VERSION` in `sw.js`** after changing any file in its `SHELL_ASSETS` list, or
