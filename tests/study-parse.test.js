@@ -332,6 +332,40 @@ async function pruebasSync() {
     tras.due.startsWith('2026-11-26T23:59'), tras.due);
   ok('y es distinta de la que tenia', tras.due !== '2026-11-19T23:59', tras.due);
 
+  grupo('Dos dispositivos - el id derivado evita duplicar');
+
+  /* El bug que esto fija salio con datos reales: la fusion en la nube
+     (js/07-sync.js) empareja por `id`, y con uid() cada equipo inventaba el
+     suyo para el MISMO evento del ITM. Resultado: cada tarea duplicada en
+     cuanto sincronizabas celular y portatil — justo para lo que existe el sync. */
+  igual('el mismo externalId da el mismo id',
+    sandbox.idDesdeExterno('f1:123@itm'), sandbox.idDesdeExterno('f1:123@itm'));
+  ok('externalIds distintos dan ids distintos',
+    sandbox.idDesdeExterno('f1:123@itm') !== sandbox.idDesdeExterno('f1:124@itm'));
+  ok('y no chocan a escala de un semestre', (() => {
+    const vistos = new Set();
+    for (let i = 0; i < 2000; i++) vistos.add(sandbox.idDesdeExterno('f1:' + i + '@campusvirtual.itm.edu.co'));
+    return vistos.size === 2000;
+  })());
+
+  // Simula lo que llega de la nube: el mismo evento con otro id (equipo viejo).
+  sandbox.studyItems.length = 0;
+  sandbox.integrations.moodle = { feeds: [{ id: 'f1', label: 'CV', url: 'https://x/calendar/export_execute.php?authtoken=x' }] };
+  feed = [{ externalId: 'uid-9', title: 'Taller', course: 'Calculo Diferencial', due: '2026-11-20T04:59:00.000Z', kind: 'tarea', notes: '' }];
+  sandbox.fetch = async () => ({ ok: true, json: async () => ({ items: feed }) });
+  await sandbox.syncMoodle();
+  // Copia "vieja" con id aleatorio y una nota del usuario encima.
+  sandbox.studyItems.push({ id: 'viejo123', externalId: 'f1:uid-9', title: 'Taller',
+    subjectId: '', kind: 'tarea', due: '', weight: 25, grade: 4.0, done: true,
+    source: 'moodle', updatedAt: 1 });
+  igual('arrancamos con la duplicada', sandbox.studyItems.length, 2);
+
+  await sandbox.syncMoodle();
+  igual('el barrido deja una sola', sandbox.studyItems.length, 1);
+  // Lo que se conserva es lo que lleva trabajo encima, no lo mas nuevo.
+  igual('y conserva la que tenia la nota', sandbox.studyItems[0].grade, 4.0);
+  igual('con su peso', sandbox.studyItems[0].weight, 25);
+
   grupo('Varios Moodle a la vez');
 
   sandbox.integrations.moodle = { feeds: [

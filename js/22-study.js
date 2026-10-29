@@ -517,6 +517,29 @@ function codigoCurso(texto) {
   return c;
 }
 
+/**
+ * id estable a partir del externalId: mismo evento del ITM, mismo id, en
+ * cualquier dispositivo.
+ *
+ * No hay crypto.subtle síncrono en el navegador, así que se usa un hash simple
+ * (FNV-1a de 32 bits, dos pasadas con semillas distintas). No es criptográfico
+ * y no necesita serlo: sólo tiene que ser determinista y no chocar entre un
+ * puñado de centenares de eventos. El prefijo `itm` deja claro de dónde salió
+ * al mirar los datos en crudo.
+ */
+function idDesdeExterno(ext) {
+  const hash = (s, semilla) => {
+    let h = semilla;
+    for (let i = 0; i < s.length; i++) {
+      h ^= s.charCodeAt(i);
+      h = Math.imul(h, 0x01000193) >>> 0;
+    }
+    return h.toString(36);
+  };
+  const s = String(ext);
+  return 'itm' + hash(s, 0x811c9dc5) + hash(s, 0x7fffffff);
+}
+
 function materiaPorCurso(curso) {
   if (!curso) return null;
   const n = subjectSlug(curso);
@@ -594,7 +617,16 @@ async function syncMoodle({ interactive = false } = {}) {
 
         const materia = materiaPorCurso(it.course);
         studyItems.push(touch({
-          id: uid(),
+          /* El id se DERIVA del externalId, no es aleatorio. Es lo que hace que
+             el mismo evento del ITM traído desde el celular y desde el portátil
+             produzca el MISMO registro.
+
+             Con uid() cada dispositivo inventaba su propio id, y como la fusión
+             en la nube (js/07-sync.js) empareja por `id`, los dos sobrevivían:
+             acababas con cada tarea del ITM duplicada en cuanto sincronizabas
+             dos equipos — que es justo para lo que existe el sync. Mismo patrón
+             que netlify/functions/orders-intake.js. */
+          id: idDesdeExterno(ext),
           externalId: ext,
           source: 'moodle',
           origen: feed.label || 'ITM',
@@ -616,7 +648,31 @@ async function syncMoodle({ interactive = false } = {}) {
     }
   }
 
-  if (nuevos || actualizados) saveAll();
+  /* Barrido de duplicados por externalId. Hace falta aparte del id derivado
+     porque los registros creados ANTES de ese cambio siguen por ahí con ids
+     aleatorios, y porque la fusión en la nube puede reintroducir una copia
+     vieja desde otro dispositivo que todavía no se ha actualizado.
+     Se conserva el que tenga nota, peso o esté marcado hecho — es el que lleva
+     trabajo del usuario encima; entre iguales, el más reciente. */
+  const porExterno = new Map();
+  const sobran = [];
+  studyItems.forEach(i => {
+    if (!i.externalId) return;
+    const previo = porExterno.get(i.externalId);
+    if (!previo) { porExterno.set(i.externalId, i); return; }
+    const valor = x => (x.grade != null ? 4 : 0) + (Number(x.weight) > 0 ? 2 : 0) + (x.done ? 1 : 0);
+    const gana = valor(i) > valor(previo) ||
+                 (valor(i) === valor(previo) && (i.updatedAt || 0) > (previo.updatedAt || 0));
+    if (gana) { sobran.push(previo); porExterno.set(i.externalId, i); }
+    else sobran.push(i);
+  });
+  if (sobran.length) {
+    sobran.forEach(x => tombstone('studyItems', x.id));
+    const fuera = new Set(sobran.map(x => x.id));
+    studyItems = studyItems.filter(i => !fuera.has(i.id));
+  }
+
+  if (nuevos || actualizados || sobran.length) saveAll();
   moodleState.status = errores.length ? 'error' : 'ok';
   moodleState.error = errores.join(' · ') || null;
   moodleState.lastSync = new Date().toISOString();
