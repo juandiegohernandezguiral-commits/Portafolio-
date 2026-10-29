@@ -1013,7 +1013,7 @@
             <div>
               <div class="meta-label text-neutral-500 mb-2">/ proyectos</div>
               <h1 class="display text-3xl md:text-5xl">Mis proyectos</h1>
-              <p class="text-neutral-500 mt-2 text-sm">Planificación → Diseño → Desarrollo → Pruebas → Entrega</p>
+              <p class="text-neutral-500 mt-2 text-sm max-w-2xl">En qué estás metido, y qué dejaste quieto sin darte cuenta.</p>
             </div>
             <button id="add-project-btn" type="button" class="px-4 py-2 rounded-xl bg-accent text-white font-bold mono text-[11px] uppercase tracking-[0.25em] hover:bg-neutral-900 dark:hover:bg-white dark:hover:text-black transition">+ Nuevo</button>
           </div>
@@ -1263,6 +1263,16 @@
     <h3 class="font-display font-bold text-xl mb-6">Nuevo proyecto</h3>
     <form id="project-form" class="space-y-3">
       <input name="name" required placeholder="Nombre del proyecto" class="w-full surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none" />
+      <!-- El tipo decide las etapas: un negocio no tiene las mismas fases que
+           una habilidad que estas aprendiendo. Ver PROY_TIPOS en js/23-projects.js -->
+      <label class="block"><span class="meta-label text-neutral-500 block mb-1.5 px-1">Que clase de proyecto es</span>
+        <select name="type" class="w-full surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none">
+          <option value="negocio">Negocio — busca generar dinero</option>
+          <option value="aprendizaje">Aprendizaje — una habilidad que construyes</option>
+          <option value="software">Software — algo que programas y publicas</option>
+          <option value="personal">Personal — lo que no cabe arriba</option>
+        </select>
+        <span class="text-neutral-500 text-[11px] block mt-1.5 px-1" id="proj-etapas-hint"></span></label>
       <input name="client" placeholder="Cliente (opcional)" class="w-full surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none" />
       <textarea name="desc" rows="3" placeholder="Descripción" class="w-full surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none resize-none"></textarea>
       <input name="deadline" type="date" class="w-full surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none" />
@@ -1936,6 +1946,9 @@
 <script src="js/21-colombia-geo.js"></script>
 <!-- Estudio: Universidad (ITM) y Desarrollo de Software. Ver js/22-study.js -->
 <script src="js/22-study.js"></script>
+<!-- Proyectos: tipos, estados y deteccion de abandono. Reemplaza el
+     renderProjects() de 05-dashboard.js. Usa statTile() de 19-dropship.js. -->
+<script src="js/23-projects.js"></script>
 <script src="js/99-init.js"></script>
 </body>
 </html>

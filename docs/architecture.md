@@ -36,6 +36,7 @@ one:
 | `js/20-dropship-tools.js` | Confirmation queue, zone analysis, price calculator, product scorecard. Defines `renderConfirmacion`, `renderZonas`, `renderCalculadora`, `renderScorecard`, `calcEconomics`, `solvePrice`, `resolveCity`, `waPhone`, `scoreProduct`. **Must load after 19** — it reuses its helpers |
 | `js/21-colombia-geo.js` | Department geometry for the Zonas map: SVG paths, centroids, San Andrés inset. Pure data (`COLOMBIA_GEO`), ~48 KB. Loads *after* its consumer on purpose — 20 reads it lazily, so anything new that touches `COLOMBIA_GEO` must do the same |
 | `js/22-study.js` | Estudio: Universidad (ITM) y Desarrollo de Software. Defines `renderStudy`, `subjectStats`, `syncMoodle`, `interpretarCaptura` |
+| `js/23-projects.js` | Proyectos: tipos, estados y detección de abandono. **Reemplaza** `renderProjects()` de 05 — el de allí es código muerto, incluidos sus manejadores de click. Usa `statTile()` de 19 |
 | `js/99-init.js` | Dashboard seed + migrations, nav highlight, `#hoy` PWA shortcut. Must load last |
 
 Two consequences worth remembering when editing:
@@ -87,7 +88,12 @@ Two consequences worth remembering when editing:
   missing the `i` flag, so a capitalised "Para" survived, and a dangling preposition left behind
   when the subject was cut out of the middle of a phrase.
 
-All five are plain `node` scripts with no dependencies and no test runner. `npm test` runs them
+- `node tests/projects.test.js` — el progreso y la detección de abandono de la vista Proyectos.
+  El progreso porque la versión anterior mentía (etapas marcadas ÷ total: marcar «Desarrollo» al
+  10% pintaba 60%), y el abandono porque si falla hacia el lado permisivo un proyecto muerto se
+  queda meses disfrazado de activo — justo lo que esa vista existe para evitar.
+
+All six are plain `node` scripts with no dependencies and no test runner. `npm test` runs them
 in sequence.
 
 ## External dependencies (CDN, no local copies)

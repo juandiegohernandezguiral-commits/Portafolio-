@@ -71,11 +71,34 @@ enough, and it guarantees typing a full word ranks the literal match first.
 
   Breaks are never auto-started; chaining rounds without asking is the fastest way to make the
   timer stop reflecting what you actually did.
-- **Projects** — project tracker with 5-stage pipeline; data at `jdh_projects`. Tasks carry an
-  optional `projectId`, and each project card rolls up what hangs off it: tasks done vs total,
-  minutes actually focused on it (from `sessions`), and its open tasks with a one-click focus
-  button. A task pointing at a deleted project just omits the chip rather than rendering
-  `undefined`.
+- **Projects** (`js/23-projects.js`) — answers one question: *"¿en qué estoy metido y qué está
+  muerto?"*. Data at `jdh_projects`.
+
+  **Progress no longer lies.** The old version computed it as *stages ticked ÷ total*, so ticking
+  «Desarrollo» at 10% painted 60% — the same class of bug as `observedCpa` returning zero: a
+  believable number that is false. Now, when a project has linked tasks, progress comes from
+  *tasks closed*, which can't be inflated without doing the work. With no tasks it falls back to
+  stages **and says so on the card**, so a self-assessment never reads as a measurement.
+
+  **Stages come from the project `type`**, not a fixed waterfall. The old
+  Planificación→Diseño→Desarrollo→Pruebas→Entrega was inherited from client work and fits neither
+  a business that never "delivers" nor learning a language. Four templates: `negocio`,
+  `aprendizaje`, `software`, `personal`.
+
+  **Dead-project detection** is the point of the view. `proyUltimaActividad()` takes the latest
+  of: a task closed, a focus session logged, or the project's own `updatedAt`. Past
+  `PROY_DIAS_DORMIDO` (21) days with none of those, an *activo* project is flagged — with
+  Pausar/Abandonar right there, because the value is in the decision, not the warning. Projects
+  already in `pausa`/`terminado`/`abandonado` are never flagged: those are decisions, not
+  neglect.
+
+  `migrateProjects()` deliberately **does not call `touch()`**. Doing so would stamp every
+  project as just-active the first time the view opens — precisely when it matters most to see
+  which ones have been still for months. It doesn't need to sync: it's idempotent and
+  deterministic, so every device reaches the same result on its own.
+
+  Covers are a **gradient generated from the name** (deterministic), so projects are
+  distinguishable at a glance without uploading anything.
 - **Notes ("Mi cerebro")** — the knowledge system, `js/11-notes.js`. Data still at `jdh_notes`,
   now with `pinned`, `archived` and `daily` (migrated by `migrateNotes()`).
 
@@ -713,6 +736,7 @@ The user connecting Outlook/To Do must register their own app in
 | `jdh_studyItems` | Tareas, parciales y quizzes (synced). `weight` + `grade` turn one into a graded evaluation; `externalId` is `feedId:uid` for anything from Moodle |
 | `jdh_studyTab` | Last active Estudio sub-tab (`'uni'` / `'dev'`) |
 | `jdh_moodleLastSync` | ISO timestamp of the last Campus Virtual sync |
+| `jdh_proyFiltro` | Last active filter in the Proyectos view |
 
 Not in `localStorage`: the `FileSystemFileHandle` for auto-backup lives in IndexedDB
 (`jdh-fs` → `handles` → `backupFile`), because handles can't be serialized to JSON.

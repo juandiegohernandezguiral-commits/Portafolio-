@@ -9,8 +9,40 @@ const dashContent = document.getElementById('dash-content');
 const pinDots = document.querySelectorAll('.pin-dot');
 let pinInput = '';
 
+/* El panel SIEMPRE se ve en oscuro, pase lo que pase con el tema del sitio
+   público. Son dos cosas distintas: el portafolio es una página que alguien
+   visita y debe respetar su preferencia; el panel es una herramienta de trabajo
+   donde se miran gráficas y tablas durante un rato largo, y ahí el fondo claro
+   cansa.
+
+   Se hace tocando la clase global `dark` en vez de duplicar cada color en CSS,
+   porque el panel ya usa las variantes `dark:` de Tailwind de arriba abajo:
+   reescribirlas todas serían cientos de líneas para el mismo resultado. Al
+   cerrar se devuelve la preferencia del usuario tal cual estaba. Mientras el
+   panel está abierto el sitio público no se ve — es un overlay a pantalla
+   completa — así que el cambio no se percibe. */
+let temaPrevio = null;
+
+function forzarPanelOscuro() {
+  temaPrevio = document.documentElement.classList.contains('dark');
+  /* Se toca la clase a mano en vez de llamar a applyTheme(true) porque esa
+     función GUARDA el tema en localStorage. Si lo hiciera, cerrar el navegador
+     con el panel abierto dejaría el sitio público en oscuro para siempre
+     aunque el usuario prefiriera claro — un efecto secundario que nadie pidió. */
+  document.documentElement.classList.add('dark');
+}
+
+function restaurarTema() {
+  if (temaPrevio === null) return;
+  // Aquí sí se usa applyTheme: además de la clase, devuelve los iconos de
+  // sol/luna a su estado, y lo que persiste es el valor que ya estaba.
+  if (!temaPrevio && typeof applyTheme === 'function') applyTheme(false);
+  temaPrevio = null;
+}
+
 function openDashboard() {
   console.log('Opening dashboard');
+  forzarPanelOscuro();
   dashboard.classList.remove('hidden');
   pinScreen.classList.remove('hidden');
   dashContent.classList.add('hidden');
@@ -24,6 +56,7 @@ function openDashboard() {
 }
 function closeDashboard() {
   dashboard.classList.add('hidden');
+  restaurarTema();
   pinInput = '';
   if (lenis) lenis.start();
   document.body.style.overflow = '';
@@ -585,7 +618,26 @@ const STAGES = ['Planificación', 'Diseño', 'Desarrollo', 'Pruebas', 'Entrega']
 document.getElementById('project-form').addEventListener('submit', e => {
   e.preventDefault();
   const fd = new FormData(e.target);
-  projects.push(touch({ id: uid(), name: fd.get('name'), client: fd.get('client') || '', desc: fd.get('desc') || '', deadline: fd.get('deadline') || '', stages: STAGES.map(s => ({ name: s, done: false })), createdAt: Date.now() }));
+  /* Las etapas salen del TIPO elegido, no de una lista fija: un negocio no
+     tiene las mismas fases que una habilidad que estas aprendiendo. La
+     plantilla vive en PROY_TIPOS (js/23-projects.js), que carga despues de
+     este archivo — de ahi el typeof, para que crear un proyecto siga
+     funcionando aunque ese modulo falte. */
+  const tipo = fd.get('type') || 'personal';
+  const etapas = (typeof PROY_TIPOS !== 'undefined' && PROY_TIPOS[tipo])
+    ? PROY_TIPOS[tipo].etapas
+    : STAGES;
+  projects.push(touch({
+    id: uid(),
+    name: fd.get('name'),
+    type: tipo,
+    status: 'activo',
+    client: fd.get('client') || '',
+    desc: fd.get('desc') || '',
+    deadline: fd.get('deadline') || '',
+    stages: etapas.map(s => ({ name: s, done: false })),
+    createdAt: Date.now(),
+  }));
   saveAll(); e.target.reset();
   projModal.classList.add('hidden'); projModal.classList.remove('flex');
   renderProjects();
@@ -626,6 +678,12 @@ function projectRollup(p) {
     </div>`;
 }
 
+/* ⚠ CODIGO MUERTO — lo reemplaza renderProjects() de js/23-projects.js, que
+   carga despues y se queda con el nombre. Se conserva por la misma convencion
+   que renderNotes()/11-notes.js, pero OJO: los manejadores de click que esta
+   version engancha al final (data-toggle-stage, data-del-project) NUNCA se
+   ejecutan. Ya paso: esos botones se seguian pintando y no hacian nada, sin
+   error en consola. Si necesitas tocar algo de Proyectos, es el archivo 23. */
 function renderProjects() {
   const box = document.getElementById('projects-list');
   box.innerHTML = projects.length ? projects.map(p => {
