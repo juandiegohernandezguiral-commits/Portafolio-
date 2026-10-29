@@ -220,6 +220,7 @@ function renderUniversidad() {
 
   box.innerHTML = `
     ${moodleBanner()}
+    ${sinMateriaBanner()}
 
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
       ${statTile('Por hacer', String(pendientes.length),
@@ -494,16 +495,50 @@ function studyBaseUrl() {
 }
 function isStudyBackendReady() { return !!(studyBaseUrl() && (integrations?.sync?.token || '').trim()); }
 
-/** Engancha el nombre del curso de Moodle con una materia del panel. */
+/**
+ * Engancha el nombre del curso de Moodle con una materia del panel.
+ *
+ * El caso real del ITM es el que rompe el emparejamiento por texto: Moodle
+ * manda "XRII03-356 2026-2" o "580202001-307 2026-2" — código del curso y
+ * periodo — mientras que la materia se llama "Introducción a la Informática".
+ * No comparten ni una palabra, así que ninguna comparación de nombres los une.
+ *
+ * Por eso el `alias` acepta DOS cosas: el nombre completo del curso o sólo su
+ * código. Se compara primero por código, que es lo único estable: el nombre
+ * cambia de semestre a semestre ("2026-2" pasa a "2027-1") y el código no.
+ */
+function codigoCurso(texto) {
+  // Códigos tipo XRII03-356, 580202001-307, INF-101. Se descarta lo que sea
+  // sólo un año o un periodo (2026-2), que si no se tragaría eso como código.
+  const m = /\b([A-Za-z0-9]{2,12}-[A-Za-z0-9]{1,6})\b/.exec(String(texto || ''));
+  if (!m) return null;
+  const c = m[1].toLowerCase();
+  if (/^(19|20)\d{2}-\d$/.test(c)) return null;   // "2026-2" no es un código
+  return c;
+}
+
 function materiaPorCurso(curso) {
   if (!curso) return null;
   const n = subjectSlug(curso);
   if (!n) return null;
+
+  // 1. Por código, que es lo que de verdad manda el ITM y no cambia de semestre
+  const cod = codigoCurso(curso);
+  if (cod) {
+    const porCodigo = studySubjects.find(s => {
+      const a = codigoCurso(s.alias || '');
+      return a && a === cod;
+    });
+    if (porCodigo) return porCodigo;
+  }
+
+  // 2. Por alias completo, 3. por nombre exacto, 4. por contención
   return studySubjects.find(s => subjectSlug(s.alias || '') === n)
       || studySubjects.find(s => subjectSlug(s.name) === n)
       || studySubjects.find(s => {
            const sn = subjectSlug(s.name);
-           return sn && (n.includes(sn) || sn.includes(n));
+           // Mínimo 5 caracteres: con menos, "I" o "APA" emparejarían con todo.
+           return sn && sn.length >= 5 && (n.includes(sn) || sn.includes(n));
          })
       || null;
 }
@@ -600,6 +635,55 @@ function isoALocal(iso) {
   if (isNaN(d.getTime())) return '';
   const p = n => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+/**
+ * Avisa de lo que llegó del ITM sin materia, y deja arreglarlo de una vez.
+ *
+ * Es la diferencia entre que el panel funcione o no: un item sin materia no
+ * cuenta para el promedio, no aparece bajo ninguna asignatura y no suma a
+ * "cuánto necesito para pasar". Antes se quedaba ahí, callado, pareciendo que
+ * todo estaba bien. Ahora se ve y se resuelve en dos clics: se elige la materia
+ * y, de paso, se guarda el código del curso como alias para que la próxima
+ * sincronización lo enganche solo.
+ */
+function sinMateriaBanner() {
+  const huerfanos = studyItems.filter(i => i.source === 'moodle' && !i.subjectId && i.course);
+  if (!huerfanos.length) return '';
+
+  // Agrupados por curso: lo que se asigna es el curso, no cada tarea suelta.
+  const porCurso = new Map();
+  huerfanos.forEach(i => {
+    if (!porCurso.has(i.course)) porCurso.set(i.course, []);
+    porCurso.get(i.course).push(i);
+  });
+
+  return `
+    <div class="surface rounded-2xl p-6 mb-6" style="border-left:3px solid #f59e0b;">
+      <h3 class="font-display font-bold mb-1">Falta decir a qué materia pertenecen</h3>
+      <p class="text-neutral-500 text-sm leading-relaxed mb-4 max-w-2xl">
+        El ITM nombra sus cursos con un código (<span class="mono text-xs">XRII03-356 2026-2</span>),
+        no con el nombre de la materia, así que el panel no puede adivinarlo la primera vez.
+        Dile cuál es cada uno y, de paso, queda aprendido: las próximas sincronizaciones lo
+        enganchan solas. Mientras tanto estas tareas <strong>no cuentan para tu promedio</strong>.
+      </p>
+      <div class="space-y-2">
+        ${[...porCurso.entries()].map(([curso, items]) => `
+          <div class="surface-soft rounded-xl px-4 py-3 flex items-center gap-3 flex-wrap">
+            <div class="min-w-0 flex-1">
+              <div class="mono text-xs truncate">${escapeHtml(curso)}</div>
+              <div class="meta-label text-neutral-500">${items.length} pendiente${items.length > 1 ? 's' : ''}</div>
+            </div>
+            ${studySubjects.length ? `
+              <select data-asignar-curso="${escapeHtml(curso)}"
+                class="surface rounded-lg px-3 py-2 text-xs focus:border-accent focus:outline-none shrink-0">
+                <option value="">Elegir materia…</option>
+                ${studySubjects.map(s => `<option value="${s.id}">${escapeHtml(s.name)}</option>`).join('')}
+              </select>`
+              : `<span class="meta-label text-neutral-500 shrink-0">Crea una materia primero</span>`}
+          </div>`).join('')}
+      </div>
+    </div>`;
 }
 
 function moodleBanner() {
@@ -1354,6 +1438,33 @@ document.addEventListener('click', e => {
 });
 
 document.addEventListener('change', e => {
+  /* Asignar materia a todo un curso de golpe, y aprenderlo para la próxima.
+     Guardar el alias es lo que cierra el ciclo: sin eso habría que repetir esto
+     en cada sincronización, que es justo lo que se quería evitar. */
+  const asig = e.target.closest('[data-asignar-curso]');
+  if (asig) {
+    const curso = asig.dataset.asignarCurso;
+    const materia = subjectById(asig.value);
+    if (!materia) return;
+
+    let n = 0;
+    studyItems.forEach(i => {
+      if (i.course === curso && !i.subjectId) { i.subjectId = materia.id; touch(i); n++; }
+    });
+
+    // Aprender el código: es lo estable. El nombre lleva el periodo ("2026-2")
+    // y cambia cada semestre, el código no.
+    const cod = codigoCurso(curso);
+    if (cod && !codigoCurso(materia.alias || '')) {
+      materia.alias = curso;
+      touch(materia);
+    }
+
+    saveAll(); renderStudy();
+    toast(`${n} pendiente${n === 1 ? '' : 's'} en ${materia.name}`);
+    return;
+  }
+
   const f = e.target.closest('#study-filtro');
   if (f) { studyUi.filtroMateria = f.value; renderStudy(); return; }
 

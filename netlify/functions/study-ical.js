@@ -121,13 +121,25 @@ function clasificar(titulo) {
   return 'tarea';
 }
 
-/** Limpia el relleno con el que Moodle adorna los títulos. */
+/** Limpia el relleno con el que Moodle adorna los títulos.
+ *
+ *  Los PREFIJOS son los que de verdad aparecen en el ITM y no estaban
+ *  contemplados: Moodle antepone "Vencimiento de", "Se abre", "Se cierra" según
+ *  el tipo de evento. Dejarlos convierte una lista de tareas en una lista que
+ *  empieza toda igual, donde hay que leer hasta la mitad de cada línea para
+ *  saber de qué va. El sufijo "pendiente" es el mismo caso por detrás. */
 function limpiarTitulo(s) {
   return String(s || '')
+    // Prefijos (van primero: el resto opera sobre el texto ya destapado)
+    .replace(/^\s*(?:vencimiento|cierre|apertura|entrega)\s+de(?:l)?\s+/i, '')
+    .replace(/^\s*se\s+(?:cierra|abre|entrega)\s+/i, '')
+    .replace(/^\s*(?:opens|closes|due)\s*:?\s*/i, '')
+    // Sufijos
     .replace(/\s*\((.*?)\)\s*$/, '')                        // "(Nombre del curso)" al final
     .replace(/\s+(debe|deben)\s+entregarse\s*$/i, '')       // "X debe entregarse"
     .replace(/\s+is\s+due\s*$/i, '')
     .replace(/\s+se\s+cierra\s*$/i, '')
+    .replace(/\s+pendiente\s*$/i, '')
     .replace(/^\s*«|»\s*$/g, '')
     .trim();
 }

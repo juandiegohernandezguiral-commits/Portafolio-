@@ -83,6 +83,23 @@ grupo('Limpieza de títulos');
     limpiarTitulo('Assignment 1 is due'), 'Assignment 1');
   igual('deja en paz lo que ya está limpio',
     limpiarTitulo('Parcial 1'), 'Parcial 1');
+
+  /* Titulos REALES del Campus Virtual del ITM. Moodle antepone el tipo de
+     evento, y hasta verlo con datos de verdad esto no estaba contemplado: la
+     lista entera empezaba por "Vencimiento de" y habia que leer media linea
+     para saber de que iba cada tarea. */
+  igual('prefijo "Vencimiento de"',
+    limpiarTitulo('Vencimiento de Desarrollar un documento utilizando las herramientas de Word'),
+    'Desarrollar un documento utilizando las herramientas de Word');
+  igual('prefijo "Se cierra"',
+    limpiarTitulo('Se cierra Cuestionario referencias'), 'Cuestionario referencias');
+  igual('sufijo "pendiente"',
+    limpiarTitulo('Foro de conformación de grupos pendiente'), 'Foro de conformación de grupos');
+  igual('prefijo "Se abre"',
+    limpiarTitulo('Se abre Taller 2'), 'Taller 2');
+  // No debe comerse una palabra legitima que empiece igual.
+  igual('no toca "Vencimientos" como palabra propia',
+    limpiarTitulo('Vencimientos del mercado'), 'Vencimientos del mercado');
 }
 
 grupo('Calendario completo de Moodle');

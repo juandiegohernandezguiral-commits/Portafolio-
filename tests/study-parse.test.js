@@ -269,6 +269,38 @@ async function pruebasSync() {
   igual('el externalId lleva prefijo del feed', items[0].externalId, 'f1:uid-1');
   igual('queda marcado como venido del ITM', items[0].source, 'moodle');
 
+  grupo('Cursos del ITM - emparejar por codigo');
+
+  /* Caso REAL: el Campus Virtual del ITM nombra sus cursos "XRII03-356 2026-2",
+     no "Introduccion a la Informatica". No comparten ni una palabra, asi que
+     ninguna comparacion de nombres los une — con datos reales las 6 tareas
+     entraron sin materia y por tanto sin contar para el promedio. El alias
+     acepta el codigo, que ademas es lo unico estable: el nombre lleva el
+     periodo y cambia cada semestre. */
+  sandbox.studySubjects.length = 0;
+  sandbox.studyItems.length = 0;
+  sandbox.studySubjects.push(
+    { id: 'c1', name: 'Introduccion a la Informatica', alias: 'XRII03-356 2026-2' },
+    { id: 'c2', name: 'Formacion Profesional',         alias: '580202001-307 2026-2' },
+    { id: 'c3', name: 'Citas y Referencias APA' });
+
+  igual('empareja por codigo exacto',
+    (sandbox.materiaPorCurso('XRII03-356 2026-2') || {}).id, 'c1');
+  // Lo que de verdad importa del codigo: sobrevive al cambio de semestre.
+  igual('el mismo codigo en otro periodo sigue enganchando',
+    (sandbox.materiaPorCurso('XRII03-356 2027-1') || {}).id, 'c1');
+  igual('otro codigo, otra materia',
+    (sandbox.materiaPorCurso('580202001-307 2026-2') || {}).id, 'c2');
+  igual('sin alias, empareja por nombre',
+    (sandbox.materiaPorCurso('Citas y Referencias APA') || {}).id, 'c3');
+  ok('un curso desconocido NO se engancha a lo que sea',
+    sandbox.materiaPorCurso('ZZZZ99-111 2026-2') === null,
+    String((sandbox.materiaPorCurso('ZZZZ99-111 2026-2') || {}).name));
+  // "2026-2" tiene forma de codigo pero no lo es; si se tratara como tal,
+  // cualquier curso del mismo semestre emparejaria con cualquier materia.
+  ok('un periodo suelto no cuenta como codigo',
+    sandbox.codigoCurso('2026-2') === null, String(sandbox.codigoCurso('2026-2')));
+
   grupo('Refrescar - no duplica y NO pisa lo tuyo');
 
   await sandbox.syncMoodle();
