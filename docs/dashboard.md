@@ -14,6 +14,27 @@ Ranking (`scoreMatch`) is deliberately simpler than real fuzzy matching: exact >
 substring > subsequence, with shorter haystacks winning ties. For a few hundred items that's
 enough, and it guarantees typing a full word ranks the literal match first.
 
+## Always dark
+
+The panel forces dark mode while it's open and restores the user's preference on close
+(`forzarPanelOscuro` / `restaurarTema` in `js/05-dashboard.js`). These are two different things:
+the public portfolio is a page someone visits and should respect their preference; the panel is a
+work surface where tables and charts get stared at for a while, and a light background tires there.
+
+It toggles the global `dark` class rather than duplicating every colour in CSS, because the panel
+already uses Tailwind's `dark:` variants throughout — rewriting them would be hundreds of lines
+for the same result. The public site isn't visible while the panel is open (it's a full-screen
+overlay), so the swap isn't perceptible.
+
+**`forzarPanelOscuro()` deliberately does not call `applyTheme(true)`.** That function *persists*
+the theme to `localStorage`, so closing the browser with the panel open would leave the public site
+dark forever — a side effect nobody asked for. It sets the class directly instead. `restaurarTema()`
+*does* use `applyTheme`, because on the way back the sun/moon icons also need restoring and the
+value it persists is the one that was already there.
+
+Verified against all four cases: prefers-light round-trips, prefers-dark is untouched, three
+open/close cycles don't degrade, and closing the browser mid-session leaves `theme` at `light`.
+
 ## Views
 - **Hoy** — the default view on unlock, and the reason the panel is worth opening daily.
   Three blocks (vencidas / para hoy / en progreso) merging local tasks and events with whatever
