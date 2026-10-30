@@ -616,3 +616,75 @@ html.dark .mapa-cara { stroke: rgba(0,0,0,.35); }
 @media (prefers-reduced-motion: reduce) {
   .mapa-plano { transition: none; }
 }
+
+/* ============ VISTA DE PROYECTOS (js/23-projects.js) ============ */
+
+/* Los colores de fondo y borde NO se repiten aqui: el marcado lleva la clase
+   .surface, que ya los resuelve en claro y oscuro. Duplicarlos con variables
+   propias fue el primer intento y fallo en silencio — --surface y
+   --surface-border no existen en este proyecto (solo --accent y las --heat-*),
+   asi que las tarjetas salian transparentes y sin borde. */
+
+/* La banda superior. Fondo de degradados compuestos, no una foto: el sitio no
+   carga imagenes externas (el service worker cachea solo lo propio) y una foto
+   de stock seria medio mega que no dice nada de tus proyectos. Las dos capas
+   radiales dan la profundidad que en la referencia aportaba la fotografia. */
+.proy-hero {
+  background:
+    radial-gradient(900px 320px at 12% -10%, rgba(38,103,255,.38), transparent 60%),
+    radial-gradient(700px 300px at 88% 120%, rgba(168,85,247,.30), transparent 62%),
+    linear-gradient(135deg, #0b1020 0%, #0a0a0f 55%, #0d1526 100%);
+  border: 1px solid rgba(255,255,255,.07);
+}
+/* Trama diagonal muy tenue: textura sin competir con el texto. */
+.proy-hero::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background-image: repeating-linear-gradient(115deg,
+    rgba(255,255,255,.035) 0 1px, transparent 1px 7px);
+  -webkit-mask-image: linear-gradient(100deg, #000 0%, transparent 72%);
+  mask-image: linear-gradient(100deg, #000 0%, transparent 72%);
+}
+.text-accent-soft { color: #7aa2ff; }
+
+/* Tarjetas de accion. El fondo lo pone .surface en el marcado. */
+.proy-accion {
+  padding: 1rem 1.1rem; border-radius: 1rem;
+  transition: border-color .18s, transform .18s;
+}
+.proy-accion:hover { border-color: var(--accent); transform: translateY(-2px); }
+.proy-accion-icono {
+  width: 2.1rem; height: 2.1rem; border-radius: .7rem; margin-bottom: .7rem;
+  display: grid; place-items: center; font-size: 1rem; line-height: 1;
+  background: rgba(38,103,255,.12); color: var(--accent);
+}
+/* La primaria si pinta su propio fondo, porque es un degradado que .surface no da. */
+.proy-accion-fuerte {
+  background: linear-gradient(135deg, #2667ff 0%, #6d4bff 100%);
+  border-color: transparent; color: #fff;
+}
+.proy-accion-fuerte:hover { border-color: rgba(255,255,255,.35); }
+.proy-accion-fuerte .proy-accion-icono { background: rgba(255,255,255,.18); color: #fff; }
+
+/* Rejilla. En vista de lista la ficha pasa a horizontal y la portada se reduce
+   a una franja de color, que sigue distinguiendo el proyecto de un vistazo. */
+.proy-grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fill, minmax(255px, 1fr)); }
+.proy-card { display: flex; flex-direction: column; }
+.proy-lista { display: flex; flex-direction: column; gap: .55rem; }
+.proy-lista .proy-card { flex-direction: row; align-items: stretch; }
+.proy-lista .proy-portada { width: 5px; height: auto; flex-shrink: 0; }
+.proy-lista .proy-portada > * { display: none; }
+.proy-lista .proy-cuerpo { flex: 1; min-width: 0; padding: .8rem 1.1rem; }
+.proy-lista .proy-etapas { display: none; }
+
+/* Mini calendario del panel lateral */
+.proy-cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.proy-cal-dia {
+  aspect-ratio: 1; display: grid; place-items: center; position: relative;
+  font-size: 10px; border-radius: .4rem;
+}
+.proy-cal-dia.hoy { background: var(--accent); color: #fff; font-weight: 700; }
+.proy-cal-dia.tiene::after {
+  content: ''; position: absolute; bottom: 2px; left: 50%; transform: translateX(-50%);
+  width: 3px; height: 3px; border-radius: 50%; background: var(--accent);
+}
+.proy-cal-dia.hoy.tiene::after { background: #fff; }

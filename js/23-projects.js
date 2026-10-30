@@ -71,7 +71,11 @@ const PROY_ESTADOS = {
   abandonado: { label: 'Abandonado', color: '#71717a', orden: 3 },
 };
 
-const proyUi = { filtro: store.get('proyFiltro', 'todos') };
+const proyUi = {
+  filtro: store.get('proyFiltro', 'todos'),
+  vista: store.get('proyVista', 'grid'),   // 'grid' | 'lista'
+  busca: '',                               // no se guarda: es de esta sesion
+};
 
 /* ============ MIGRACIÓN ============ */
 
@@ -209,6 +213,152 @@ function proyFmtMinutos(m) {
 
 /* ============ VISTA ============ */
 
+/** Hitos que vienen: la fecha de entrega del proyecto y las de sus tareas
+ *  abiertas, en una sola lista ordenada. Mezclarlas es el punto — lo que te
+ *  cae encima la semana que viene no distingue entre un tipo y otro. */
+function proyHitos(limite) {
+  const out = [];
+
+  projects.forEach(p => {
+    if (p.status === 'terminado' || p.status === 'abandonado') return;
+    if (!p.deadline) return;
+    const d = new Date(p.deadline);
+    if (!isNaN(d)) out.push({ ms: d.getTime(), titulo: p.name, sub: 'Entrega del proyecto', proy: p, fuerte: true });
+  });
+
+  (typeof tasks !== 'undefined' ? tasks : []).forEach(t => {
+    if (t.status === 'done' || !t.due || !t.projectId) return;
+    const p = projects.find(x => x.id === t.projectId);
+    if (!p || p.status === 'terminado' || p.status === 'abandonado') return;
+    const d = new Date(t.due);
+    if (!isNaN(d)) out.push({ ms: d.getTime(), titulo: t.title, sub: p.name, proy: p, fuerte: false });
+  });
+
+  return out.sort((a, b) => a.ms - b.ms).slice(0, limite || 6);
+}
+
+/** Mini calendario del mes en curso, con un punto en los días que tienen hito. */
+function proyCalendario() {
+  const hoy = new Date();
+  const anio = hoy.getFullYear(), mes = hoy.getMonth();
+  const dias = new Date(anio, mes + 1, 0).getDate();
+  // getDay() da 0=domingo; aquí la semana empieza en lunes.
+  const hueco = (new Date(anio, mes, 1).getDay() + 6) % 7;
+
+  const conHito = new Set();
+  proyHitos(60).forEach(h => {
+    const d = new Date(h.ms);
+    if (d.getFullYear() === anio && d.getMonth() === mes) conHito.add(d.getDate());
+  });
+
+  let celdas = '';
+  for (let i = 0; i < hueco; i++) celdas += '<div></div>';
+  for (let d = 1; d <= dias; d++) {
+    const esHoy = d === hoy.getDate();
+    celdas += '<div class="proy-cal-dia ' + (esHoy ? 'hoy' : 'text-neutral-500') +
+              (conHito.has(d) ? ' tiene' : '') + '">' + d + '</div>';
+  }
+
+  return `
+    <div class="surface rounded-2xl p-4">
+      <div class="flex items-baseline justify-between mb-3">
+        <h3 class="font-display font-bold text-sm capitalize">${hoy.toLocaleDateString('es-CO', { month: 'long', year: 'numeric' })}</h3>
+        <span class="meta-label text-neutral-500">${conHito.size} con entrega</span>
+      </div>
+      <div class="proy-cal mb-1">
+        ${['L', 'M', 'M', 'J', 'V', 'S', 'D'].map(d => `<div class="text-center meta-label text-neutral-500 text-[9px]">${d}</div>`).join('')}
+      </div>
+      <div class="proy-cal">${celdas}</div>
+    </div>`;
+}
+
+/** Panel lateral: resumen, calendario, hitos y lo que más avanza. */
+function renderProyAside() {
+  const caja = document.getElementById('proy-aside');
+  if (!caja) return;
+
+  const porEstado = e => projects.filter(p => (p.status || 'activo') === e);
+  const total = projects.length || 1;
+  const pct = n => Math.round((n / total) * 100);
+
+  const mini = (etiqueta, n, color) => `
+    <div class="surface-soft rounded-xl p-3">
+      <div class="meta-label text-neutral-500">${etiqueta}</div>
+      <div class="flex items-baseline justify-between gap-2 mt-1">
+        <span class="font-display font-bold text-2xl">${n}</span>
+        <span class="mono text-[10px] text-neutral-500">${projects.length ? pct(n) + '%' : '—'}</span>
+      </div>
+      <div class="h-1 rounded-full bg-neutral-200 dark:bg-white/10 overflow-hidden mt-2">
+        <div class="h-full rounded-full" style="width:${pct(n)}%;background:${color}"></div>
+      </div>
+    </div>`;
+
+  const hitos = proyHitos(5);
+  const ahora = Date.now();
+
+  /* Lo que más avanza es la cara amable de la vista: el aviso de arriba señala
+     lo que va mal, esto recuerda lo que va bien. Sin algo así, abrir Proyectos
+     sería siempre una regañina. */
+  const destacados = porEstado('activo')
+    .map(p => ({ p, prog: proyProgreso(p) }))
+    .filter(x => x.prog.pct > 0)
+    .sort((a, b) => b.prog.pct - a.prog.pct)
+    .slice(0, 3);
+
+  caja.innerHTML = `
+    <div class="surface rounded-2xl p-4">
+      <h3 class="font-display font-bold text-sm mb-3">Resumen general</h3>
+      <div class="grid grid-cols-2 gap-2.5">
+        ${mini('Activos', porEstado('activo').length, '#2667ff')}
+        ${mini('Terminados', porEstado('terminado').length, '#22c55e')}
+        ${mini('En pausa', porEstado('pausa').length, '#f59e0b')}
+        ${mini('Abandonados', porEstado('abandonado').length, '#71717a')}
+      </div>
+    </div>
+
+    ${proyCalendario()}
+
+    <div class="surface rounded-2xl p-4">
+      <h3 class="font-display font-bold text-sm mb-3">Próximos hitos</h3>
+      ${hitos.length ? `<div class="space-y-2.5">${hitos.map(h => {
+        const dias = Math.ceil((h.ms - ahora) / 86400000);
+        const tono = dias < 0 ? 'text-red-500' : dias <= 3 ? 'text-amber-500' : 'text-neutral-500';
+        const cuando = dias < 0 ? Math.abs(dias) + ' d tarde' : dias === 0 ? 'hoy' : 'en ' + dias + ' d';
+        return `
+          <div class="flex items-start gap-2.5">
+            <span class="w-1.5 h-1.5 rounded-full mt-1.5 shrink-0"
+              style="background:${(PROY_TIPOS[h.proy.type] || PROY_TIPOS.personal).color}"></span>
+            <div class="min-w-0 flex-1">
+              <div class="text-xs truncate ${h.fuerte ? 'font-semibold' : ''}">${escapeHtml(h.titulo)}</div>
+              <div class="meta-label text-neutral-500 truncate">${escapeHtml(h.sub)}</div>
+            </div>
+            <span class="meta-label ${tono} shrink-0">${cuando}</span>
+          </div>`;
+      }).join('')}</div>`
+        : `<p class="text-neutral-500 text-xs leading-relaxed">
+             Nada con fecha. Ponle una entrega a un proyecto, o una fecha a sus tareas,
+             y lo que venga aparece aquí.
+           </p>`}
+    </div>
+
+    ${destacados.length ? `
+      <div class="surface rounded-2xl p-4">
+        <h3 class="font-display font-bold text-sm mb-3">Lo que más avanza</h3>
+        <div class="space-y-3">
+          ${destacados.map(({ p, prog }) => `
+            <div>
+              <div class="flex items-baseline justify-between gap-2 mb-1.5">
+                <span class="text-xs font-semibold truncate">${escapeHtml(p.name)}</span>
+                <span class="mono text-[10px] text-accent shrink-0">${prog.pct}%</span>
+              </div>
+              <div class="h-1 rounded-full bg-neutral-200 dark:bg-white/10 overflow-hidden">
+                <div class="h-full rounded-full" style="width:${prog.pct}%;background:${(PROY_TIPOS[p.type] || PROY_TIPOS.personal).color}"></div>
+              </div>
+            </div>`).join('')}
+        </div>
+      </div>` : ''}`;
+}
+
 function renderProjects() {
   const box = document.getElementById('projects-list');
   if (!box) return;
@@ -218,15 +368,31 @@ function renderProjects() {
   const porEstado = e => projects.filter(p => (p.status || 'activo') === e);
   const dormidos = projects.filter(proyDormido);
 
+  // Resumen de una línea dentro de la banda superior.
+  const hs = document.getElementById('proy-hero-stat');
+  if (hs) {
+    hs.innerHTML = projects.length ? `
+      <div class="flex gap-6">
+        <div><div class="font-display font-bold text-3xl text-white">${porEstado('activo').length}</div>
+             <div class="meta-label text-white/50">activos</div></div>
+        <div><div class="font-display font-bold text-3xl ${dormidos.length ? 'text-amber-400' : 'text-white'}">${dormidos.length}</div>
+             <div class="meta-label text-white/50">sin mover</div></div>
+        <div><div class="font-display font-bold text-3xl text-white">${proyFmtMinutos(projects.reduce((n, p) => n + proyMinutos(p), 0)) || '—'}</div>
+             <div class="meta-label text-white/50">dedicadas</div></div>
+      </div>` : '';
+  }
+
+  const q = proyUi.busca.trim().toLowerCase();
   const visibles = (proyUi.filtro === 'todos'
     ? projects.slice()
     : proyUi.filtro === 'dormidos'
       ? dormidos
       : porEstado(proyUi.filtro)
+  ).filter(p => !q || (p.name + ' ' + (p.desc || '') + ' ' + (p.client || '')).toLowerCase().includes(q)
   ).sort((a, b) => {
     const ea = PROY_ESTADOS[a.status || 'activo'].orden;
     const eb = PROY_ESTADOS[b.status || 'activo'].orden;
-    if (ea !== eb) return ea - eb;                      // activos primero
+    if (ea !== eb) return ea - eb;                           // activos primero
     return proyUltimaActividad(b) - proyUltimaActividad(a);  // y lo más vivo arriba
   });
 
@@ -240,19 +406,8 @@ function renderProjects() {
   if (dormidos.length) filtros.splice(2, 0, ['dormidos', 'Sin movimiento', dormidos.length]);
 
   box.innerHTML = `
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-      ${statTile('Activos', String(porEstado('activo').length),
-        dormidos.length ? `${dormidos.length} sin movimiento` : 'todos con actividad',
-        dormidos.length ? 'text-amber-500' : '')}
-      ${statTile('Terminados', String(porEstado('terminado').length), 'cerrados de verdad',
-        porEstado('terminado').length ? 'text-green-600 dark:text-green-400' : '')}
-      ${statTile('En pausa', String(porEstado('pausa').length), 'parados a propósito')}
-      ${statTile('Horas invertidas', proyFmtMinutos(projects.reduce((n, p) => n + proyMinutos(p), 0)) || '—',
-        'medidas con el temporizador')}
-    </div>
-
     ${dormidos.length ? `
-      <div class="surface rounded-2xl p-6 mb-6" style="border-left:3px solid #f59e0b;">
+      <div class="surface rounded-2xl p-5 mb-4" style="border-left:3px solid #f59e0b;">
         <h3 class="font-display font-bold mb-1">${dormidos.length} proyecto${dormidos.length > 1 ? 's' : ''} sin señales de vida</h3>
         <p class="text-neutral-500 text-sm leading-relaxed mb-4 max-w-2xl">
           Siguen marcados como activos pero llevan más de ${PROY_DIAS_DORMIDO} días sin una tarea
@@ -276,29 +431,44 @@ function renderProjects() {
         </div>
       </div>` : ''}
 
-    <div class="flex items-center gap-2 flex-wrap mb-5">
-      <!-- Se ocultan los filtros vacíos para no llenar la barra de ceros, pero
-           el que esté seleccionado se muestra siempre: si no, al vaciarse
-           desaparecería su propio botón y no habría forma de ver por qué la
-           lista salió en blanco. -->
+    <div class="flex items-center gap-2 flex-wrap mb-4">
+      <!-- Los filtros vacíos se ocultan para no llenar la barra de ceros, pero el
+           seleccionado se muestra siempre: si no, al vaciarse desaparecería su
+           propio botón y no habría forma de ver por qué la lista salió en blanco. -->
       ${filtros.filter(([k, , n]) => n > 0 || proyUi.filtro === k).map(([k, l, n]) => `
         <button type="button" data-proy-filtro="${k}"
           class="px-3.5 py-2 rounded-xl text-[10px] font-bold mono uppercase tracking-[0.12em] transition ${
             proyUi.filtro === k ? 'bg-accent text-white' : 'surface-soft text-neutral-500 hover:text-accent'}">
           ${l} <span class="opacity-60">${n}</span>
         </button>`).join('')}
+
+      <div class="flex-1"></div>
+
+      ${projects.length > 3 ? `
+        <input id="proy-busca" type="search" placeholder="Buscar…" value="${escapeHtml(proyUi.busca)}"
+          class="surface-soft rounded-xl px-3 py-2 text-xs w-36 focus:w-48 focus:border-accent focus:outline-none transition-all" />` : ''}
+
+      <div class="flex gap-1">
+        ${[['grid', '▦'], ['lista', '☰']].map(([v, ic]) => `
+          <button type="button" data-proy-vista="${v}" aria-label="Vista ${v}"
+            class="w-8 h-8 rounded-lg grid place-items-center text-xs transition ${
+              proyUi.vista === v ? 'bg-accent text-white' : 'surface-soft text-neutral-500 hover:text-accent'}">${ic}</button>`).join('')}
+      </div>
     </div>
 
     ${visibles.length
-      ? `<div class="grid md:grid-cols-2 xl:grid-cols-3 gap-4">${visibles.map(renderProyCard).join('')}</div>`
+      ? `<div class="${proyUi.vista === 'lista' ? 'proy-lista' : 'proy-grid'}">${visibles.map(renderProyCard).join('')}</div>`
       : `<div class="surface rounded-2xl p-12 text-center">
-           <p class="font-display font-bold text-lg mb-1">${projects.length ? 'Nada con este filtro' : 'Sin proyectos todavía'}</p>
+           <p class="font-display font-bold text-lg mb-1">${
+             q ? 'Nada coincide con eso' : projects.length ? 'Nada con este filtro' : 'Sin proyectos todavía'}</p>
            <p class="text-neutral-500 text-sm max-w-md mx-auto leading-relaxed">
-             ${projects.length
-               ? 'Prueba con otro filtro.'
-               : 'Un proyecto es cualquier cosa en la que estés metido más de una semana: un negocio, una habilidad que estás construyendo, algo que programas. Las tareas y las sesiones de enfoque que le enlaces alimentan su progreso.'}
+             ${q ? 'Prueba con otra palabra.'
+                 : projects.length ? 'Prueba con otro filtro.'
+                 : 'Un proyecto es cualquier cosa en la que estés metido más de una semana: un negocio, una habilidad que estás construyendo, algo que programas. Las tareas y las sesiones de enfoque que le enlaces alimentan su progreso.'}
            </p>
          </div>`}`;
+
+  renderProyAside();
 }
 
 function renderProyCard(p) {
@@ -318,20 +488,20 @@ function renderProyCard(p) {
       const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
       const dd = new Date(d); dd.setHours(0, 0, 0, 0);
       const n = Math.round((dd - hoy) / 86400000);
-      venc = n < 0 ? { txt: `Venció hace ${Math.abs(n)} d`, tono: 'text-red-500' }
+      venc = n < 0 ? { txt: 'Venció hace ' + Math.abs(n) + ' d', tono: 'text-red-500' }
            : n === 0 ? { txt: 'Vence hoy', tono: 'text-red-500' }
-           : n <= 7 ? { txt: `En ${n} días`, tono: 'text-amber-500' }
+           : n <= 7 ? { txt: 'En ' + n + ' días', tono: 'text-amber-500' }
            : { txt: d.toLocaleDateString('es-CO', { day: 'numeric', month: 'short' }), tono: 'text-neutral-500' };
     }
   }
 
   return `
-    <div class="surface rounded-2xl overflow-hidden flex flex-col ${cerrado ? 'opacity-60' : ''}">
-      <div class="h-20 relative" style="background:${proyPortada(p)}">
+    <div class="surface rounded-2xl overflow-hidden proy-card ${cerrado ? 'opacity-60' : ''}">
+      <div class="proy-portada h-20 relative" style="background:${proyPortada(p)}">
         <div class="absolute top-3 left-3 flex items-center gap-1.5">
-          <span class="mono text-[9px] uppercase tracking-widest px-2 py-1 rounded-lg backdrop-blur"
+          <span class="mono text-[9px] uppercase tracking-widest px-2 py-1 rounded-lg"
             style="background:${tipo.color}26;color:${tipo.color}">${tipo.label}</span>
-          ${dormido ? `<span class="mono text-[9px] uppercase tracking-widest px-2 py-1 rounded-lg bg-amber-500/20 text-amber-500">Sin movimiento</span>` : ''}
+          ${dormido ? '<span class="mono text-[9px] uppercase tracking-widest px-2 py-1 rounded-lg bg-amber-500/20 text-amber-500">Sin movimiento</span>' : ''}
         </div>
         <div class="absolute top-3 right-3 flex items-center gap-1">
           <select data-proy-estado-sel="${p.id}" aria-label="Estado del proyecto"
@@ -344,7 +514,7 @@ function renderProyCard(p) {
         </div>
       </div>
 
-      <div class="p-5 flex-1 flex flex-col">
+      <div class="proy-cuerpo p-5 flex-1 flex flex-col">
         <h3 class="font-display font-bold text-lg leading-tight truncate">${escapeHtml(p.name)}</h3>
         ${p.client ? `<div class="meta-label text-neutral-500 mt-0.5 truncate">para ${escapeHtml(p.client)}</div>` : ''}
         ${p.desc ? `<p class="text-neutral-500 text-xs mt-2 leading-relaxed line-clamp-2">${escapeHtml(p.desc)}</p>` : ''}
@@ -364,21 +534,21 @@ function renderProyCard(p) {
         </div>
 
         <!-- Cada dato con su etiqueta: sin ellas "1 h 35 min" y "hoy" quedaban
-             pegados y se leian como una sola frase sin sentido. -->
+             pegados y se leían como una sola frase sin sentido. -->
         <div class="flex items-center gap-4 flex-wrap mt-4 pt-3 border-t border-neutral-100 dark:border-white/5">
           ${venc ? `<span class="meta-label ${venc.tono}">⚑ ${venc.txt}</span>` : ''}
           ${mins ? `<span class="meta-label text-neutral-500">◷ ${proyFmtMinutos(mins)} dedicadas</span>` : ''}
           ${quieto !== null && !cerrado
             ? `<span class="meta-label ${dormido ? 'text-amber-500' : 'text-neutral-500'}">${
-                quieto === 0 ? '● activo hoy' : `● visto hace ${quieto} d`}</span>` : ''}
+                quieto === 0 ? '● activo hoy' : '● visto hace ' + quieto + ' d'}</span>` : ''}
         </div>
 
-        <div class="flex gap-1.5 mt-3">
+        <div class="proy-etapas flex gap-1.5 mt-3">
           ${(p.stages || []).map((s, i) => `
             <button type="button" data-toggle-stage="${p.id}:${i}" title="${escapeHtml(s.name)}"
               class="flex-1 py-1.5 rounded-lg text-[9px] mono uppercase tracking-wider truncate px-1 transition ${
                 s.done ? 'text-white' : 'surface-soft text-neutral-500 hover:text-accent'}"
-              style="${s.done ? `background:${tipo.color}` : ''}">${escapeHtml(s.name)}</button>`).join('')}
+              style="${s.done ? 'background:' + tipo.color : ''}">${escapeHtml(s.name)}</button>`).join('')}
         </div>
       </div>
     </div>`;
@@ -392,6 +562,26 @@ document.addEventListener('click', e => {
     proyUi.filtro = f.dataset.proyFiltro;
     store.set('proyFiltro', proyUi.filtro);
     renderProjects();
+    return;
+  }
+
+  const v = e.target.closest('[data-proy-vista]');
+  if (v) {
+    proyUi.vista = v.dataset.proyVista;
+    store.set('proyVista', proyUi.vista);
+    renderProjects();
+    return;
+  }
+
+  /* Las acciones de la banda llevan a sitios que EXISTEN. Un botón decorativo
+     que no va a ninguna parte es peor que no tenerlo: se prueba una vez, no
+     pasa nada, y a partir de ahí se desconfía de toda la fila. */
+  const ac = e.target.closest('[data-proy-accion]');
+  if (ac) {
+    const a = ac.dataset.proyAccion;
+    if (a === 'enfoque' && typeof openFocusPicker === 'function') openFocusPicker();
+    else if (a === 'tareas') showView('tasks');
+    else if (a === 'metricas') showView('insights');
     return;
   }
 
@@ -415,8 +605,9 @@ document.addEventListener('click', e => {
     const p = projects.find(x => x.id === del.dataset.delProject);
     if (!p) return;
     const n = (typeof tasks !== 'undefined' ? tasks : []).filter(t => t.projectId === p.id).length;
-    const aviso = n ? `\n\nTiene ${n} tarea${n > 1 ? 's' : ''} enlazada${n > 1 ? 's' : ''}; se quedan sin proyecto pero no se borran.` : '';
-    if (!confirm(`¿Borrar "${p.name}"?${aviso}`)) return;
+    const aviso = n ? '\n\nTiene ' + n + ' tarea' + (n > 1 ? 's' : '') + ' enlazada' + (n > 1 ? 's' : '') +
+                      '; se quedan sin proyecto pero no se borran.' : '';
+    if (!confirm('¿Borrar "' + p.name + '"?' + aviso)) return;
     tombstone('projects', p.id);
     projects = projects.filter(x => x.id !== p.id);
     saveAll(); renderProjects(); toast('Proyecto borrado');
@@ -430,7 +621,7 @@ document.addEventListener('click', e => {
     if (!p) return;
     p.status = estado;
     touch(p); saveAll(); renderProjects();
-    toast(`${p.name}: ${PROY_ESTADOS[estado].label.toLowerCase()}`);
+    toast(p.name + ': ' + PROY_ESTADOS[estado].label.toLowerCase());
   }
 });
 
@@ -441,4 +632,15 @@ document.addEventListener('change', e => {
   if (!p) return;
   p.status = sel.value;
   touch(p); saveAll(); renderProjects();
+});
+
+/* La búsqueda repinta en cada tecla, así que hay que devolver el foco y el
+   cursor al campo: sin esto, escribir la segunda letra sería imposible. */
+document.addEventListener('input', e => {
+  const b = e.target.closest('#proy-busca');
+  if (!b) return;
+  proyUi.busca = b.value;
+  renderProjects();
+  const nuevo = document.getElementById('proy-busca');
+  if (nuevo) { nuevo.focus(); nuevo.setSelectionRange(nuevo.value.length, nuevo.value.length); }
 });
