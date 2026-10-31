@@ -120,6 +120,23 @@ open/close cycles don't degrade, and closing the browser mid-session leaves `the
 
   Covers are a **gradient generated from the name** (deterministic), so projects are
   distinguishable at a glance without uploading anything.
+
+  **Notes hang off a project by tag**, the same mechanism Estudio uses for subjects:
+  `notasDeProyecto()` matches `#` + the slug of the project name against each note's title and
+  `content` (*not* `body` — that field doesn't exist, and searching it returns zero notes with
+  no error, which already bit once). Archived notes are skipped. The card shows the count,
+  expands the list in place, and «+ apunte» creates a note already tagged — having to remember
+  to type `#agencia-de-ia` is exactly the friction that would stop this being used.
+
+  The slug comes from `subjectSlug()` in `js/22-study.js` rather than a second copy: two
+  slug generators would eventually disagree, and the day one produced `agencia-ia` and the other
+  `agencia-de-ia` the notes would silently stop appearing. A consequence worth knowing: a project
+  and a subject with the same name share a tag, so the note shows up under both — which is the
+  right outcome, not a collision to fix.
+
+  **Known limitation:** the tag derives from the name, so renaming a project unhooks all its
+  notes at once and in silence. It doesn't bite today because there is no rename UI. Whoever
+  adds one must retag the notes in the same operation.
 - **Notes ("Mi cerebro")** — the knowledge system, `js/11-notes.js`. Data still at `jdh_notes`,
   now with `pinned`, `archived` and `daily` (migrated by `migrateNotes()`).
 

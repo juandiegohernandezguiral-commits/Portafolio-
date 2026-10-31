@@ -75,6 +75,7 @@ const proyUi = {
   filtro: store.get('proyFiltro', 'todos'),
   vista: store.get('proyVista', 'grid'),   // 'grid' | 'lista'
   busca: '',                               // no se guarda: es de esta sesion
+  notasAbiertas: new Set(),                // que fichas tienen los apuntes desplegados
 };
 
 /* ============ MIGRACIÓN ============ */
@@ -191,6 +192,81 @@ function proyMinutos(p) {
   return sessions
     .filter(s => s.kind === 'focus' && s.projectId === p.id)
     .reduce((n, s) => n + (s.minutes || 0), 0);
+}
+
+/* ============ APUNTES ============ */
+
+/**
+ * Etiqueta con la que un apunte de Mi cerebro queda enganchado a este proyecto.
+ *
+ * Se reutiliza subjectSlug() de js/22-study.js (que carga antes) en vez de
+ * escribir otro generador: dos copias acabarian separandose, y el dia que una
+ * produjera "agencia-ia" y la otra "agencia-de-ia", los apuntes dejarian de
+ * aparecer SIN dar ningun error — solo una lista vacia que parece que no has
+ * escrito nada. El nombre dice "subject" por donde nacio, pero es un
+ * generador de slugs normal y corriente.
+ *
+ * OJO al efecto buscado: un proyecto y una materia que se llamen igual
+ * comparten etiqueta, asi que el apunte sale en los dos sitios. Eso es
+ * deseable — si el apunte es de ciberseguridad, lo es para la materia y para
+ * el proyecto — pero conviene saberlo.
+ *
+ * LIMITACION CONOCIDA: la etiqueta sale del NOMBRE, asi que renombrar un
+ * proyecto desengancha todos sus apuntes de golpe y en silencio. Hoy no
+ * muerde porque no hay forma de renombrar un proyecto en la interfaz. Quien
+ * añada esa opcion tiene que reetiquetar los apuntes en la misma operacion
+ * (buscar '#' + tag viejo en notes y sustituirlo), o preguntar al usuario:
+ * perder los apuntes de un proyecto por cambiarle una palabra al nombre seria
+ * el peor momento posible para descubrir esto.
+ */
+function proyTag(p) {
+  if (typeof subjectSlug !== 'function') return '';
+  return subjectSlug(p && p.name);
+}
+
+/** Apuntes de Mi cerebro etiquetados con este proyecto.
+ *
+ *  El cuerpo de una nota esta en `content`, NO en `body`. Buscar en `body` no
+ *  lanza nada: devuelve cero apuntes siempre. Ya paso una vez en Estudio. */
+function notasDeProyecto(p) {
+  const tag = proyTag(p);
+  if (!tag || typeof notes === 'undefined') return [];
+  return notes.filter(n => {
+    if (n.archived) return false;
+    const txt = ((n.title || '') + ' ' + (n.content || '')).toLowerCase();
+    return txt.includes('#' + tag);
+  }).sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+}
+
+/** Abre un apunte en la vista de Notas.
+ *
+ *  No hay un openNote() global: el patron del proyecto es fijar
+ *  notesUi.selectedId y cambiar de vista, que es lo que hacen el grafo y la
+ *  paleta de comandos. commitNoteEdits() primero, o se pierde lo que estuviera
+ *  a medio escribir en el editor. */
+function proyIrANota(id) {
+  if (typeof notesUi === 'undefined') return;
+  if (typeof commitNoteEdits === 'function') commitNoteEdits();
+  notesUi.selectedId = id;
+  notesUi.showArchived = false;
+  notesUi.tagFilter = null;
+  showView('notes');
+}
+
+/** Crea un apunte YA etiquetado y lo abre.
+ *
+ *  Existe para que no haya que acordarse de la etiqueta: tener que recordar
+ *  escribir #agencia-de-ia es justo la friccion que hace que nadie use esto.
+ *  La etiqueta va en el cuerpo, no en el titulo, para que el titulo quede
+ *  limpio al listarlo. */
+function proyCrearNota(p) {
+  if (typeof createNote !== 'function') return;
+  const tag = proyTag(p);
+  const nota = createNote({
+    title: 'Apunte de ' + p.name,
+    content: '#' + tag + '\n\n',
+  });
+  if (nota) proyIrANota(nota.id);
 }
 
 /** Portada generada del nombre: cada proyecto se distingue de un vistazo sin
@@ -567,6 +643,8 @@ function renderProyCard(p) {
                 quieto === 0 ? '● activo hoy' : '● visto hace ' + quieto + ' d'}</span>` : ''}
         </div>
 
+        ${proyBloqueNotas(p)}
+
         <div class="proy-etapas flex gap-1.5 mt-3">
           ${(p.stages || []).map((s, i) => `
             <button type="button" data-toggle-stage="${p.id}:${i}" title="${escapeHtml(s.name)}"
@@ -575,6 +653,46 @@ function renderProyCard(p) {
               style="${s.done ? 'background:' + tipo.color : ''}">${escapeHtml(s.name)}</button>`).join('')}
         </div>
       </div>
+    </div>`;
+}
+
+/** Fila de apuntes de la ficha, desplegable.
+ *
+ *  Va plegada por defecto porque la ficha ya esta cargada de informacion; lo
+ *  que importa de un vistazo es CUANTOS hay, no cuales. */
+function proyBloqueNotas(p) {
+  const tag = proyTag(p);
+  if (!tag) return '';
+  const ns = notasDeProyecto(p);
+  const abierta = proyUi.notasAbiertas.has(p.id);
+
+  return `
+    <div class="mt-3 pt-3 border-t border-neutral-100 dark:border-white/5">
+      <div class="flex items-center gap-2">
+        <button type="button" data-proy-notas="${p.id}"
+          class="meta-label ${ns.length ? 'text-accent' : 'text-neutral-500'} hover:text-accent transition flex items-center gap-1">
+          <span>${abierta ? '▾' : '▸'}</span>
+          ${ns.length ? ns.length + ' apunte' + (ns.length > 1 ? 's' : '') : 'Sin apuntes'}
+        </button>
+        <div class="flex-1"></div>
+        <button type="button" data-proy-nueva-nota="${p.id}"
+          class="meta-label text-neutral-500 hover:text-accent transition">+ apunte</button>
+      </div>
+
+      ${abierta ? `
+        <div class="mt-2.5 space-y-1.5">
+          ${ns.length ? ns.slice(0, 6).map(n => `
+            <button type="button" data-proy-abrir-nota="${n.id}"
+              class="w-full text-left surface-soft rounded-lg px-3 py-2 hover:border-accent transition">
+              <div class="text-xs truncate">${escapeHtml(n.title || 'Sin título')}</div>
+              <div class="meta-label text-neutral-500">${typeof relativeTime === 'function' ? relativeTime(n.updatedAt) : ''}</div>
+            </button>`).join('')
+            : `<p class="text-[11px] text-neutral-500 leading-relaxed">
+                 Etiqueta cualquier nota con <span class="mono text-neutral-400">#${tag}</span>
+                 y aparece aquí. O pulsa «+ apunte» y se crea ya etiquetada.
+               </p>`}
+          ${ns.length > 6 ? `<div class="meta-label text-neutral-500 px-1">y ${ns.length - 6} más</div>` : ''}
+        </div>` : ''}
     </div>`;
 }
 
@@ -608,6 +726,25 @@ document.addEventListener('click', e => {
     else if (a === 'metricas') showView('insights');
     return;
   }
+
+  const tn = e.target.closest('[data-proy-notas]');
+  if (tn) {
+    const id = tn.dataset.proyNotas;
+    if (proyUi.notasAbiertas.has(id)) proyUi.notasAbiertas.delete(id);
+    else proyUi.notasAbiertas.add(id);
+    renderProjects();
+    return;
+  }
+
+  const nn = e.target.closest('[data-proy-nueva-nota]');
+  if (nn) {
+    const p = projects.find(x => x.id === nn.dataset.proyNuevaNota);
+    if (p) proyCrearNota(p);
+    return;
+  }
+
+  const an = e.target.closest('[data-proy-abrir-nota]');
+  if (an) { proyIrANota(an.dataset.proyAbrirNota); return; }
 
   /* Etapas y borrado.
      Van aquí y por delegación a propósito: antes sus manejadores se enganchaban

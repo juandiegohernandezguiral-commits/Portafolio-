@@ -14,6 +14,10 @@ const vm = require('vm');
 const path = require('path');
 
 const SRC = path.join(__dirname, '..', 'js', '23-projects.js');
+// 22 se carga tambien porque 23 reutiliza su subjectSlug(). Stubearlo aqui
+// probaria una copia, no el codigo real — y el dia que las dos se separaran,
+// la prueba seguiria en verde mientras los apuntes dejan de aparecer.
+const SRC_STUDY = path.join(__dirname, '..', 'js', '22-study.js');
 
 const noop = () => {};
 const sandbox = {
@@ -21,18 +25,29 @@ const sandbox = {
   saveAll: noop, touch: r => { r.updatedAt = Date.now(); return r; },
   tombstone: noop, toast: noop, uid: () => 'id' + Math.random().toString(36).slice(2, 8),
   escapeHtml: s => String(s), statTile: () => '', showView: noop,
-  projects: [], tasks: [], sessions: [],
+  projects: [], tasks: [], sessions: [], notes: [],
+  studySubjects: [], studyItems: [],
+  notesUi: {}, commitNoteEdits: noop, relativeTime: () => 'hace un rato',
+  integrations: { sync: { url: '', token: '' } },
+  fetch: () => Promise.reject(new Error('sin red')),
+  navigator: {}, requestAnimationFrame: noop, performance: { now: () => 0 },
+  createNote: ({ title = '', content = '' } = {}) => {
+    const n = { id: 'n' + (sandbox.notes.length + 1), title, content, archived: false, updatedAt: Date.now() };
+    sandbox.notes.unshift(n);
+    return n;
+  },
   console, setTimeout, clearTimeout, alert: noop, confirm: () => true,
   Intl, document: { getElementById: () => null, addEventListener: noop, querySelectorAll: () => [] },
   window: {},
 };
 sandbox.globalThis = sandbox;
 vm.createContext(sandbox);
+vm.runInContext(fs.readFileSync(SRC_STUDY, 'utf8'), sandbox, { filename: SRC_STUDY });
 vm.runInContext(fs.readFileSync(SRC, 'utf8'), sandbox, { filename: SRC });
 
 const { proyProgreso, proyDormido, proyDiasQuieto, proyUltimaActividad,
         migrateProjects, proyPortada, proyFmtMinutos, proyMinutos,
-        proyFecha, proyHitos } = sandbox;
+        proyFecha, proyHitos, proyTag, notasDeProyecto, proyCrearNota } = sandbox;
 const TIPOS = vm.runInContext('PROY_TIPOS', sandbox);
 const DIAS_DORMIDO = vm.runInContext('PROY_DIAS_DORMIDO', sandbox);
 
@@ -201,6 +216,61 @@ grupo('Fechas — el dia que escribiste, no el de antes');
   igual('el hito se crea', hs.length, 1);
   igual('y cae en noviembre, no en octubre', new Date(hs[0].ms).getMonth() + 1, 11);
   igual('en el dia correcto', new Date(hs[0].ms).getDate(), 1);
+}
+
+grupo('Apuntes enganchados al proyecto');
+{
+  sandbox.projects.length = 0;
+  sandbox.notes.length = 0;
+
+  const p = { id: 'pa', name: 'Agencia de IA', type: 'negocio', status: 'activo',
+              stages: [], createdAt: hace(60), updatedAt: hace(2) };
+  const otro = { id: 'pb', name: 'Reventas de Amazon', type: 'negocio', status: 'activo',
+                 stages: [], createdAt: hace(60), updatedAt: hace(2) };
+  sandbox.projects.push(p, otro);
+
+  igual('la etiqueta sale del nombre', proyTag(p), 'agencia-de-ia');
+  igual('sin tildes ni mayusculas', proyTag({ name: 'Estudio de Inglés' }), 'estudio-de-ingles');
+  igual('un proyecto sin nombre no da etiqueta', proyTag({}), '');
+
+  sandbox.notes.push(
+    { id: 'n1', title: 'Ideas', content: '#agencia-de-ia\nAutomatizar.', archived: false, updatedAt: hace(1) },
+    /* Esta es la que importa: la etiqueta va en el CUERPO, que en una nota se
+       llama `content` y no `body`. Buscar en `body` no lanza ningun error —
+       devuelve cero apuntes siempre, que parece que no has escrito nada. Ya
+       paso una vez en Estudio. */
+    { id: 'n2', title: 'Precios', content: 'Mire tres. #agencia-de-ia', archived: false, updatedAt: hace(3) },
+    { id: 'n3', title: 'Nmap', content: '#ciberseguridad', archived: false, updatedAt: hace(1) },
+    { id: 'n4', title: 'Mercado', content: 'Leche, pan.', archived: false, updatedAt: hace(1) },
+    { id: 'n5', title: 'Viejo', content: '#agencia-de-ia', archived: true, updatedAt: hace(1) });
+
+  const ns = notasDeProyecto(p);
+  igual('encuentra los suyos', ns.length, 2);
+  ok('tambien si la etiqueta va a mitad del texto', ns.some(n => n.id === 'n2'));
+  ok('ignora los de otro proyecto', !ns.some(n => n.id === 'n3'));
+  ok('ignora los que no llevan etiqueta', !ns.some(n => n.id === 'n4'));
+  ok('ignora los archivados', !ns.some(n => n.id === 'n5'));
+  igual('el mas reciente primero', ns[0].id, 'n1');
+  igual('un proyecto sin apuntes da lista vacia', notasDeProyecto(otro).length, 0);
+
+  // La etiqueta tambien cuenta si esta en el titulo.
+  sandbox.notes.push({ id: 'n6', title: 'Reunion #reventas-de-amazon', content: '', archived: false, updatedAt: hace(1) });
+  igual('la encuentra en el titulo', notasDeProyecto(otro).length, 1);
+
+  /* Crear desde la ficha tiene que dejar la nota ENGANCHADA, no solo creada.
+     Si el apunte nace sin la etiqueta correcta, el usuario escribe dentro y
+     luego no lo encuentra desde el proyecto. */
+  const antes = sandbox.notes.length;
+  proyCrearNota(otro);
+  igual('crea una nota', sandbox.notes.length, antes + 1);
+  igual('y el proyecto ya la encuentra', notasDeProyecto(otro).length, 2);
+
+  /* Renombrar desengancha: no hay interfaz para renombrar hoy, pero si se
+     añade, hay que reetiquetar en la misma operacion. Esta asercion deja el
+     comportamiento escrito para que el cambio sea deliberado. */
+  p.name = 'Agencia IA';
+  igual('renombrar cambia la etiqueta', proyTag(p), 'agencia-ia');
+  igual('y por tanto pierde sus apuntes', notasDeProyecto(p).length, 0);
 }
 
 grupo('Detalles');
