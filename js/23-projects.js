@@ -204,6 +204,31 @@ function proyPortada(p) {
   return `linear-gradient(135deg, ${base}33 0%, ${base}11 45%, hsl(${ang} 70% 45% / .22) 100%)`;
 }
 
+/**
+ * Convierte una fecha guardada en el panel a un Date en hora LOCAL.
+ *
+ * Hace falta porque `new Date('2026-11-05')` NO da el 5 de noviembre aquí: el
+ * estándar manda interpretar las cadenas de sólo fecha como medianoche UTC, que
+ * en Colombia (UTC−5) son las 19:00 del día 4. El resultado es que toda entrega
+ * se mostraba un día antes de lo que escribiste — un fallo que no lanza nada y
+ * sólo se ve comparando la ficha con lo que tecleaste.
+ *
+ * Se fija a MEDIODÍA, no a medianoche, por lo mismo que en el calendario del
+ * ITM: a las 00:00 una entrega "del 5" aparece vencida durante todo el día 5, y
+ * además el mediodía sobrevive a cualquier salto de horario.
+ *
+ * Los `due` de las tareas vienen de un <input datetime-local> ("2026-11-05T14:30"),
+ * que el estándar sí interpreta como hora local, así que esos pasan tal cual.
+ */
+function proyFecha(valor) {
+  if (!valor) return null;
+  const soloFecha = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(valor).trim());
+  const d = soloFecha
+    ? new Date(+soloFecha[1], +soloFecha[2] - 1, +soloFecha[3], 12, 0, 0)
+    : new Date(valor);
+  return isNaN(d.getTime()) ? null : d;
+}
+
 function proyFmtMinutos(m) {
   if (!m) return null;
   if (m < 60) return `${m} min`;
@@ -221,17 +246,16 @@ function proyHitos(limite) {
 
   projects.forEach(p => {
     if (p.status === 'terminado' || p.status === 'abandonado') return;
-    if (!p.deadline) return;
-    const d = new Date(p.deadline);
-    if (!isNaN(d)) out.push({ ms: d.getTime(), titulo: p.name, sub: 'Entrega del proyecto', proy: p, fuerte: true });
+    const d = proyFecha(p.deadline);
+    if (d) out.push({ ms: d.getTime(), titulo: p.name, sub: 'Entrega del proyecto', proy: p, fuerte: true });
   });
 
   (typeof tasks !== 'undefined' ? tasks : []).forEach(t => {
     if (t.status === 'done' || !t.due || !t.projectId) return;
     const p = projects.find(x => x.id === t.projectId);
     if (!p || p.status === 'terminado' || p.status === 'abandonado') return;
-    const d = new Date(t.due);
-    if (!isNaN(d)) out.push({ ms: d.getTime(), titulo: t.title, sub: p.name, proy: p, fuerte: false });
+    const d = proyFecha(t.due);
+    if (d) out.push({ ms: d.getTime(), titulo: t.title, sub: p.name, proy: p, fuerte: false });
   });
 
   return out.sort((a, b) => a.ms - b.ms).slice(0, limite || 6);
@@ -483,8 +507,8 @@ function renderProyCard(p) {
   // Vencimiento: sólo tiene sentido avisar en lo que sigue vivo.
   let venc = null;
   if (p.deadline && !cerrado) {
-    const d = new Date(p.deadline);
-    if (!isNaN(d.getTime())) {
+    const d = proyFecha(p.deadline);
+    if (d) {
       const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
       const dd = new Date(d); dd.setHours(0, 0, 0, 0);
       const n = Math.round((dd - hoy) / 86400000);

@@ -31,7 +31,8 @@ vm.createContext(sandbox);
 vm.runInContext(fs.readFileSync(SRC, 'utf8'), sandbox, { filename: SRC });
 
 const { proyProgreso, proyDormido, proyDiasQuieto, proyUltimaActividad,
-        migrateProjects, proyPortada, proyFmtMinutos, proyMinutos } = sandbox;
+        migrateProjects, proyPortada, proyFmtMinutos, proyMinutos,
+        proyFecha, proyHitos } = sandbox;
 const TIPOS = vm.runInContext('PROY_TIPOS', sandbox);
 const DIAS_DORMIDO = vm.runInContext('PROY_DIAS_DORMIDO', sandbox);
 
@@ -157,6 +158,49 @@ grupo('Migración desde el diseño anterior');
   const antesTipo = roto.type, antesEtapas = roto.stages.length;
   migrateProjects();
   ok('es idempotente', roto.type === antesTipo && roto.stages.length === antesEtapas);
+}
+
+grupo('Fechas — el dia que escribiste, no el de antes');
+{
+  /* Este grupo existe por un fallo real que llego hasta la pantalla: la ficha
+     de un proyecto con entrega el 2026-11-05 mostraba "4 de nov".
+
+     La causa es que el estandar manda interpretar las cadenas de SOLO FECHA
+     como medianoche UTC. En Colombia (UTC-5) eso son las 19:00 del dia
+     anterior, asi que getDate() devolvia 4. Toda entrega aparecia un dia
+     antes, y el punto del mini calendario caia en la casilla equivocada.
+     No lanza ningun error: solo se ve comparando la ficha con lo que tecleaste. */
+  const d = proyFecha('2026-11-05');
+  igual('una fecha sola NO se corre al dia anterior', d.getDate(), 5);
+  igual('y conserva el mes', d.getMonth() + 1, 11);
+  // Mediodia y no medianoche, por lo mismo que en el calendario del ITM: a las
+  // 00:00 una entrega "del 5" sale vencida durante todo el dia 5.
+  igual('se fija a mediodia', d.getHours(), 12);
+
+  // Fin de mes es donde el desfase se nota mas: cambiaba de mes, no solo de dia.
+  const f = proyFecha('2026-11-01');
+  igual('el primero de mes sigue en su mes', f.getMonth() + 1, 11);
+  igual('y es dia 1', f.getDate(), 1);
+
+  // Las tareas usan <input datetime-local>, que el estandar SI lee como local.
+  const t = proyFecha('2026-11-05T14:30');
+  igual('con hora, el dia se respeta', t.getDate(), 5);
+  igual('y la hora tambien', t.getHours(), 14);
+
+  ok('basura da null', proyFecha('no-es-fecha') === null);
+  ok('vacio da null', proyFecha('') === null);
+  ok('null da null', proyFecha(null) === null);
+
+  /* Y el mismo desfase llegaba a los hitos del panel lateral: una entrega del
+     1 de noviembre se contaba en octubre. */
+  sandbox.projects.length = 0;
+  sandbox.tasks.length = 0;
+  sandbox.projects.push({ id: 'ph', name: 'Con entrega', type: 'negocio', status: 'activo',
+    stages: [], deadline: '2026-11-01', createdAt: hace(10), updatedAt: hace(1) });
+  const hs = proyHitos(5);
+  igual('el hito se crea', hs.length, 1);
+  igual('y cae en noviembre, no en octubre', new Date(hs[0].ms).getMonth() + 1, 11);
+  igual('en el dia correcto', new Date(hs[0].ms).getDate(), 1);
 }
 
 grupo('Detalles');
