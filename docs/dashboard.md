@@ -134,9 +134,18 @@ open/close cycles don't degrade, and closing the browser mid-session leaves `the
   and a subject with the same name share a tag, so the note shows up under both — which is the
   right outcome, not a collision to fix.
 
-  **Known limitation:** the tag derives from the name, so renaming a project unhooks all its
-  notes at once and in silence. It doesn't bite today because there is no rename UI. Whoever
-  adds one must retag the notes in the same operation.
+  **Renaming retags.** The tag derives from the name, so renaming a project would unhook every
+  one of its notes silently. `proyReetiquetar()` offers to rewrite them — it *asks* rather than
+  doing it quietly, because rewriting note contents is not an obvious consequence of fixing a
+  typo in a project name, but the prompt spells out what happens if you decline.
+
+  **Tag matching respects where a tag ends.** The first version used
+  `text.includes('#' + tag)`, which swallows any tag that merely starts the same: the subject
+  «Cálculo» claimed notes tagged `#calculo-avanzado`, and the project «Agencia IA» claimed
+  `#agencia-ia-vieja`. `tieneEtiqueta()` (in `js/22-study.js`, shared by both views) fixes it.
+  The boundary **cannot be ``** — in a hyphenated tag, `ia` *does* match inside `ia-vieja`,
+  because a hyphen is already a word boundary to the regex engine. It requires the next
+  character to be neither a word character nor a hyphen.
 - **Notes ("Mi cerebro")** — the knowledge system, `js/11-notes.js`. Data still at `jdh_notes`,
   now with `pinned`, `archived` and `daily` (migrated by `migrateNotes()`).
 

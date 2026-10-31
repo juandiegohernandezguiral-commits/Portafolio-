@@ -126,6 +126,30 @@ function subjectStats(subjectId) {
   };
 }
 
+/**
+ * ¿Lleva este texto EXACTAMENTE esta etiqueta?
+ *
+ * Existe porque la version anterior usaba `texto.includes('#' + tag)`, y eso
+ * se traga cualquier etiqueta que empiece igual: la materia «Cálculo» contaba
+ * como suyos los apuntes de #calculo-avanzado, y el proyecto «Agencia IA» los
+ * de #agencia-ia-vieja. Son apuntes de OTRA cosa apareciendo donde no deben,
+ * sin ningun error — solo una lista con cosas que no reconoces.
+ *
+ * El limite no puede ser `\b`: en una etiqueta con guiones, `ia\b` SI casa
+ * dentro de `ia-vieja`, porque el guion ya es un limite de palabra para el
+ * motor de expresiones regulares. Hay que exigir que lo siguiente no sea ni
+ * letra, ni numero, ni guion.
+ */
+function etiquetaRegex(tag) {
+  const escapado = String(tag).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp('#' + escapado + '(?![\\w-])', 'i');
+}
+
+function tieneEtiqueta(texto, tag) {
+  if (!tag) return false;
+  return etiquetaRegex(tag).test(texto || '');
+}
+
 /** Apuntes de Mi cerebro que llevan la etiqueta de esta materia.
  *
  *  El campo del cuerpo se llama `content`, no `body` — es el nombre que usa
@@ -136,8 +160,7 @@ function notasDeMateria(sub) {
   if (!tag || typeof notes === 'undefined') return [];
   return notes.filter(n => {
     if (n.archived) return false;
-    const txt = ((n.title || '') + ' ' + (n.content || '')).toLowerCase();
-    return txt.includes('#' + tag);
+    return tieneEtiqueta((n.title || '') + ' ' + (n.content || ''), tag);
   }).sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
 }
 

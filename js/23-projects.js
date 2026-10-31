@@ -231,10 +231,12 @@ function proyTag(p) {
 function notasDeProyecto(p) {
   const tag = proyTag(p);
   if (!tag || typeof notes === 'undefined') return [];
+  /* tieneEtiqueta() y no includes(): este ultimo se traga cualquier etiqueta
+     que empiece igual, y #agencia-ia-vieja acababa contando como apunte del
+     proyecto «Agencia IA». Ver js/22-study.js, donde vive el comparador. */
   return notes.filter(n => {
     if (n.archived) return false;
-    const txt = ((n.title || '') + ' ' + (n.content || '')).toLowerCase();
-    return txt.includes('#' + tag);
+    return tieneEtiqueta((n.title || '') + ' ' + (n.content || ''), tag);
   }).sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
 }
 
@@ -609,6 +611,8 @@ function renderProyCard(p) {
             ${Object.entries(PROY_ESTADOS).map(([k, v]) =>
               `<option value="${k}" ${(p.status || 'activo') === k ? 'selected' : ''}>${v.label}</option>`).join('')}
           </select>
+          <button type="button" data-edit-project="${p.id}" aria-label="Editar proyecto" title="Editar"
+            class="w-7 h-7 rounded-lg text-neutral-400 hover:text-accent hover:bg-accent/10 transition">✎</button>
           <button type="button" data-del-project="${p.id}" aria-label="Borrar proyecto"
             class="w-7 h-7 rounded-lg text-neutral-400 hover:text-red-500 hover:bg-red-500/10 transition">✕</button>
         </div>
@@ -696,6 +700,178 @@ function proyBloqueNotas(p) {
     </div>`;
 }
 
+/* ============ CREAR Y EDITAR ============ */
+
+/** Proyecto que se esta editando, o null si el modal esta creando uno nuevo. */
+let proyEditando = null;
+
+function proyModal() { return document.getElementById('project-modal'); }
+
+/** Abre el modal. Sin argumento crea; con un proyecto, lo edita. */
+function abrirModalProyecto(p) {
+  const modal = proyModal();
+  const form = document.getElementById('project-form');
+  if (!modal || !form) return;
+
+  proyEditando = p ? p.id : null;
+  form.reset();
+
+  if (p) {
+    form.name.value = p.name || '';
+    form.type.value = p.type || 'personal';
+    form.client.value = p.client || '';
+    form.desc.value = p.desc || '';
+    form.deadline.value = p.deadline || '';
+  }
+
+  const titulo = modal.querySelector('h3');
+  if (titulo) titulo.textContent = p ? 'Editar proyecto' : 'Nuevo proyecto';
+  const enviar = form.querySelector('button[type=submit]');
+  if (enviar) enviar.textContent = p ? 'Guardar' : 'Crear';
+
+  modal.classList.remove('hidden');
+  modal.classList.add('flex');
+  form.name.focus();
+}
+
+function cerrarModalProyecto() {
+  const modal = proyModal();
+  if (modal) { modal.classList.add('hidden'); modal.classList.remove('flex'); }
+  proyEditando = null;
+}
+
+/**
+ * Reetiqueta los apuntes cuando un proyecto cambia de nombre.
+ *
+ * Esto es la deuda que dejo anotada el commit anterior y que editar hace
+ * vencer: la etiqueta sale del nombre, asi que renombrar "Agencia de IA" a
+ * "Agencia IA" convierte #agencia-de-ia en #agencia-ia y TODOS los apuntes
+ * dejan de aparecer. En silencio, sin error, y lo descubririas semanas despues
+ * buscando algo que escribiste.
+ *
+ * Se PREGUNTA en vez de hacerlo solo porque reescribir el contenido de las
+ * notas del usuario no es una consecuencia obvia de corregirle una palabra al
+ * nombre de un proyecto. Pero se avisa de lo que pasa si dice que no.
+ */
+function proyReetiquetar(tagViejo, tagNuevo) {
+  if (!tagViejo || !tagNuevo || tagViejo === tagNuevo) return 0;
+  if (typeof notes === 'undefined') return 0;
+
+  const afectadas = notes.filter(n => tieneEtiqueta((n.title || '') + ' ' + (n.content || ''), tagViejo));
+  if (!afectadas.length) return 0;
+
+  const seguir = confirm(
+    afectadas.length + ' apunte' + (afectadas.length > 1 ? 's están etiquetados' : ' está etiquetado') +
+    ' con #' + tagViejo + '.\n\n¿Reetiquetar' + (afectadas.length > 1 ? 'los' : 'lo') + ' como #' + tagNuevo + '?\n\n' +
+    'Si dices que no, dejará' + (afectadas.length > 1 ? 'n' : '') + ' de aparecer en este proyecto.');
+  if (!seguir) return 0;
+
+  /* El mismo limite que tieneEtiqueta, en global: `\b` NO servia porque en una
+     etiqueta con guiones casa dentro de #agencia-de-ia-vieja y la renombraba
+     tambien. Lo cazo la prueba justo con ese caso. */
+  const re = new RegExp(etiquetaRegex(tagViejo).source, 'gi');
+  afectadas.forEach(n => {
+    if (n.title) n.title = n.title.replace(re, '#' + tagNuevo);
+    if (n.content) n.content = n.content.replace(re, '#' + tagNuevo);
+    touch(n);
+  });
+  if (typeof invalidateNotesIndex === 'function') invalidateNotesIndex();
+  return afectadas.length;
+}
+
+/**
+ * Decide las etapas cuando cambia el tipo del proyecto.
+ *
+ * Si no hay ninguna marcada, se cambian sin preguntar: no se pierde nada. Si
+ * hay trabajo registrado encima, se pregunta — tirar lo que ya marcaste para
+ * que la estructura quede ordenada es mal negocio, y es justo la razon por la
+ * que migrateProjects() tampoco toca las etapas viejas.
+ *
+ * Devuelve {etapas, tipo}: si el usuario dice que no, se revierte tambien el
+ * tipo, porque un proyecto de "negocio" con las etapas de "aprendizaje" seria
+ * incoherente de leer.
+ */
+function proyEtapasAlCambiarTipo(p, tipoNuevo) {
+  const plantilla = (PROY_TIPOS[tipoNuevo] || PROY_TIPOS.personal).etapas;
+  const marcadas = (p.stages || []).filter(s => s.done).length;
+
+  if (!marcadas) {
+    return { etapas: plantilla.map(n => ({ name: n, done: false })), tipo: tipoNuevo };
+  }
+
+  const ok = confirm(
+    'Cambiar el tipo reemplaza las etapas por las de «' + (PROY_TIPOS[tipoNuevo] || PROY_TIPOS.personal).label + '».\n\n' +
+    'Perderías ' + marcadas + ' etapa' + (marcadas > 1 ? 's marcadas' : ' marcada') + '.\n\n¿Seguir?');
+
+  return ok
+    ? { etapas: plantilla.map(n => ({ name: n, done: false })), tipo: tipoNuevo }
+    : { etapas: p.stages, tipo: p.type };
+}
+
+document.addEventListener('submit', e => {
+  const form = e.target.closest('#project-form');
+  if (!form) return;
+  e.preventDefault();
+
+  const fd = new FormData(form);
+  const nombre = (fd.get('name') || '').trim();
+  if (!nombre) return;
+  const tipoPedido = fd.get('type') || 'personal';
+
+  if (proyEditando) {
+    const p = projects.find(x => x.id === proyEditando);
+    if (!p) { cerrarModalProyecto(); return; }
+
+    // El nombre primero: si cambia, hay que ofrecer mover los apuntes ANTES de
+    // tocarlo, porque la etiqueta vieja se calcula del nombre viejo.
+    let movidos = 0;
+    if (nombre !== p.name) {
+      movidos = proyReetiquetar(proyTag(p), proyTag({ name: nombre }));
+    }
+
+    let etapas = p.stages, tipo = p.type;
+    if (tipoPedido !== p.type) {
+      const r = proyEtapasAlCambiarTipo(p, tipoPedido);
+      etapas = r.etapas; tipo = r.tipo;
+    }
+
+    p.name = nombre;
+    p.type = tipo;
+    p.stages = etapas;
+    p.client = fd.get('client') || '';
+    p.desc = fd.get('desc') || '';
+    p.deadline = fd.get('deadline') || '';
+    touch(p);
+    saveAll();
+    cerrarModalProyecto();
+    renderProjects();
+    toast(movidos ? 'Guardado · ' + movidos + ' apunte' + (movidos > 1 ? 's movidos' : ' movido') : 'Proyecto guardado');
+    return;
+  }
+
+  /* Alta. Las etapas salen del TIPO, no de una lista fija: un negocio no tiene
+     las mismas fases que una habilidad que estas aprendiendo. STAGES (de
+     05-dashboard.js) queda de reserva por si PROY_TIPOS no estuviera. */
+  const plantilla = (typeof PROY_TIPOS !== 'undefined' && PROY_TIPOS[tipoPedido])
+    ? PROY_TIPOS[tipoPedido].etapas
+    : (typeof STAGES !== 'undefined' ? STAGES : ['Idea', 'En marcha', 'Terminado']);
+
+  projects.push(touch({
+    id: uid(),
+    name: nombre,
+    type: tipoPedido,
+    status: 'activo',
+    client: fd.get('client') || '',
+    desc: fd.get('desc') || '',
+    deadline: fd.get('deadline') || '',
+    stages: plantilla.map(n => ({ name: n, done: false })),
+    createdAt: Date.now(),
+  }));
+  saveAll();
+  cerrarModalProyecto();
+  renderProjects();
+});
+
 /* ============ EVENTOS ============ */
 
 document.addEventListener('click', e => {
@@ -726,6 +902,18 @@ document.addEventListener('click', e => {
     else if (a === 'metricas') showView('insights');
     return;
   }
+
+  if (e.target.closest('#add-project-btn')) { abrirModalProyecto(null); return; }
+
+  const ed = e.target.closest('[data-edit-project]');
+  if (ed) {
+    const p = projects.find(x => x.id === ed.dataset.editProject);
+    if (p) abrirModalProyecto(p);
+    return;
+  }
+
+  // Cerrar con Cancelar o la X deja el modal en modo "crear" para la proxima.
+  if (e.target.closest('#project-modal [data-close-modal]')) { proyEditando = null; return; }
 
   const tn = e.target.closest('[data-proy-notas]');
   if (tn) {

@@ -36,7 +36,9 @@ const sandbox = {
     sandbox.notes.unshift(n);
     return n;
   },
-  console, setTimeout, clearTimeout, alert: noop, confirm: () => true,
+  console, setTimeout, clearTimeout, alert: noop,
+  // proyReetiquetar() pregunta antes de reescribir notas; en pruebas se acepta.
+  confirm: () => true,
   Intl, document: { getElementById: () => null, addEventListener: noop, querySelectorAll: () => [] },
   window: {},
 };
@@ -47,7 +49,8 @@ vm.runInContext(fs.readFileSync(SRC, 'utf8'), sandbox, { filename: SRC });
 
 const { proyProgreso, proyDormido, proyDiasQuieto, proyUltimaActividad,
         migrateProjects, proyPortada, proyFmtMinutos, proyMinutos,
-        proyFecha, proyHitos, proyTag, notasDeProyecto, proyCrearNota } = sandbox;
+        proyFecha, proyHitos, proyTag, notasDeProyecto, proyCrearNota,
+        proyReetiquetar, tieneEtiqueta, notasDeMateria } = sandbox;
 const TIPOS = vm.runInContext('PROY_TIPOS', sandbox);
 const DIAS_DORMIDO = vm.runInContext('PROY_DIAS_DORMIDO', sandbox);
 
@@ -271,6 +274,70 @@ grupo('Apuntes enganchados al proyecto');
   p.name = 'Agencia IA';
   igual('renombrar cambia la etiqueta', proyTag(p), 'agencia-ia');
   igual('y por tanto pierde sus apuntes', notasDeProyecto(p).length, 0);
+}
+
+grupo('Etiquetas — donde empieza y acaba una');
+{
+  /* Este grupo nace de un fallo que estuvo ahi desde el principio y que
+     ninguna prueba veia, porque todas usaban etiquetas que no se parecian
+     entre si.
+
+     El filtro original era `texto.includes('#' + tag)`, y eso se traga
+     cualquier etiqueta que EMPIECE igual: la materia «Cálculo» contaba como
+     suyos los apuntes de #calculo-avanzado, y el proyecto «Agencia IA» los de
+     #agencia-ia-vieja. Apuntes de otra cosa apareciendo donde no deben, sin
+     ningun error.
+
+     El arreglo tampoco podia usar `\b`: en una etiqueta con guiones, `ia\b` SI
+     casa dentro de `ia-vieja`, porque para el motor de regex el guion ya es un
+     limite de palabra. Hay que exigir que lo siguiente no sea letra, numero ni
+     guion. */
+  ok('la etiqueta exacta casa', tieneEtiqueta('mira esto #calculo bien', 'calculo'));
+  ok('al final del texto tambien', tieneEtiqueta('nota #calculo', 'calculo'));
+  ok('seguida de puntuacion', tieneEtiqueta('#calculo, y mas', 'calculo'));
+  ok('seguida de salto de linea', tieneEtiqueta('#calculo\nsigue', 'calculo'));
+  ok('sin distinguir mayusculas', tieneEtiqueta('#CALCULO', 'calculo'));
+
+  ok('NO casa una etiqueta mas larga', !tieneEtiqueta('#calculo-avanzado', 'calculo'));
+  ok('NO casa con guion detras', !tieneEtiqueta('#agencia-ia-vieja', 'agencia-ia'));
+  ok('NO casa pegada a mas letras', !tieneEtiqueta('#calculos', 'calculo'));
+  ok('sin etiqueta, falso', !tieneEtiqueta('texto cualquiera', 'calculo'));
+  ok('tag vacio, falso', !tieneEtiqueta('#algo', ''));
+
+  // Y el mismo comparador protege a Estudio, que tenia el fallo identico.
+  sandbox.studySubjects.length = 0;
+  sandbox.notes.length = 0;
+  sandbox.notes.push(
+    { id: 'c1', title: 'Derivadas', content: '#calculo', archived: false, updatedAt: hace(1) },
+    { id: 'c2', title: 'Otra', content: '#calculo-avanzado', archived: false, updatedAt: hace(1) });
+  const deCalculo = notasDeMateria({ name: 'Cálculo' });
+  igual('la materia solo ve lo suyo', deCalculo.length, 1);
+  igual('y es el apunte correcto', deCalculo[0].id, 'c1');
+}
+
+grupo('Renombrar — los apuntes se mueven con el proyecto');
+{
+  /* Renombrar es lo que convierte la limitacion anotada en un fallo real: la
+     etiqueta sale del nombre, asi que sin reetiquetar, cambiar «Agencia de IA»
+     por «Agencia IA» desengancha todos sus apuntes en silencio. */
+  sandbox.notes.length = 0;
+  sandbox.notes.push(
+    { id: 'r1', title: 'Ideas', content: '#agencia-de-ia\nAutomatizar.', archived: false, updatedAt: hace(1) },
+    { id: 'r2', title: 'Precios #agencia-de-ia', content: 'Tres.', archived: false, updatedAt: hace(2) },
+    // La trampa: empieza igual pero es OTRA etiqueta.
+    { id: 'r3', title: 'Vieja', content: '#agencia-de-ia-vieja no tocar', archived: false, updatedAt: hace(3) },
+    { id: 'r4', title: 'Ajena', content: '#otra-cosa', archived: false, updatedAt: hace(4) });
+
+  const movidos = proyReetiquetar('agencia-de-ia', 'agencia-ia');
+  igual('mueve solo los dos suyos', movidos, 2);
+  igual('en el cuerpo', sandbox.notes.find(n => n.id === 'r1').content, '#agencia-ia\nAutomatizar.');
+  igual('y en el titulo', sandbox.notes.find(n => n.id === 'r2').title, 'Precios #agencia-ia');
+  igual('NO toca la que solo empieza igual',
+    sandbox.notes.find(n => n.id === 'r3').content, '#agencia-de-ia-vieja no tocar');
+  igual('ni la ajena', sandbox.notes.find(n => n.id === 'r4').content, '#otra-cosa');
+
+  igual('sin apuntes que mover, cero', proyReetiquetar('no-existe', 'tampoco'), 0);
+  igual('mismo nombre, no hace nada', proyReetiquetar('agencia-ia', 'agencia-ia'), 0);
 }
 
 grupo('Detalles');

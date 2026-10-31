@@ -612,36 +612,14 @@ function renderTasks() {
   });
 }
 
-const projModal = document.getElementById('project-modal');
-document.getElementById('add-project-btn').addEventListener('click', () => { projModal.classList.remove('hidden'); projModal.classList.add('flex'); });
+/* El modal de proyecto (abrirlo y guardarlo) vive ahora en js/23-projects.js,
+   porque ademas de crear tiene que EDITAR, y editar arrastra dos decisiones que
+   solo ese modulo conoce: que hacer con las etapas si cambias el tipo, y que
+   hacer con los apuntes etiquetados si cambias el nombre.
+
+   Aqui solo queda STAGES, que 23 usa de reserva por si PROY_TIPOS no cargara. */
 const STAGES = ['Planificación', 'Diseño', 'Desarrollo', 'Pruebas', 'Entrega'];
-document.getElementById('project-form').addEventListener('submit', e => {
-  e.preventDefault();
-  const fd = new FormData(e.target);
-  /* Las etapas salen del TIPO elegido, no de una lista fija: un negocio no
-     tiene las mismas fases que una habilidad que estas aprendiendo. La
-     plantilla vive en PROY_TIPOS (js/23-projects.js), que carga despues de
-     este archivo — de ahi el typeof, para que crear un proyecto siga
-     funcionando aunque ese modulo falte. */
-  const tipo = fd.get('type') || 'personal';
-  const etapas = (typeof PROY_TIPOS !== 'undefined' && PROY_TIPOS[tipo])
-    ? PROY_TIPOS[tipo].etapas
-    : STAGES;
-  projects.push(touch({
-    id: uid(),
-    name: fd.get('name'),
-    type: tipo,
-    status: 'activo',
-    client: fd.get('client') || '',
-    desc: fd.get('desc') || '',
-    deadline: fd.get('deadline') || '',
-    stages: etapas.map(s => ({ name: s, done: false })),
-    createdAt: Date.now(),
-  }));
-  saveAll(); e.target.reset();
-  projModal.classList.add('hidden'); projModal.classList.remove('flex');
-  renderProjects();
-});
+
 /* Resumen de lo que cuelga de un proyecto: sus tareas y el tiempo que le has
    dedicado de verdad (sesiones de enfoque, js/14-focus.js). Es lo que convierte
    un proyecto de una ficha estática en algo con estado real. */
