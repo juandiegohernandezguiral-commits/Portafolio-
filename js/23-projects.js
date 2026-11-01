@@ -194,6 +194,36 @@ function proyMinutos(p) {
     .reduce((n, s) => n + (s.minutes || 0), 0);
 }
 
+/* ============ LA FRASE DE LA BANDA ============ */
+
+/* Rotan en cada visita a la vista. Son sobre constancia y sobre terminar
+   cosas, a juego con lo que la vista mide — una frase generica de "persigue
+   tus suenos" encima de un aviso de proyectos abandonados se leeria a burla. */
+const PROY_FRASES = [
+  'Disciplina hoy, libertad mañana.',
+  'Lo que no se mide, no avanza.',
+  'Empezar es fácil. Seguir es el oficio.',
+  'Terminar cinco cosas vale más que empezar veinte.',
+  'El progreso aburrido es el que llega.',
+  'Nadie construye nada grande en un solo día, pero sí todos los días.',
+];
+
+let proyFraseIdx = -1;
+
+/** Escribe una frase distinta de la anterior.
+ *
+ *  Se guarda el indice en vez de sortear a ciegas porque con seis frases,
+ *  sortear repetia la misma dos veces seguidas demasiado a menudo y parecia
+ *  que estuviera rota. */
+function renderProyFrase() {
+  const caja = document.getElementById('proy-frase');
+  if (!caja) return;
+  let i = Math.floor(Math.random() * PROY_FRASES.length);
+  if (PROY_FRASES.length > 1 && i === proyFraseIdx) i = (i + 1) % PROY_FRASES.length;
+  proyFraseIdx = i;
+  caja.innerHTML = `<p>«${escapeHtml(PROY_FRASES[i])}»</p><footer>Juan Diego</footer>`;
+}
+
 /* ============ APUNTES ============ */
 
 /**
@@ -271,15 +301,115 @@ function proyCrearNota(p) {
   if (nota) proyIrANota(nota.id);
 }
 
-/** Portada generada del nombre: cada proyecto se distingue de un vistazo sin
- *  tener que subir una imagen. Determinista — el mismo nombre da el mismo
- *  degradado siempre, así que no cambia de color al recargar. */
-function proyPortada(p) {
+/* ============ PORTADA GENERADA ============ */
+
+/**
+ * Temas reconocidos por palabras del nombre.
+ *
+ * Se eligio esto en vez de bajar fotos de una API por tres razones: no hace
+ * falta clave ni peticiones, el panel sigue funcionando sin internet, y sobre
+ * todo el resultado es PREDECIBLE. Buscar "Reventas de Amazon" en un banco de
+ * imagenes puede devolver la selva amazonica, y una portada que no tiene nada
+ * que ver con el proyecto es peor que no tener ninguna.
+ *
+ * El orden importa: gana la primera que case, asi que lo especifico va antes
+ * que lo generico ('ingles' antes que 'estudio').
+ */
+const PROY_TEMAS = [
+  { claves: ['ia', 'ai', 'inteligencia artificial', 'gpt', 'bot', 'chatbot', 'automatiza'],
+    icono: 'circuito', color: '#8b5cf6', trama: 'circuito' },
+  { claves: ['cyber', 'ciber', 'segur', 'hack', 'pentest', 'red team'],
+    icono: 'escudo', color: '#ef4444', trama: 'matriz' },
+  { claves: ['ingles', 'english', 'idioma', 'frances', 'aleman', 'portugues'],
+    icono: 'idioma', color: '#06b6d4', trama: 'ondas' },
+  { claves: ['venta', 'reventa', 'amazon', 'tienda', 'ecommerce', 'dropship', 'shop'],
+    icono: 'carrito', color: '#22c55e', trama: 'puntos' },
+  { claves: ['agencia', 'cliente', 'servicio', 'consultor', 'freelance'],
+    icono: 'maletin', color: '#f59e0b', trama: 'diagonal' },
+  { claves: ['web', 'app', 'software', 'programa', 'codigo', 'dev', 'api', 'backend', 'frontend'],
+    icono: 'codigo', color: '#2667ff', trama: 'circuito' },
+  { claves: ['diseno', 'design', 'ui', 'ux', 'marca', 'logo', 'branding'],
+    icono: 'pincel', color: '#ec4899', trama: 'ondas' },
+  { claves: ['curso', 'estudio', 'aprender', 'universidad', 'clase', 'materia', 'certifica'],
+    icono: 'libro', color: '#a855f7', trama: 'lineas' },
+  { claves: ['dinero', 'finanza', 'invers', 'ahorro', 'trading', 'cripto'],
+    icono: 'moneda', color: '#10b981', trama: 'puntos' },
+  { claves: ['video', 'conten', 'youtube', 'tiktok', 'podcast', 'foto'],
+    icono: 'play', color: '#f97316', trama: 'diagonal' },
+];
+
+/** Trazados SVG de cada icono, en una caja de 24x24. */
+const PROY_ICONOS = {
+  circuito: 'M12 2v4m0 12v4M2 12h4m12 0h4M7 7l2.5 2.5M14.5 14.5L17 17M17 7l-2.5 2.5M9.5 14.5L7 17M12 9a3 3 0 100 6 3 3 0 000-6z',
+  escudo:   'M12 2l8 3v6c0 5-3.4 9.4-8 11-4.6-1.6-8-6-8-11V5l8-3z',
+  idioma:   'M4 5h10M9 3v2m0 0c0 4-2 7-5 9m3-4c1.5 2 3.5 3.5 6 4.5M13 20l4-9 4 9m-7-2.5h6',
+  carrito:  'M3 4h2l2.4 11.2a2 2 0 002 1.6h7.7a2 2 0 002-1.6L21 8H6M9 21a1 1 0 100-2 1 1 0 000 2zm9 0a1 1 0 100-2 1 1 0 000 2z',
+  maletin:  'M4 7h16v13H4zM9 7V4h6v3M4 12h16',
+  codigo:   'M8 6l-6 6 6 6m8-12l6 6-6 6m-2-15l-4 18',
+  pincel:   'M9.5 14.5L3 21m6.5-6.5L14 10m-4.5 4.5a2.1 2.1 0 11-3-3L16 2l6 6-9.5 9.5a2.1 2.1 0 01-3 0z',
+  libro:    'M4 19.5V5a2 2 0 012-2h13v18H6a2 2 0 01-2-2zm0 0A2 2 0 016 18h13',
+  moneda:   'M12 2v20M7 6h7.5a3 3 0 010 6H9a3 3 0 000 6h8',
+  play:     'M4 4h16v16H4zM10 9l5 3-5 3V9z',
+  // Por defecto, cuando el nombre no dice nada reconocible.
+  chispa:   'M12 2l2.2 6.6L21 11l-6.8 2.4L12 20l-2.2-6.6L3 11l6.8-2.4L12 2z',
+};
+
+/** Hash estable del nombre: la misma cadena da siempre el mismo numero, asi
+ *  que la portada no cambia de aspecto al recargar. */
+function proyHash(txt) {
   let h = 0;
-  for (let i = 0; i < p.name.length; i++) h = (h * 31 + p.name.charCodeAt(i)) >>> 0;
-  const base = (PROY_TIPOS[p.type] || PROY_TIPOS.personal).color;
-  const ang = h % 360;
-  return `linear-gradient(135deg, ${base}33 0%, ${base}11 45%, hsl(${ang} 70% 45% / .22) 100%)`;
+  const s = String(txt || '');
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return h;
+}
+
+/** Tema deducido del nombre, o uno derivado del tipo si no reconoce nada. */
+function proyTema(p) {
+  const n = (typeof aplanar === 'function' ? aplanar(p.name || '') : (p.name || '')).toLowerCase();
+  for (const t of PROY_TEMAS) {
+    // \b para que 'ia' no case dentro de 'familia' ni 'web' dentro de 'webinar'.
+    if (t.claves.some(k => new RegExp('\\b' + k, 'i').test(n))) return t;
+  }
+  const tipo = PROY_TIPOS[p.type] || PROY_TIPOS.personal;
+  const tramas = ['puntos', 'diagonal', 'ondas', 'lineas'];
+  return { icono: 'chispa', color: tipo.color, trama: tramas[proyHash(p.name) % tramas.length] };
+}
+
+/** Trama de fondo como data-URI SVG. Va en CSS y no como <svg> en el marcado
+ *  para poder repetirla en mosaico sin duplicar nodos del DOM. */
+function proyTrama(clase, color) {
+  const c = encodeURIComponent(color);
+  const cuerpos = {
+    puntos:   `<circle cx='10' cy='10' r='1.6' fill='${c}' opacity='.5'/>`,
+    diagonal: `<path d='M-5 5L5 -5M0 20L20 0M15 25L25 15' stroke='${c}' stroke-width='1.6' opacity='.42'/>`,
+    ondas:    `<path d='M0 10q5 -6 10 0t10 0' fill='none' stroke='${c}' stroke-width='1.4' opacity='.45'/>`,
+    lineas:   `<path d='M0 4h20M0 12h20' stroke='${c}' stroke-width='1.2' opacity='.32'/>`,
+    circuito: `<path d='M0 10h6m4 0h10M10 0v6m0 4v10' stroke='${c}' stroke-width='1.2' opacity='.42' fill='none'/><circle cx='10' cy='10' r='2' fill='none' stroke='${c}' stroke-width='1.2' opacity='.55'/>`,
+    matriz:   `<path d='M0 0h20v20H0z' fill='none' stroke='${c}' stroke-width='1' opacity='.28'/><circle cx='10' cy='10' r='1.2' fill='${c}' opacity='.45'/>`,
+  };
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20'>${cuerpos[clase] || cuerpos.puntos}</svg>`;
+  return `url("data:image/svg+xml,${svg.replace(/"/g, "'").replace(/#/g, '%23')}")`;
+}
+
+/**
+ * Portada de la ficha: degradado + trama + icono, todo deducido del nombre.
+ *
+ * Determinista de principio a fin — el mismo nombre da siempre la misma
+ * portada, asi que no parpadea ni cambia de color al recargar.
+ */
+function proyPortada(p) {
+  const t = proyTema(p);
+  const ang = proyHash(p.name) % 360;
+  return `linear-gradient(135deg, ${t.color}3d 0%, ${t.color}14 48%, hsl(${ang} 72% 48% / .20) 100%)`;
+}
+
+/** El icono del tema, como SVG, para pintarlo sobre la portada. */
+function proyIconoSvg(p, tam) {
+  const t = proyTema(p);
+  const d = PROY_ICONOS[t.icono] || PROY_ICONOS.chispa;
+  return `<svg viewBox="0 0 24 24" width="${tam || 26}" height="${tam || 26}" fill="none"
+    stroke="${t.color}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"
+    aria-hidden="true">${`<path d="${d}"/>`}</svg>`;
 }
 
 /**
@@ -470,6 +600,8 @@ function renderProjects() {
   const porEstado = e => projects.filter(p => (p.status || 'activo') === e);
   const dormidos = projects.filter(proyDormido);
 
+  renderProyFrase();
+
   // Resumen de una línea dentro de la banda superior.
   const hs = document.getElementById('proy-hero-stat');
   if (hs) {
@@ -600,6 +732,9 @@ function renderProyCard(p) {
   return `
     <div class="surface rounded-2xl overflow-hidden proy-card ${cerrado ? 'opacity-60' : ''}">
       <div class="proy-portada h-20 relative" style="background:${proyPortada(p)}">
+        <!-- Trama e icono deducidos del nombre. Ver proyTema() arriba. -->
+        <div class="proy-trama" style="background-image:${proyTrama(proyTema(p).trama, proyTema(p).color)}"></div>
+        <div class="proy-icono">${proyIconoSvg(p, 46)}</div>
         <div class="absolute top-3 left-3 flex items-center gap-1.5">
           <span class="mono text-[9px] uppercase tracking-widest px-2 py-1 rounded-lg"
             style="background:${tipo.color}26;color:${tipo.color}">${tipo.label}</span>

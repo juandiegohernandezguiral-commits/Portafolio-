@@ -118,8 +118,17 @@ open/close cycles don't degrade, and closing the browser mid-session leaves `the
   which ones have been still for months. It doesn't need to sync: it's idempotent and
   deterministic, so every device reaches the same result on its own.
 
-  Covers are a **gradient generated from the name** (deterministic), so projects are
-  distinguishable at a glance without uploading anything.
+  **Covers are generated from the name**, not fetched. `proyTema()` matches words in the project
+  name against `PROY_TEMAS` (IA, security, languages, sales, agency, code, design, study, money,
+  content) and returns an icon, a colour and a tile pattern; everything else is derived from a
+  stable hash of the name, so the same project always looks the same and never flickers on
+  reload.
+
+  This was chosen over pulling photos from an image API because the result is **predictable**:
+  searching "Reventas de Amazon" in a stock library can return the Amazon rainforest, and a cover
+  that has nothing to do with the project is worse than no cover. It also needs no API key, makes
+  no requests, and keeps the panel working offline. The icon sits bottom-**left** because the
+  status select and the edit/delete buttons own the top-right corner.
 
   **Notes hang off a project by tag**, the same mechanism Estudio uses for subjects:
   `notasDeProyecto()` matches `#` + the slug of the project name against each note's title and

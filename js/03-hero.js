@@ -126,7 +126,21 @@ function updateIntroVisuals() {
 }
 updateIntroVisuals();
 
+/* Nada de esto debe correr con el panel privado abierto.
+   El panel es un overlay DENTRO del mismo documento, asi que estos escuchas
+   de window lo alcanzan igual. Y como la rama de abajo hace preventDefault()
+   mientras la portada no se ha terminado de expandir, la rueda quedaba muerta
+   en todo el panel: solo se podia desplazar arrastrando la barra, que no
+   genera eventos de rueda. Pasaba siempre que se entraba con Alt+P o desde el
+   pie sin haber bajado antes por la portada.
+
+   La marca `dash-open` la pone openDashboard() en js/05-dashboard.js. */
+function panelAbierto() {
+  return document.body.classList.contains('dash-open');
+}
+
 function onWheel(e) {
+  if (panelAbierto()) return;
   if (mediaFullyExpanded) {
     if (e.deltaY < 0 && window.scrollY <= 5) {
       mediaFullyExpanded = false;
@@ -148,8 +162,9 @@ function onWheel(e) {
 }
 
 let touchY = 0;
-function onTouchStart(e) { touchY = e.touches[0].clientY; }
+function onTouchStart(e) { if (panelAbierto()) return; touchY = e.touches[0].clientY; }
 function onTouchMove(e) {
+  if (panelAbierto()) return;
   if (!touchY) return;
   const cy = e.touches[0].clientY;
   const dy = touchY - cy;
@@ -174,6 +189,9 @@ function onTouchMove(e) {
 }
 function onTouchEnd() { touchY = 0; }
 function lockScroll() {
+  // Sin esta guarda, abrir el panel sin haber expandido la portada saltaba al
+  // principio de la pagina de fondo cada vez que algo provocaba un scroll.
+  if (panelAbierto()) return;
   if (!mediaFullyExpanded) window.scrollTo(0, 0);
 }
 

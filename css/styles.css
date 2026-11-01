@@ -630,12 +630,34 @@ html.dark .mapa-cara { stroke: rgba(0,0,0,.35); }
    de stock seria medio mega que no dice nada de tus proyectos. Las dos capas
    radiales dan la profundidad que en la referencia aportaba la fotografia. */
 .proy-hero {
+  /* Medellin de fondo, con el degradado ENCIMA en vez de en lugar de la foto.
+     El orden importa: las capas de color van primero en la lista (quedan
+     arriba) y la imagen al final. Sin ellas el texto blanco se pierde sobre el
+     cielo claro de la foto, y el contraste cambiaria segun la zona. */
   background:
-    radial-gradient(900px 320px at 12% -10%, rgba(38,103,255,.38), transparent 60%),
-    radial-gradient(700px 300px at 88% 120%, rgba(168,85,247,.30), transparent 62%),
+    /* Dos capas de oscurecido, no una. La diagonal protege el titulo de la
+       izquierda; la vertical protege los numeros de la derecha, que caian
+       justo sobre los edificios claros de la foto y no se leian. Con una sola
+       diagonal el contraste dependia de que hubiera en esa zona de la imagen,
+       que es lo que no se puede dejar al azar con texto encima. */
+    linear-gradient(180deg, rgba(8,10,20,.30) 0%, rgba(8,10,20,.10) 45%, rgba(8,10,20,.62) 100%),
+    linear-gradient(100deg, rgba(8,10,20,.94) 0%, rgba(8,10,20,.80) 40%, rgba(10,14,28,.62) 100%),
+    radial-gradient(900px 320px at 12% -10%, rgba(38,103,255,.34), transparent 60%),
+    radial-gradient(700px 300px at 92% 120%, rgba(168,85,247,.22), transparent 62%),
+    url('../medellin-hero.jpg') center 38% / cover no-repeat,
     linear-gradient(135deg, #0b1020 0%, #0a0a0f 55%, #0d1526 100%);
   border: 1px solid rgba(255,255,255,.07);
 }
+
+/* Ultima red de seguridad para el texto sobre la foto: aunque el recorte
+   cambie en otra pantalla, la sombra mantiene el texto legible. */
+.proy-hero h1, .proy-hero #proy-hero-stat { text-shadow: 0 2px 14px rgba(0,0,0,.55); }
+
+/* La frase rotativa */
+#proy-frase { border-left: 2px solid rgba(122,162,255,.55); padding-left: .85rem; }
+#proy-frase p { color: rgba(255,255,255,.88); font-size: .95rem; line-height: 1.45; font-style: italic; }
+#proy-frase footer { color: rgba(255,255,255,.42); font-size: .7rem; letter-spacing: .12em;
+  text-transform: uppercase; margin-top: .35rem; }
 /* Trama diagonal muy tenue: textura sin competir con el texto. */
 .proy-hero::after {
   content: ''; position: absolute; inset: 0; pointer-events: none;
@@ -675,6 +697,24 @@ html.dark .mapa-cara { stroke: rgba(0,0,0,.35); }
 .proy-lista .proy-portada > * { display: none; }
 .proy-lista .proy-cuerpo { flex: 1; min-width: 0; padding: .8rem 1.1rem; }
 .proy-lista .proy-etapas { display: none; }
+
+/* Trama e icono de la portada generada. La trama va en mosaico y se desvanece
+   hacia la izquierda para no competir con las etiquetas de tipo y estado, que
+   se apoyan en esa esquina. */
+.proy-trama {
+  position: absolute; inset: 0; background-repeat: repeat;
+  -webkit-mask-image: linear-gradient(95deg, transparent 0%, #000 55%);
+  mask-image: linear-gradient(95deg, transparent 0%, #000 55%);
+}
+/* Abajo a la IZQUIERDA, no a la derecha: ahi arriba viven el selector de
+   estado y los botones de editar y borrar, y el icono se les montaba encima.
+   Ademas la mascara de la trama deja limpio justo ese lado, asi que el icono
+   se lee sin competir con el patron. */
+.proy-icono {
+  position: absolute; left: 1rem; bottom: .55rem; opacity: .9;
+  filter: drop-shadow(0 2px 6px rgba(0,0,0,.4));
+}
+.proy-lista .proy-trama, .proy-lista .proy-icono { display: none; }
 
 /* Mini calendario del panel lateral */
 .proy-cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
