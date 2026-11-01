@@ -50,7 +50,8 @@ vm.runInContext(fs.readFileSync(SRC, 'utf8'), sandbox, { filename: SRC });
 const { proyProgreso, proyDormido, proyDiasQuieto, proyUltimaActividad,
         migrateProjects, proyPortada, proyFmtMinutos, proyMinutos,
         proyFecha, proyHitos, proyTag, notasDeProyecto, proyCrearNota,
-        proyReetiquetar, tieneEtiqueta, notasDeMateria } = sandbox;
+        proyReetiquetar, tieneEtiqueta, notasDeMateria,
+        proyTema, proyIconoSvg } = sandbox;
 const TIPOS = vm.runInContext('PROY_TIPOS', sandbox);
 const DIAS_DORMIDO = vm.runInContext('PROY_DIAS_DORMIDO', sandbox);
 
@@ -338,6 +339,67 @@ grupo('Renombrar — los apuntes se mueven con el proyecto');
 
   igual('sin apuntes que mover, cero', proyReetiquetar('no-existe', 'tampoco'), 0);
   igual('mismo nombre, no hace nada', proyReetiquetar('agencia-ia', 'agencia-ia'), 0);
+}
+
+grupo('Portada deducida del nombre');
+{
+  const ico = nombre => proyTema({ name: nombre, type: 'personal' }).icono;
+
+  // Los proyectos reales que motivaron esto.
+  igual('Agencia de IA', ico('Agencia de IA'), 'circuito');
+  igual('Reventas de Amazon', ico('Reventas de Amazon'), 'carrito');
+  igual('Estudio de Inglés', ico('Estudio de Inglés'), 'idioma');
+  igual('Ciberseguridad', ico('Ciberseguridad'), 'escudo');
+
+  /* FALSOS POSITIVOS. La primera version casaba con un solo limite por
+     delante (\bclave) y eso metia la clave dentro de palabras que no tienen
+     nada que ver. Yo ademas habia escrito un comentario afirmando que `\b`
+     impedia justo esto — era falso, y la comprobacion lo demostro:
+     \bweb SI casa dentro de 'webinar'. */
+  ok('"web" no se cuela en "Webinar de ventas"', ico('Webinar de ventas') !== 'codigo');
+  ok('"venta" no se cuela en "Ventanas de la casa"', ico('Ventanas de la casa') !== 'carrito');
+  ok('"ai" no se cuela en "Aire acondicionado"', ico('Aire acondicionado') !== 'circuito');
+  ok('"bot" no se cuela en "Botella de agua"', ico('Botella de agua') !== 'circuito');
+  ok('"ia" no se cuela en "Reunión familiar"', ico('Reunión familiar') !== 'circuito');
+
+  // Y las que SI tienen que casar, que es la otra mitad del problema: un
+  // limite por detras habria roto todas estas.
+  igual('"automatiza" coge "automatización"', ico('Automatización de pedidos'), 'circuito');
+  igual('"segur" coge "seguridad"', ico('Seguridad informática'), 'escudo');
+  igual('"invers" coge "inversiones"', ico('Inversiones a largo plazo'), 'moneda');
+  igual('"conten" coge "contenido"', ico('Contenido para TikTok'), 'play');
+
+  // Palabra exacta en mayusculas y rodeada de texto.
+  igual('IA suelta', ico('Mi proyecto de IA'), 'circuito');
+  igual('web como palabra', ico('Portafolio Web'), 'codigo');
+  igual('UX como palabra', ico('Rediseño UX'), 'pincel');
+
+  /* Los acentos no pueden decidir la portada: se aplana el nombre antes de
+     comparar, igual que hace el parser de dictados. */
+  igual('con tilde', ico('Diseño de marca'), 'pincel');
+  igual('sin tilde', ico('Diseno de marca'), 'pincel');
+
+  // Lo que no reconoce tiene que seguir dando portada, no romperse.
+  igual('nombre sin tema', ico('Algo rarísimo'), 'chispa');
+  igual('nombre vacío', ico(''), 'chispa');
+
+  /* Determinista: el mismo nombre da siempre la misma portada. Si cambiara al
+     recargar, cada visita mostraria colores distintos y pareceria un fallo. */
+  const a = proyPortada({ name: 'Agencia de IA', type: 'negocio' });
+  igual('la portada es estable entre llamadas', a, proyPortada({ name: 'Agencia de IA', type: 'negocio' }));
+  ok('y dos nombres distintos no dan la misma',
+    a !== proyPortada({ name: 'Reventas de Amazon', type: 'negocio' }));
+
+  // El SVG tiene que salir bien formado: va directo a innerHTML.
+  const svg = proyIconoSvg({ name: 'Ciberseguridad', type: 'aprendizaje' }, 40);
+  ok('el icono es un <svg> con su trazado', /^<svg[\s\S]+<path d="[^"]+"\/><\/svg>$/.test(svg.trim()), svg.slice(0, 60));
+
+  // Todos los temas declaran un icono que existe de verdad: si faltara, la
+  // ficha pintaria un <path> vacio y no se veria nada.
+  const TEMAS = vm.runInContext('PROY_TEMAS', sandbox);
+  const ICONOS = vm.runInContext('PROY_ICONOS', sandbox);
+  TEMAS.forEach(t => ok('el tema "' + t.icono + '" tiene trazado', !!ICONOS[t.icono]));
+  ok('el icono de reserva existe', !!ICONOS.chispa);
 }
 
 grupo('Detalles');

@@ -312,29 +312,64 @@ function proyCrearNota(p) {
  * imagenes puede devolver la selva amazonica, y una portada que no tiene nada
  * que ver con el proyecto es peor que no tener ninguna.
  *
- * El orden importa: gana la primera que case, asi que lo especifico va antes
- * que lo generico ('ingles' antes que 'estudio').
+ * Cada tema distingue DOS formas de casar, y la distincion no es cosmetica:
+ *
+ *   exactas  — palabra completa (\bclave\b). Para las cortas y ambiguas. La
+ *              primera version usaba solo un limite por delante y eso hacia
+ *              que 'web' casara dentro de 'webinar', 'ai' dentro de 'aire
+ *              acondicionado', 'bot' dentro de 'botella' y 'venta' dentro de
+ *              'ventanas'. Un proyecto llamado "Ventanas" salia con carrito de
+ *              la compra.
+ *   prefijos — principio de palabra (\bclave). Para raices largas donde la
+ *              terminacion varia: 'automatiza' tiene que coger
+ *              "automatizacion", y 'segur' tiene que coger "seguridad". Con
+ *              limite por detras ninguna de las dos funcionaria.
+ *
+ * El orden importa: gana el primer tema que case, asi que lo especifico va
+ * antes que lo generico ('ingles' antes que 'estudio').
  */
 const PROY_TEMAS = [
-  { claves: ['ia', 'ai', 'inteligencia artificial', 'gpt', 'bot', 'chatbot', 'automatiza'],
+  { exactas: ['ia', 'ai', 'gpt', 'bot'],
+    prefijos: ['inteligencia artificial', 'chatbot', 'automatiza'],
     icono: 'circuito', color: '#8b5cf6', trama: 'circuito' },
-  { claves: ['cyber', 'ciber', 'segur', 'hack', 'pentest', 'red team'],
+
+  { exactas: ['red team'],
+    prefijos: ['ciber', 'cyber', 'segur', 'hack', 'pentest', 'malware'],
     icono: 'escudo', color: '#ef4444', trama: 'matriz' },
-  { claves: ['ingles', 'english', 'idioma', 'frances', 'aleman', 'portugues'],
+
+  { exactas: [],
+    prefijos: ['ingles', 'english', 'idioma', 'frances', 'aleman', 'portugues', 'biling'],
     icono: 'idioma', color: '#06b6d4', trama: 'ondas' },
-  { claves: ['venta', 'reventa', 'amazon', 'tienda', 'ecommerce', 'dropship', 'shop'],
+
+  // 'venta'/'reventa' van exactas (con su plural) porque como prefijo cogen
+  // "ventanas"; 'reventa' ademas no se alcanza desde 'venta', que necesita
+  // limite por delante y en "Reventas" no lo hay.
+  { exactas: ['venta', 'ventas', 'reventa', 'reventas', 'shop'],
+    prefijos: ['amazon', 'tienda', 'ecommerce', 'dropship', 'mercado libre'],
     icono: 'carrito', color: '#22c55e', trama: 'puntos' },
-  { claves: ['agencia', 'cliente', 'servicio', 'consultor', 'freelance'],
+
+  { exactas: [],
+    prefijos: ['agencia', 'cliente', 'servicio', 'consultor', 'freelance'],
     icono: 'maletin', color: '#f59e0b', trama: 'diagonal' },
-  { claves: ['web', 'app', 'software', 'programa', 'codigo', 'dev', 'api', 'backend', 'frontend'],
+
+  { exactas: ['web', 'app', 'api', 'dev'],
+    prefijos: ['software', 'programa', 'codigo', 'backend', 'frontend', 'desarrollo'],
     icono: 'codigo', color: '#2667ff', trama: 'circuito' },
-  { claves: ['diseno', 'design', 'ui', 'ux', 'marca', 'logo', 'branding'],
+
+  { exactas: ['ui', 'ux', 'logo'],
+    prefijos: ['diseno', 'design', 'marca', 'branding'],
     icono: 'pincel', color: '#ec4899', trama: 'ondas' },
-  { claves: ['curso', 'estudio', 'aprender', 'universidad', 'clase', 'materia', 'certifica'],
+
+  { exactas: ['curso', 'cursos', 'clase', 'clases'],
+    prefijos: ['estudio', 'estudiar', 'aprender', 'universidad', 'materia', 'certifica'],
     icono: 'libro', color: '#a855f7', trama: 'lineas' },
-  { claves: ['dinero', 'finanza', 'invers', 'ahorro', 'trading', 'cripto'],
+
+  { exactas: [],
+    prefijos: ['dinero', 'finanza', 'invers', 'ahorro', 'trading', 'cripto', 'bitcoin'],
     icono: 'moneda', color: '#10b981', trama: 'puntos' },
-  { claves: ['video', 'conten', 'youtube', 'tiktok', 'podcast', 'foto'],
+
+  { exactas: ['foto', 'fotos'],
+    prefijos: ['video', 'conten', 'youtube', 'tiktok', 'podcast', 'reels'],
     icono: 'play', color: '#f97316', trama: 'diagonal' },
 ];
 
@@ -363,13 +398,21 @@ function proyHash(txt) {
   return h;
 }
 
-/** Tema deducido del nombre, o uno derivado del tipo si no reconoce nada. */
+function escaparRe(t) { return String(t).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+
+/** Tema deducido del nombre, o uno derivado del tipo si no reconoce nada.
+ *
+ *  Se aplana el nombre para que «Diseño» case con la clave 'diseno' y
+ *  «Inglés» con 'ingles': sin eso, acentuar o no decidiria la portada. */
 function proyTema(p) {
   const n = (typeof aplanar === 'function' ? aplanar(p.name || '') : (p.name || '')).toLowerCase();
   for (const t of PROY_TEMAS) {
-    // \b para que 'ia' no case dentro de 'familia' ni 'web' dentro de 'webinar'.
-    if (t.claves.some(k => new RegExp('\\b' + k, 'i').test(n))) return t;
+    const exacta = (t.exactas || []).some(k => new RegExp('\\b' + escaparRe(k) + '\\b', 'i').test(n));
+    const prefijo = (t.prefijos || []).some(k => new RegExp('\\b' + escaparRe(k), 'i').test(n));
+    if (exacta || prefijo) return t;
   }
+  // Sin tema reconocible: color del tipo y trama derivada del nombre, para que
+  // igualmente se distinga de los demas de un vistazo.
   const tipo = PROY_TIPOS[p.type] || PROY_TIPOS.personal;
   const tramas = ['puntos', 'diagonal', 'ondas', 'lineas'];
   return { icono: 'chispa', color: tipo.color, trama: tramas[proyHash(p.name) % tramas.length] };
