@@ -130,6 +130,11 @@ let priceScenarios = store.get('priceScenarios', []);
 // de que modulo es, igual que shopProducts.
 let studySubjects = store.get('studySubjects', []);
 let studyItems = store.get('studyItems', []);
+/* Habilidades de la sub-pestaña Desarrollo de Software (ver js/24-skills.js).
+   Coleccion propia y no un campo dentro de studySubjects porque una habilidad
+   no pertenece a ninguna materia: se construye con proyectos, apuntes y horas
+   que vienen de sitios distintos. */
+let skills = store.get('skills', []);
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
 
 /* ---- Registro de colecciones ----
@@ -149,7 +154,7 @@ const DATA_COLLECTIONS = [
   // `shopProducts` y no `products` para no confundirlo con `projects`, que ya
   // existe y significa otra cosa.
   'orders', 'shopProducts', 'campaigns', 'priceScenarios',
-  'studySubjects', 'studyItems',
+  'studySubjects', 'studyItems', 'skills',
 ];
 
 function getCollection(name) {
@@ -169,6 +174,7 @@ function getCollection(name) {
     case 'priceScenarios': return priceScenarios;
     case 'studySubjects': return studySubjects;
     case 'studyItems': return studyItems;
+    case 'skills': return skills;
     default: return null;
   }
 }
@@ -191,6 +197,7 @@ function setCollection(name, value) {
     case 'priceScenarios': priceScenarios = list; break;
     case 'studySubjects': studySubjects = list; break;
     case 'studyItems': studyItems = list; break;
+    case 'skills': skills = list; break;
   }
 }
 

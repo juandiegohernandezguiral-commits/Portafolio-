@@ -37,6 +37,7 @@ one:
 | `js/21-colombia-geo.js` | Department geometry for the Zonas map: SVG paths, centroids, San Andrés inset. Pure data (`COLOMBIA_GEO`), ~48 KB. Loads *after* its consumer on purpose — 20 reads it lazily, so anything new that touches `COLOMBIA_GEO` must do the same |
 | `js/22-study.js` | Estudio: Universidad (ITM) y Desarrollo de Software. Defines `renderStudy`, `subjectStats`, `syncMoodle`, `interpretarCaptura` |
 | `js/23-projects.js` | Proyectos: tipos, estados y detección de abandono. **Reemplaza** `renderProjects()` de 05 — el de allí es código muerto, incluidos sus manejadores de click. Usa `statTile()` de 19 |
+| `js/24-skills.js` | Mapa de habilidades: nivel autodeclarado + evidencia medida. **Reemplaza** `renderDev()` de 22. Usa `tieneEtiqueta()` de 22 y `proyMinutos()` de 23, de ahí que cargue el último de los tres |
 | `js/99-init.js` | Dashboard seed + migrations, nav highlight, `#hoy` PWA shortcut. Must load last |
 
 Two consequences worth remembering when editing:
@@ -93,7 +94,11 @@ Two consequences worth remembering when editing:
   10% pintaba 60%), y el abandono porque si falla hacia el lado permisivo un proyecto muerto se
   queda meses disfrazado de activo — justo lo que esa vista existe para evitar.
 
-All six are plain `node` scripts with no dependencies and no test runner. `npm test` runs them
+- `node tests/skills.test.js` — el aviso de «nivel sin nada detrás», que es la única razón por la
+  que esa vista existe en vez de ser una lista. Si fallara hacia el lado permisivo se convierte en
+  un inventario de cosas que *crees* saber; hacia el estricto, te regaña por estar empezando.
+
+All seven are plain `node` scripts with no dependencies and no test runner. `npm test` runs them
 in sequence.
 
 ## External dependencies (CDN, no local copies)

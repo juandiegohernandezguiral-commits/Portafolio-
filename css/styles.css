@@ -737,3 +737,11 @@ html.dark .mapa-cara { stroke: rgba(0,0,0,.35); }
   width: 3px; height: 3px; border-radius: 50%; background: var(--accent);
 }
 .proy-cal-dia.hoy.tiene::after { background: #fff; }
+
+/* ---- Habilidades (js/24-skills.js) ---- */
+.skill-puntos { display: inline-flex; gap: 3px; align-items: center; }
+.skill-puntos i {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: rgba(120,120,130,.28);
+}
+html.dark .skill-puntos i { background: rgba(255,255,255,.14); }

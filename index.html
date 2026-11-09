@@ -1299,6 +1299,45 @@
   </div>
 </div>
 
+<!-- Habilidades de Estudio -> Desarrollo de Software (js/24-skills.js) -->
+<div id="skill-modal" class="fixed inset-0 z-[70] hidden items-center justify-center bg-black/60 backdrop-blur p-6">
+  <div class="surface rounded-2xl p-8 max-w-md w-full max-h-[85vh] overflow-y-auto">
+    <h3 class="font-display font-bold text-xl mb-6">Nueva habilidad</h3>
+    <form id="skill-form" class="space-y-4">
+      <input name="name" required placeholder="JavaScript, SQL, Git, redes..." autocomplete="off"
+        class="w-full surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none" />
+
+      <label class="block"><span class="meta-label text-neutral-500 block mb-1.5 px-1">Qu&eacute; tan lejos has llegado</span>
+        <select name="level" class="w-full surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none">
+          <option value="0">Quiero aprenderlo &mdash; a&uacute;n no empiezo</option>
+          <option value="1">Empezando &mdash; primeros pasos</option>
+          <option value="2">Fundamentos &mdash; entiendo lo b&aacute;sico</option>
+          <option value="3" selected>Practicando &mdash; lo uso y me trabo</option>
+          <option value="4">Lo uso en serio &mdash; resuelvo solo</option>
+          <option value="5">Podr&iacute;a ense&ntilde;arlo</option>
+        </select>
+        <span class="text-neutral-500 text-[11px] block mt-1.5 px-1">
+          Esto lo decides t&uacute;. Lo que el panel mide es la evidencia de abajo.
+        </span></label>
+
+      <div>
+        <span class="meta-label text-neutral-500 block mb-1.5 px-1">En qu&eacute; proyectos la usas</span>
+        <div id="skill-proyectos" class="surface-soft rounded-xl px-4 py-3 max-h-40 overflow-y-auto"></div>
+        <span class="text-neutral-500 text-[11px] block mt-1.5 px-1">
+          Las horas del temporizador se cuentan desde aqu&iacute;: sin proyecto enlazado no hay forma
+          honesta de atribuirlas.
+        </span>
+      </div>
+
+      <div class="flex gap-3 pt-1">
+        <button type="button" id="skill-borrar" class="hidden px-4 py-3 rounded-xl surface-soft text-neutral-500 hover:text-red-500 hover:border-red-500 transition mono text-[10px] uppercase tracking-[0.15em]">Borrar</button>
+        <button type="button" class="flex-1 py-3 rounded-xl surface-soft hover:border-accent" data-close-modal>Cancelar</button>
+        <button type="submit" class="flex-1 py-3 rounded-xl bg-accent text-white font-bold mono text-[11px] uppercase tracking-[0.25em]">Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <div id="project-modal" class="fixed inset-0 z-[70] hidden items-center justify-center bg-black/60 backdrop-blur p-6">
   <div class="surface rounded-2xl p-8 max-w-md w-full">
     <h3 class="font-display font-bold text-xl mb-6">Nuevo proyecto</h3>
@@ -1990,6 +2029,9 @@
 <!-- Proyectos: tipos, estados y deteccion de abandono. Reemplaza el
      renderProjects() de 05-dashboard.js. Usa statTile() de 19-dropship.js. -->
 <script src="js/23-projects.js"></script>
+<!-- Habilidades: rellena la sub-pestana Desarrollo de Software. Reemplaza
+     renderDev() de 22-study.js. Usa proyMinutos() de 23, de ahi que vaya despues. -->
+<script src="js/24-skills.js"></script>
 <script src="js/99-init.js"></script>
 </body>
 </html>
