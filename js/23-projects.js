@@ -76,6 +76,7 @@ const proyUi = {
   vista: store.get('proyVista', 'grid'),   // 'grid' | 'lista'
   busca: '',                               // no se guarda: es de esta sesion
   notasAbiertas: new Set(),                // que fichas tienen los apuntes desplegados
+  abierto: null,                           // id del proyecto en vista de detalle
 };
 
 /* ============ MIGRACIÓN ============ */
@@ -640,6 +641,25 @@ function renderProjects() {
 
   migrateProjects();
 
+  /* Con un proyecto abierto se pinta su detalle en lugar de la rejilla, y se
+     esconden la banda, las acciones y el panel lateral: son de la vista
+     general y ahi solo distraerian. Si el id apunta a un proyecto que ya no
+     existe (borrado desde otra pestaña y traido por el sync), proyAbierto()
+     devuelve null y se vuelve a la lista sola. */
+  const abierto = proyAbierto();
+  const seccion = box.closest('.dash-view');
+  if (seccion) {
+    seccion.querySelectorAll('.proy-hero, .proy-acciones-fila').forEach(e => e.classList.toggle('hidden', !!abierto));
+  }
+  const aside = document.getElementById('proy-aside');
+  if (aside) aside.classList.toggle('hidden', !!abierto);
+  if (box.parentElement) box.parentElement.classList.toggle('proy-ancho-completo', !!abierto);
+
+  if (abierto) {
+    box.innerHTML = renderProyDetalle(abierto);
+    return;
+  }
+
   const porEstado = e => projects.filter(p => (p.status || 'activo') === e);
   const dormidos = projects.filter(proyDormido);
 
@@ -773,7 +793,8 @@ function renderProyCard(p) {
   }
 
   return `
-    <div class="surface rounded-2xl overflow-hidden proy-card ${cerrado ? 'opacity-60' : ''}">
+    <div class="surface rounded-2xl overflow-hidden proy-card ${cerrado ? 'opacity-60' : ''}"
+      data-proy-abrir="${p.id}" role="button" tabindex="0">
       <div class="proy-portada h-20 relative" style="background:${proyPortada(p)}">
         <!-- Trama e icono deducidos del nombre. Ver proyTema() arriba. -->
         <div class="proy-trama" style="background-image:${proyTrama(proyTema(p).trama, proyTema(p).color)}"></div>
@@ -987,6 +1008,27 @@ function proyEtapasAlCambiarTipo(p, tipoNuevo) {
 }
 
 document.addEventListener('submit', e => {
+  /* Alta rapida de tarea desde el detalle, ya enlazada al proyecto. Enlazarlas
+     desde el formulario general obliga a acordarse de elegir el proyecto en un
+     desplegable, y eso no pasa — por eso casi ningun proyecto tenia tareas y
+     el progreso se quedaba siempre en "por etapas". */
+  const alta = e.target.closest('[data-proy-nueva-tarea]');
+  if (alta) {
+    e.preventDefault();
+    const titulo = (alta.titulo.value || '').trim();
+    if (!titulo) return;
+    tasks.push(touch({
+      id: uid(), title: titulo, desc: '', priority: 'media', status: 'todo',
+      repeat: 'none', due: '', projectId: alta.dataset.proyNuevaTarea, createdAt: Date.now(),
+    }));
+    saveAll();
+    renderProjects();
+    // Devolver el foco al campo: lo normal es apuntar varias seguidas.
+    const nuevo = document.querySelector('[data-proy-nueva-tarea] [name=titulo]');
+    if (nuevo) nuevo.focus();
+    return;
+  }
+
   const form = e.target.closest('#project-form');
   if (!form) return;
   e.preventDefault();
@@ -1050,6 +1092,225 @@ document.addEventListener('submit', e => {
   renderProjects();
 });
 
+/* ============ VISTA DE DETALLE ============ */
+
+/**
+ * El detalle se pinta DENTRO de la vista de Proyectos, no como una vista
+ * aparte del panel.
+ *
+ * Es una decision deliberada: una `.dash-view` nueva obligaria a tocar el
+ * enrutado de 05-dashboard.js y dejaria la barra lateral sin ninguna entrada
+ * marcada, cuando lo cierto es que sigues en Proyectos. Asi el estado es una
+ * variable y volver es ponerla a null.
+ */
+function proyAbierto() {
+  if (!proyUi.abierto) return null;
+  return projects.find(p => p.id === proyUi.abierto) || null;
+}
+
+function tareasDeProyecto(p) {
+  if (typeof tasks === 'undefined') return [];
+  const orden = { doing: 0, todo: 1, done: 2 };
+  return tasks.filter(t => t.projectId === p.id)
+    .sort((a, b) => (orden[a.status] ?? 1) - (orden[b.status] ?? 1)
+                 || (a.due || '9999').localeCompare(b.due || '9999'));
+}
+
+function sesionesDeProyecto(p) {
+  if (typeof sessions === 'undefined') return [];
+  return sessions.filter(s => s.kind === 'focus' && s.projectId === p.id)
+    .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+}
+
+function renderProyDetalle(p) {
+  const tipo = PROY_TIPOS[p.type] || PROY_TIPOS.personal;
+  const est = PROY_ESTADOS[p.status || 'activo'];
+  const prog = proyProgreso(p);
+  const ts = tareasDeProyecto(p);
+  const ns = notasDeProyecto(p);
+  const ss = sesionesDeProyecto(p);
+  const mins = proyMinutos(p);
+  const quieto = proyDiasQuieto(p);
+  const dormido = proyDormido(p);
+  const tag = proyTag(p);
+
+  const abiertas = ts.filter(t => t.status !== 'done');
+  const venc = p.deadline ? proyFecha(p.deadline) : null;
+  let chipVenc = '';
+  if (venc && p.status !== 'terminado' && p.status !== 'abandonado') {
+    const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+    const dd = new Date(venc); dd.setHours(0, 0, 0, 0);
+    const n = Math.round((dd - hoy) / 86400000);
+    const tono = n < 0 ? 'text-red-500' : n <= 7 ? 'text-amber-500' : 'text-neutral-500';
+    const txt = n < 0 ? `venció hace ${Math.abs(n)} d` : n === 0 ? 'vence hoy' : `en ${n} días`;
+    chipVenc = `<span class="meta-label ${tono}">⚑ ${venc.toLocaleDateString('es-CO', { day: 'numeric', month: 'short' })} · ${txt}</span>`;
+  }
+
+  return `
+    <button type="button" data-proy-volver
+      class="meta-label text-neutral-500 hover:text-accent transition mb-4 flex items-center gap-1.5">
+      ← Todos los proyectos
+    </button>
+
+    <div class="surface rounded-2xl overflow-hidden mb-5">
+      <div class="h-28 relative" style="background:${proyPortada(p)}">
+        <div class="proy-trama" style="background-image:${proyTrama(proyTema(p).trama, proyTema(p).color)}"></div>
+        <div class="proy-icono" style="bottom:.9rem">${proyIconoSvg(p, 58)}</div>
+        <div class="absolute top-4 right-4 flex items-center gap-1.5">
+          <select data-proy-estado-sel="${p.id}" aria-label="Estado del proyecto"
+            class="surface rounded-lg px-2.5 py-1.5 text-[11px] mono focus:border-accent focus:outline-none">
+            ${Object.entries(PROY_ESTADOS).map(([k, v]) =>
+              `<option value="${k}" ${(p.status || 'activo') === k ? 'selected' : ''}>${v.label}</option>`).join('')}
+          </select>
+          <button type="button" data-edit-project="${p.id}" title="Editar"
+            class="w-8 h-8 rounded-lg surface text-neutral-400 hover:text-accent transition">✎</button>
+        </div>
+      </div>
+
+      <div class="p-6">
+        <div class="flex items-start gap-3 flex-wrap mb-1">
+          <span class="mono text-[9px] uppercase tracking-widest px-2 py-1 rounded-lg"
+            style="background:${tipo.color}26;color:${tipo.color}">${tipo.label}</span>
+          ${dormido ? `<span class="mono text-[9px] uppercase tracking-widest px-2 py-1 rounded-lg bg-amber-500/20 text-amber-500">Sin movimiento</span>` : ''}
+        </div>
+        <h1 class="display text-3xl md:text-4xl leading-tight">${escapeHtml(p.name)}</h1>
+        ${p.client ? `<div class="meta-label text-neutral-500 mt-1">para ${escapeHtml(p.client)}</div>` : ''}
+        ${p.desc ? `<p class="text-neutral-500 text-sm mt-3 max-w-2xl leading-relaxed">${escapeHtml(p.desc)}</p>` : ''}
+
+        <div class="flex items-center gap-5 flex-wrap mt-4">
+          ${chipVenc}
+          ${mins ? `<span class="meta-label text-neutral-500">◷ ${proyFmtMinutos(mins)} en ${ss.length} sesión${ss.length > 1 ? 'es' : ''}</span>` : ''}
+          ${quieto !== null ? `<span class="meta-label ${dormido ? 'text-amber-500' : 'text-neutral-500'}">${quieto === 0 ? '● activo hoy' : `● visto hace ${quieto} d`}</span>` : ''}
+        </div>
+
+        <div class="mt-5">
+          <div class="flex items-baseline justify-between mb-2 gap-2">
+            <span class="meta-label text-neutral-500">${prog.detalle}</span>
+            <span class="mono text-sm font-semibold" style="color:${est.color}">${prog.pct}%</span>
+          </div>
+          <div class="h-2 rounded-full bg-neutral-200 dark:bg-white/10 overflow-hidden">
+            <div class="h-full rounded-full transition-all" style="width:${prog.pct}%;background:${est.color}"></div>
+          </div>
+          ${prog.fuente === 'etapas'
+            ? `<p class="text-[11px] text-neutral-400 mt-2 leading-snug max-w-xl">
+                 Esto lo marcas tú, así que es una estimación, no una medida. En cuanto le añadas
+                 tareas aquí abajo, el porcentaje pasa a salir del trabajo que cierras de verdad.
+               </p>` : ''}
+        </div>
+
+        <div class="flex gap-1.5 mt-5">
+          ${(p.stages || []).map((s, i) => `
+            <button type="button" data-toggle-stage="${p.id}:${i}" title="${escapeHtml(s.name)}"
+              class="flex-1 py-2 rounded-lg text-[10px] mono uppercase tracking-wider truncate px-2 transition ${
+                s.done ? 'text-white' : 'surface-soft text-neutral-500 hover:text-accent'}"
+              style="${s.done ? 'background:' + tipo.color : ''}">${escapeHtml(s.name)}</button>`).join('')}
+        </div>
+      </div>
+    </div>
+
+    <div class="grid lg:grid-cols-[minmax(0,1fr)_320px] gap-5 items-start">
+      <div class="min-w-0 space-y-5">
+
+        <div class="surface rounded-2xl p-6">
+          <div class="flex items-baseline justify-between gap-3 mb-4">
+            <h2 class="font-display font-bold text-lg">Tareas</h2>
+            <span class="meta-label text-neutral-500">${abiertas.length} abierta${abiertas.length === 1 ? '' : 's'} de ${ts.length}</span>
+          </div>
+
+          <!-- Crear una tarea YA enlazada. Es lo que hace que el progreso deje
+               de ser una estimacion: enlazarlas desde el formulario general
+               obliga a acordarse de elegir el proyecto, y no pasa. -->
+          <form data-proy-nueva-tarea="${p.id}" class="flex gap-2 mb-4">
+            <input name="titulo" placeholder="¿Qué hay que hacer para este proyecto?" autocomplete="off"
+              class="flex-1 min-w-0 surface-soft rounded-xl px-4 py-2.5 text-sm focus:border-accent focus:outline-none" />
+            <button type="submit"
+              class="px-4 py-2.5 rounded-xl bg-accent text-white font-bold mono text-[10px] uppercase tracking-[0.15em] shrink-0">Añadir</button>
+          </form>
+
+          ${ts.length ? `<div class="space-y-1.5">${ts.map(t => {
+            const hecha = t.status === 'done';
+            return `
+              <div class="surface-soft rounded-xl px-4 py-2.5 flex items-center gap-3 ${hecha ? 'opacity-55' : ''}">
+                <button type="button" data-proy-tarea-check="${t.id}" aria-label="Marcar como hecha"
+                  class="w-4 h-4 rounded-full border shrink-0 transition ${hecha ? 'bg-accent border-accent' : 'border-neutral-400 hover:border-accent'}"></button>
+                <div class="min-w-0 flex-1">
+                  <div class="text-sm truncate ${hecha ? 'line-through' : ''}">${escapeHtml(t.title)}</div>
+                  ${t.due ? `<div class="meta-label text-neutral-500">${proyFecha(t.due)?.toLocaleDateString('es-CO', { day: 'numeric', month: 'short' }) || ''}</div>` : ''}
+                </div>
+                ${!hecha && typeof startFocus === 'function'
+                  ? `<button type="button" data-proy-enfocar="${t.id}" title="Enfocarme en esto"
+                       class="meta-label text-neutral-500 hover:text-accent transition shrink-0">◷</button>` : ''}
+                <button type="button" data-proy-tarea-quitar="${t.id}" title="Quitar del proyecto"
+                  class="meta-label text-neutral-500 hover:text-red-500 transition shrink-0">✕</button>
+              </div>`;
+          }).join('')}</div>`
+            : `<p class="text-neutral-500 text-xs leading-relaxed">
+                 Sin tareas todavía. Añade la primera arriba y el progreso empieza a medirse solo.
+               </p>`}
+        </div>
+
+        <div class="surface rounded-2xl p-6">
+          <div class="flex items-baseline justify-between gap-3 mb-4">
+            <h2 class="font-display font-bold text-lg">Apuntes</h2>
+            <button type="button" data-proy-nueva-nota="${p.id}"
+              class="meta-label text-neutral-500 hover:text-accent transition">+ apunte</button>
+          </div>
+          ${ns.length ? `<div class="space-y-1.5">${ns.map(n => `
+            <button type="button" data-proy-abrir-nota="${n.id}"
+              class="w-full text-left surface-soft rounded-xl px-4 py-2.5 hover:border-accent transition">
+              <div class="text-sm truncate">${escapeHtml(n.title || 'Sin título')}</div>
+              <div class="meta-label text-neutral-500">${typeof relativeTime === 'function' ? relativeTime(n.updatedAt) : ''}</div>
+            </button>`).join('')}</div>`
+            : `<p class="text-neutral-500 text-xs leading-relaxed">
+                 Etiqueta cualquier nota con <span class="mono text-neutral-400">#${tag}</span> y aparece aquí.
+                 O pulsa «+ apunte» y se crea ya etiquetada.
+               </p>`}
+        </div>
+      </div>
+
+      <aside class="space-y-4">
+        <div class="surface rounded-2xl p-5">
+          <h3 class="font-display font-bold text-sm mb-3">Tiempo dedicado</h3>
+          ${ss.length ? `
+            <div class="font-display font-bold text-3xl mb-1">${proyFmtMinutos(mins)}</div>
+            <div class="meta-label text-neutral-500 mb-4">en ${ss.length} sesión${ss.length > 1 ? 'es' : ''} de enfoque</div>
+            <div class="space-y-1.5">
+              ${ss.slice(0, 5).map(s => `
+                <div class="flex items-center justify-between gap-2">
+                  <span class="meta-label text-neutral-500 truncate">${escapeHtml(s.label || 'Sesión')}</span>
+                  <span class="mono text-[10px] shrink-0">${s.minutes} min</span>
+                </div>`).join('')}
+              ${ss.length > 5 ? `<div class="meta-label text-neutral-500">y ${ss.length - 5} más</div>` : ''}
+            </div>`
+            : `<p class="text-neutral-500 text-xs leading-relaxed mb-3">
+                 Nada medido aún. El temporizador es lo que convierte «siento que le dedico mucho
+                 tiempo» en un número.
+               </p>
+               <button type="button" data-proy-accion="enfoque"
+                 class="w-full py-2.5 rounded-xl surface-soft hover:border-accent mono text-[10px] uppercase tracking-[0.15em]">Empezar sesión</button>`}
+        </div>
+
+        <div class="surface rounded-2xl p-5">
+          <h3 class="font-display font-bold text-sm mb-3">Ficha</h3>
+          <dl class="space-y-2.5">
+            ${[['Tipo', tipo.label], ['Estado', est.label],
+               ['Creado', p.createdAt ? new Date(p.createdAt).toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'],
+               ['Etiqueta', '#' + tag]].map(([k, v]) => `
+              <div class="flex items-baseline justify-between gap-2">
+                <dt class="meta-label text-neutral-500">${k}</dt>
+                <dd class="text-xs truncate ${k === 'Etiqueta' ? 'mono text-neutral-400' : ''}">${escapeHtml(String(v))}</dd>
+              </div>`).join('')}
+          </dl>
+        </div>
+
+        <button type="button" data-del-project="${p.id}"
+          class="w-full py-2.5 rounded-xl surface-soft text-neutral-500 hover:text-red-500 hover:border-red-500 transition mono text-[10px] uppercase tracking-[0.15em]">
+          Borrar proyecto
+        </button>
+      </aside>
+    </div>`;
+}
+
 /* ============ EVENTOS ============ */
 
 document.addEventListener('click', e => {
@@ -1082,6 +1343,55 @@ document.addEventListener('click', e => {
   }
 
   if (e.target.closest('#add-project-btn')) { abrirModalProyecto(null); return; }
+
+  // Volver a la rejilla
+  if (e.target.closest('[data-proy-volver]')) {
+    proyUi.abierto = null;
+    renderProjects();
+    return;
+  }
+
+  /* Abrir el detalle. El selector excluye todo lo que ya es interactivo dentro
+     de la ficha (botones, selects, el bloque de apuntes): sin eso, marcar una
+     etapa o cambiar el estado abriria ademas el detalle. */
+  const tarjeta = e.target.closest('[data-proy-abrir]');
+  if (tarjeta && !e.target.closest('button, select, a, input, [data-proy-notas]')) {
+    proyUi.abierto = tarjeta.dataset.proyAbrir;
+    renderProjects();
+    const sec = document.getElementById('projects-list')?.closest('.dash-view');
+    if (sec) sec.scrollIntoView({ block: 'start' });
+    return;
+  }
+
+  // Marcar una tarea del detalle como hecha / sin hacer
+  const chk = e.target.closest('[data-proy-tarea-check]');
+  if (chk) {
+    const t = tasks.find(x => x.id === chk.dataset.proyTareaCheck);
+    if (!t) return;
+    t.status = t.status === 'done' ? 'todo' : 'done';
+    if (typeof markTaskCompletion === 'function') markTaskCompletion(t);
+    touch(t); saveAll(); renderProjects();
+    return;
+  }
+
+  /* Quitar una tarea del proyecto NO la borra: se desenlaza. Borrar trabajo
+     registrado porque ya no cuelga de aqui seria una sorpresa desagradable. */
+  const quitar = e.target.closest('[data-proy-tarea-quitar]');
+  if (quitar) {
+    const t = tasks.find(x => x.id === quitar.dataset.proyTareaQuitar);
+    if (!t) return;
+    t.projectId = null;
+    touch(t); saveAll(); renderProjects();
+    toast('Quitada del proyecto · sigue en Tareas');
+    return;
+  }
+
+  const enf = e.target.closest('[data-proy-enfocar]');
+  if (enf && typeof startFocus === 'function') {
+    const t = tasks.find(x => x.id === enf.dataset.proyEnfocar);
+    if (t) startFocus({ taskId: t.id, projectId: t.projectId, label: t.title });
+    return;
+  }
 
   const ed = e.target.closest('[data-edit-project]');
   if (ed) {

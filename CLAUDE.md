@@ -82,6 +82,15 @@ cabeceras aunque el sitio sea de un solo dominio).
 
 ## Gotchas
 
+- **El service worker sirve los archivos cacheados también en `localhost`.** Editas un `js/*.js`,
+  recargas, y la página sigue ejecutando el de antes — sin ningún aviso. Para desarrollar:
+  `navigator.serviceWorker.getRegistrations()` → `unregister()`, y `caches.keys()` →
+  `caches.delete()`. Subir `SW_VERSION` también funciona, pero gasta una versión por cada
+  edición.
+- **`comando &` dentro de una llamada a Bash NO deja el proceso corriendo**: muere al terminar
+  la llamada. Para el servidor de desarrollo hay que usar `run_in_background`. Si `curl` devuelve
+  `000`, el servidor está caído, no es un problema de la página.
+
 - **Bump `SW_VERSION` in `sw.js`** after changing any file in its `SHELL_ASSETS` list, or
   returning visitors keep the cached old shell.
 - **The `ACCESS_PIN` is not security.** It's a plain string in a file anyone can read; it keeps

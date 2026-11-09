@@ -118,6 +118,20 @@ open/close cycles don't degrade, and closing the browser mid-session leaves `the
   which ones have been still for months. It doesn't need to sync: it's idempotent and
   deterministic, so every device reaches the same result on its own.
 
+  **Clicking a card opens a detail view** rendered *inside* the Proyectos view rather than as a
+  separate `.dash-view`: a new view would mean touching the router in `05-dashboard.js` and would
+  leave the sidebar with nothing highlighted, when you are in fact still in Proyectos. The state
+  is `proyUi.abierto` and going back is setting it to null. `proyAbierto()` returns null for an
+  id that no longer exists — that happens for real when a project is deleted on another device
+  and the sync brings the deletion over.
+
+  The detail view carries a **quick-add that creates a task already linked to the project**. That
+  is what makes progress stop being an estimate: linking from the general task form means
+  remembering to pick the project from a dropdown, which doesn't happen — which is why almost no
+  project had tasks and progress always fell back to stages. Removing a task from a project
+  **unlinks** it rather than deleting it; deleting recorded work because it no longer hangs here
+  would be an unpleasant and irreversible surprise.
+
   **Covers are generated from the name**, not fetched. `proyTema()` matches words in the project
   name against `PROY_TEMAS` (IA, security, languages, sales, agency, code, design, study, money,
   content) and returns an icon, a colour and a tile pattern; everything else is derived from a

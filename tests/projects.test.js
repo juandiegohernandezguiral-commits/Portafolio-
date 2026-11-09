@@ -51,7 +51,8 @@ const { proyProgreso, proyDormido, proyDiasQuieto, proyUltimaActividad,
         migrateProjects, proyPortada, proyFmtMinutos, proyMinutos,
         proyFecha, proyHitos, proyTag, notasDeProyecto, proyCrearNota,
         proyReetiquetar, tieneEtiqueta, notasDeMateria,
-        proyTema, proyIconoSvg } = sandbox;
+        proyTema, proyIconoSvg,
+        proyAbierto, tareasDeProyecto, sesionesDeProyecto } = sandbox;
 const TIPOS = vm.runInContext('PROY_TIPOS', sandbox);
 const DIAS_DORMIDO = vm.runInContext('PROY_DIAS_DORMIDO', sandbox);
 
@@ -400,6 +401,76 @@ grupo('Portada deducida del nombre');
   const ICONOS = vm.runInContext('PROY_ICONOS', sandbox);
   TEMAS.forEach(t => ok('el tema "' + t.icono + '" tiene trazado', !!ICONOS[t.icono]));
   ok('el icono de reserva existe', !!ICONOS.chispa);
+}
+
+grupo('Vista de detalle');
+{
+  sandbox.projects.length = 0;
+  sandbox.tasks.length = 0;
+  sandbox.sessions.length = 0;
+
+  const p = { id: 'pd', name: 'Agencia de IA', type: 'negocio', status: 'activo',
+              stages: [], createdAt: hace(60), updatedAt: hace(1) };
+  sandbox.projects.push(p, { id: 'otro', name: 'Otro', type: 'personal', status: 'activo',
+                             stages: [], createdAt: hace(60), updatedAt: hace(1) });
+
+  const ui = vm.runInContext('proyUi', sandbox);
+
+  ui.abierto = null;
+  ok('sin nada abierto, null', proyAbierto() === null);
+  ui.abierto = 'pd';
+  igual('abre el proyecto pedido', proyAbierto().id, 'pd');
+
+  /* Un id que ya no existe tiene que devolver null, no reventar. Pasa de
+     verdad: borras el proyecto en el movil, el sync trae el borrado, y el
+     portatil se queda con el detalle de algo que ya no esta. */
+  ui.abierto = 'borrado-hace-rato';
+  ok('un id fantasma devuelve null', proyAbierto() === null);
+  ui.abierto = null;
+
+  // --- Tareas del proyecto, en el orden en que se quieren ver ---
+  sandbox.tasks.push(
+    { id: 'a', title: 'Hecha', status: 'done', projectId: 'pd' },
+    { id: 'b', title: 'En curso', status: 'doing', projectId: 'pd' },
+    { id: 'c', title: 'Pendiente lejos', status: 'todo', projectId: 'pd', due: '2026-12-20' },
+    { id: 'd', title: 'Pendiente pronto', status: 'todo', projectId: 'pd', due: '2026-11-05' },
+    { id: 'z', title: 'De otro', status: 'todo', projectId: 'otro' });
+
+  const ts = tareasDeProyecto(p);
+  igual('solo las suyas', ts.length, 4);
+  ok('no cuela las de otro proyecto', !ts.some(x => x.id === 'z'));
+  // En curso primero, luego lo pendiente por fecha, y lo hecho al final: es el
+  // orden en que se mira una lista de tareas, no el de creacion.
+  igual('lo que esta en curso va primero', ts[0].id, 'b');
+  igual('luego lo pendiente mas cercano', ts[1].id, 'd');
+  igual('despues lo pendiente lejano', ts[2].id, 'c');
+  igual('y lo hecho al final', ts[3].id, 'a');
+
+  // --- Progreso: lo que el detalle existe para desbloquear ---
+  igual('el progreso sale de las tareas', proyProgreso(p).fuente, 'tareas');
+  igual('1 de 4', proyProgreso(p).pct, 25);
+
+  /* Quitar una tarea del proyecto la DESENLAZA, no la borra. Borrar trabajo
+     registrado porque ya no cuelga de aqui seria una sorpresa desagradable, y
+     ademas irreversible. */
+  const antes = sandbox.tasks.length;
+  sandbox.tasks.find(x => x.id === 'a').projectId = null;
+  igual('desenlazar no borra la tarea', sandbox.tasks.length, antes);
+  igual('pero deja de contar para el proyecto', tareasDeProyecto(p).length, 3);
+  igual('y el progreso se recalcula', proyProgreso(p).pct, 0);
+
+  // --- Sesiones de enfoque ---
+  sandbox.sessions.push(
+    { id: 's1', kind: 'focus', projectId: 'pd', minutes: 50, createdAt: hace(5) },
+    { id: 's2', kind: 'focus', projectId: 'pd', minutes: 95, createdAt: hace(1) },
+    { id: 's3', kind: 'focus', projectId: 'otro', minutes: 999, createdAt: hace(1) },
+    // Un descanso NO es trabajo dedicado al proyecto.
+    { id: 's4', kind: 'break', projectId: 'pd', minutes: 10, createdAt: hace(1) });
+
+  const ss = sesionesDeProyecto(p);
+  igual('solo las de enfoque de este proyecto', ss.length, 2);
+  igual('la mas reciente primero', ss[0].id, 's2');
+  igual('los minutos no cuentan descansos ni ajenos', proyMinutos(p), 145);
 }
 
 grupo('Detalles');

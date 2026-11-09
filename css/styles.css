@@ -716,6 +716,15 @@ html.dark .mapa-cara { stroke: rgba(0,0,0,.35); }
 }
 .proy-lista .proy-trama, .proy-lista .proy-icono { display: none; }
 
+/* En el detalle la rejilla de dos columnas pasa a una: el panel lateral de la
+   vista general se oculta y dejaria una franja vacia a la derecha. */
+.proy-ancho-completo { display: block !important; }
+
+/* La ficha entera abre el detalle, asi que tiene que parecer pulsable. */
+.proy-card[data-proy-abrir] { cursor: pointer; transition: border-color .18s, transform .18s; }
+.proy-card[data-proy-abrir]:hover { border-color: var(--accent); transform: translateY(-2px); }
+.proy-card[data-proy-abrir]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
 /* Mini calendario del panel lateral */
 .proy-cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
 .proy-cal-dia {
