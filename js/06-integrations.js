@@ -286,9 +286,39 @@ async function renderOutlookTasks() {
    El cliente solo conoce la URL base del proxy (integrations.notion.proxyUrl), guardada en
    "Conectar cuentas". El proxy real vive en /netlify/functions/notion-tasks.js — ver
    docs/architecture.md para el contrato completo. */
+/* Cabecera de autenticacion para el backend PROPIO.
+   notion-tasks, push-subscribe y sync-external-summary la exigen desde que se
+   cerraron en la revision de seguridad: el primero devuelve tareas privadas
+   consultadas con el NOTION_TOKEN del servidor, y los otros dos escriben cosas
+   que acaban llegando al telefono del usuario como notificacion push.
+
+   Es el MISMO token del sync (SYNC_TOKEN en Netlify), que el panel ya tiene
+   configurado; no hace falta uno nuevo. */
+function backendHeaders(extra) {
+  const t = ((integrations.sync && integrations.sync.token) || '').trim();
+  const h = Object.assign({}, extra || {});
+  if (t) h['X-Sync-Token'] = t;
+  return h;
+}
+
+/* Un 401/503 del backend propio tiene una causa muy concreta y vale la pena
+   decirla, en vez de dejar un "failed to fetch" sin explicacion. */
+function backendAuthError(res) {
+  if (res.status === 401) {
+    return 'El backend rechazo el token. En Conectar cuentas -> Sincronizacion tiene que estar '
+         + 'el mismo valor que SYNC_TOKEN en Netlify.';
+  }
+  if (res.status === 503) {
+    return 'El backend no tiene SYNC_TOKEN en sus variables de entorno.';
+  }
+  return null;
+}
+
 async function fetchNotionTasks() {
   const proxyUrl = integrations.notion.proxyUrl.replace(/\/$/, '');
-  const res = await fetch(`${proxyUrl}/notion/tasks`);
+  const res = await fetch(`${proxyUrl}/notion/tasks`, { headers: backendHeaders() });
+  const authErr = backendAuthError(res);
+  if (authErr) throw new Error(authErr);
   if (!res.ok) throw new Error(`Proxy de Notion respondió ${res.status}`);
   const data = await res.json();
   return (data.items || [])
@@ -344,7 +374,7 @@ async function syncExternalSummaryToBackend(combinedItems) {
   try {
     await fetch(`${proxyUrl.replace(/\/$/, '')}/sync/external-summary`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: backendHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ items }),
     });
   } catch (err) {
@@ -649,7 +679,7 @@ document.getElementById('enable-notifications-btn')?.addEventListener('click', a
     // La suscripción no contiene credenciales de nada — solo el endpoint push del navegador.
     await fetch(`${proxyUrl.replace(/\/$/, '')}/push/subscribe`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: backendHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify(sub),
     });
   } catch (err) {

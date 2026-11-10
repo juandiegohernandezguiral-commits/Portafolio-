@@ -2,11 +2,22 @@
 // Autenticación por token compartido para los endpoints que leen o escriben los
 // datos personales del panel (data-sync.js).
 //
-// Los demás endpoints de este backend no necesitan token: notion-tasks.js sólo
-// expone tareas ya públicas para su dueño y no acepta escrituras, y
-// push-subscribe.js sólo acepta un objeto PushSubscription (que no es secreto).
-// El sync SÍ lo necesita: sirve el contenido completo de tareas, notas y
-// proyectos, y acepta sobrescribirlo.
+// TODOS los endpoints que leen o escriben algo del usuario lo exigen. El
+// comentario que había aquí decía que notion-tasks.js y push-subscribe.js no lo
+// necesitaban, y era falso en ambos casos:
+//
+//   notion-tasks.js NO expone "tareas ya públicas": consulta Notion con el
+//   NOTION_TOKEN del servidor y devuelve las tareas privadas del usuario. Sin
+//   token, y con Access-Control-Allow-Origin en '*', cualquier web que el
+//   usuario visitara podía leerlas desde JavaScript.
+//
+//   push-subscribe.js escribe en una clave fija. Quien pudiera llamarlo
+//   sustituía la suscripción guardada por la suya, y a partir de ahí el cron le
+//   mandaba a ÉL las notificaciones con los títulos de las tareas del usuario —
+//   que además dejaba de recibirlas.
+//
+// La lección general: "este endpoint no devuelve el secreto" no es lo mismo que
+// "este endpoint no devuelve nada sensible".
 //
 // Decisión importante: si SYNC_TOKEN no está configurado, esto FALLA CERRADO
 // (rechaza todo). La alternativa — "sin token configurado, permitir todo" —

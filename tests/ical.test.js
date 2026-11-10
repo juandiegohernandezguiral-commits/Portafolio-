@@ -168,5 +168,37 @@ grupo('Validación de la URL');
     urlValida('https://ejemplo.com/algo?authtoken=x') !== null);
 }
 
+grupo('SSRF — el servidor no puede pedir la red interna');
+{
+  /* Este endpoint hace que el SERVIDOR pida una URL que viene de fuera. Sin
+     filtro de destino es un SSRF de manual: basta
+     https://169.254.169.254/calendar/?authtoken=x para que el backend consulte
+     el servicio de metadatos de la nube y devuelva el resultado.
+
+     Exigir SYNC_TOKEN limita QUIEN puede intentarlo, pero eso es una puerta, no
+     un muro. Esto es lo que impide que un token filtrado pase de "me leen el
+     calendario" a "me leen credenciales del servidor". */
+  const prohibidas = [
+    ['metadatos de la nube',  'https://169.254.169.254/calendar/?authtoken=x'],
+    ['bucle local',           'https://127.0.0.1/calendar/?authtoken=x'],
+    ['localhost por nombre',  'https://localhost/calendar/?authtoken=x'],
+    ['privada clase A',       'https://10.0.0.5/calendar/?authtoken=x'],
+    ['privada clase B',       'https://172.16.3.4/calendar/?authtoken=x'],
+    ['privada clase C',       'https://192.168.1.1/calendar/?authtoken=x'],
+    ['dominio .internal',     'https://cosas.internal/calendar/?authtoken=x'],
+    ['dominio .local',        'https://nas.local/calendar/?authtoken=x'],
+    ['host sin punto',        'https://intranet/calendar/?authtoken=x'],
+    ['credenciales dentro',   'https://u:p@cvirtual.itm.edu.co/calendar/?authtoken=x'],
+  ];
+  prohibidas.forEach(([que, u]) => ok('bloquea ' + que, urlValida(u) !== null, u));
+
+  // Y lo legitimo tiene que seguir pasando: un filtro que bloquea todo no
+  // protege nada, solo rompe la funcion.
+  ok('deja pasar el Campus Virtual del ITM',
+    urlValida('https://campusvirtual.itm.edu.co/calendar/export_execute.php?userid=9&authtoken=abc') === null);
+  ok('deja pasar otro Moodle publico',
+    urlValida('https://moodle.ejemplo.edu.co/calendar/export_execute.php?authtoken=abc') === null);
+}
+
 console.log(`\n${pasadas} pasadas, ${falladas} falladas`);
 process.exit(falladas ? 1 : 0);

@@ -16,10 +16,18 @@
 
 const { agendaStore } = require('./_lib/store');
 const { withCors, handlePreflight } = require('./_lib/cors');
+const { requireSyncToken } = require('./_lib/auth');
 
 exports.handler = async (event) => {
   const preflight = handlePreflight(event);
   if (preflight) return preflight;
+
+  /* Exige el token del panel. Escribe en la clave fija 'push-subscription', de
+     modo que quien pudiera llamarlo sustituía la suscripción del usuario por la
+     suya: a partir de ahí recibía las notificaciones con los títulos de sus
+     tareas, y el usuario dejaba de recibirlas. */
+  const noAutorizado = requireSyncToken(event);
+  if (noAutorizado) return withCors(noAutorizado);
 
   if (event.httpMethod !== 'POST') {
     return withCors({ statusCode: 405, body: 'Method not allowed' });

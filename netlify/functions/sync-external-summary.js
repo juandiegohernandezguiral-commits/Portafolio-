@@ -20,10 +20,18 @@
 
 const { agendaStore } = require('./_lib/store');
 const { withCors, handlePreflight } = require('./_lib/cors');
+const { requireSyncToken } = require('./_lib/auth');
 
 exports.handler = async (event) => {
   const preflight = handlePreflight(event);
   if (preflight) return preflight;
+
+  /* Exige el token del panel. Lo que se guarda aquí lo lee el cron y lo manda
+     como notificación push al teléfono del usuario, así que sin autenticar era
+     una vía de inyección: un tercero escribía el texto que quisiera y le
+     llegaba al usuario con la apariencia de venir de su propio sitio. */
+  const noAutorizado = requireSyncToken(event);
+  if (noAutorizado) return withCors(noAutorizado);
 
   if (event.httpMethod !== 'POST') {
     return withCors({ statusCode: 405, body: 'Method not allowed' });

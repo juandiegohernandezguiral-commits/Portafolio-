@@ -9,10 +9,17 @@
 
 const { fetchNotionTasks } = require('./_lib/notion');
 const { withCors, handlePreflight } = require('./_lib/cors');
+const { requireSyncToken } = require('./_lib/auth');
 
 exports.handler = async (event) => {
   const preflight = handlePreflight(event);
   if (preflight) return preflight;
+
+  /* Exige el token del panel. Esto devuelve las tareas PRIVADAS del usuario
+     consultadas con el NOTION_TOKEN del servidor; sin autenticar, y con CORS en
+     '*', cualquier sitio web podía leerlas con un fetch. */
+  const noAutorizado = requireSyncToken(event);
+  if (noAutorizado) return withCors(noAutorizado);
 
   if (event.httpMethod !== 'GET') {
     return withCors({ statusCode: 405, body: 'Method not allowed' });

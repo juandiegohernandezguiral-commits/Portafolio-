@@ -31,18 +31,56 @@ function json(statusCode, payload) {
   });
 }
 
+/* Rangos de red que NUNCA deben alcanzarse desde aqui.
+   Este endpoint hace que el SERVIDOR pida una URL que viene de fuera, y eso es
+   un SSRF de manual: sin esta lista, una URL como
+   https://169.254.169.254/calendar/?authtoken=x haria que el backend
+   consultara el servicio de metadatos de la nube y devolviera el resultado.
+   Tambien valdria para escanear la red interna del proveedor.
+
+   Exigir el token del panel ya limita quien puede intentarlo, pero eso es una
+   puerta, no un muro: si el token se filtra alguna vez, esto es lo que impide
+   que el fallo pase de "leen mi calendario" a "leen credenciales del servidor". */
+const HOSTS_PROHIBIDOS = [
+  /^localhost$/i,
+  /^127\./,                       // bucle local
+  /^0\./,
+  /^10\./,                        // privada clase A
+  /^192\.168\./,                  // privada clase C
+  /^172\.(1[6-9]|2\d|3[01])\./,   // privada clase B
+  /^169\.254\./,                  // enlace local Y metadatos de la nube
+  /^\[?::1\]?$/,                  // bucle local IPv6
+  /^\[?f[cd]/i,                   // IPv6 privada (fc00::/7)
+  /\.local$/i, /\.internal$/i,
+];
+
 /**
- * Sólo se aceptan URLs que parezcan un calendario de Moodle.
+ * Valida la URL de un calendario de Moodle antes de que el servidor la pida.
  *
- * El endpoint ya exige SYNC_TOKEN, así que quien llega aquí es el dueño del
- * panel — pero dejar que el servidor busque cualquier URL que le manden es una
- * puerta que no hay razón para dejar abierta, y además un error de tecleo no
- * debería acabar en una petición a un sitio cualquiera.
+ * Dos clases de comprobacion, y conviene no confundirlas:
+ *   - Las de FORMA (https, /calendar/, authtoken) existen para que un error de
+ *     tecleo no acabe en una peticion a un sitio cualquiera.
+ *   - Las de DESTINO (abajo) existen para que ni siquiera una URL bien formada
+ *     pueda apuntar a la red interna del servidor.
  */
 function urlValida(raw) {
   let u;
   try { u = new URL(raw); } catch { return 'No es una URL válida.'; }
   if (u.protocol !== 'https:') return 'La URL tiene que ser https.';
+
+  const host = (u.hostname || '').toLowerCase();
+  if (HOSTS_PROHIBIDOS.some(re => re.test(host))) {
+    return 'Esa dirección apunta a una red interna y no se puede consultar.';
+  }
+  // Un host sin punto no es un dominio publico: es un nombre de la red local.
+  if (!host.includes('.')) {
+    return 'Esa dirección no es un dominio público.';
+  }
+  // Credenciales embebidas (https://user:pass@host) son señal de URL manipulada.
+  if (u.username || u.password) {
+    return 'La URL no debe llevar usuario ni contraseña dentro.';
+  }
+
   if (!u.pathname.includes('/calendar/')) {
     return 'No parece un calendario de Moodle: la ruta debería contener /calendar/.';
   }
@@ -216,7 +254,30 @@ exports.handler = async (event) => {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
   try {
-    const res = await fetch(url, { signal: ctrl.signal, redirect: 'follow' });
+    /* Las redirecciones se siguen A MANO, validando cada salto.
+       Con redirect:'follow' la comprobacion de host de urlValida() no sirve de
+       nada: basta un dominio publico que responda 302 hacia 169.254.169.254
+       para que fetch lo siga por su cuenta y el servidor acabe pidiendo
+       justo la direccion que se acababa de prohibir. Validar solo la primera
+       URL es validar la puerta y dejar la ventana abierta. */
+    let res = await fetch(url, { signal: ctrl.signal, redirect: 'manual' });
+    let saltos = 0;
+    while (res.status >= 300 && res.status < 400 && saltos < 3) {
+      const destino = res.headers.get('location');
+      if (!destino) break;
+      const absoluto = new URL(destino, url).toString();
+      const malo = urlValida(absoluto);
+      if (malo) {
+        return json(400, { error: 'redirect_no_permitido',
+          message: 'El calendario redirige a una dirección que no se puede seguir: ' + malo });
+      }
+      saltos++;
+      res = await fetch(absoluto, { signal: ctrl.signal, redirect: 'manual' });
+    }
+    if (res.status >= 300 && res.status < 400) {
+      return json(400, { error: 'demasiadas_redirecciones',
+        message: 'El calendario redirige demasiadas veces.' });
+    }
     const texto = await res.text();
 
     if (!res.ok) {

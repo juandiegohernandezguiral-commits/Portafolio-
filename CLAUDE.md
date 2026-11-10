@@ -93,6 +93,16 @@ cabeceras aunque el sitio sea de un solo dominio).
 
 - **Bump `SW_VERSION` in `sw.js`** after changing any file in its `SHELL_ASSETS` list, or
   returning visitors keep the cached old shell.
+- **Todo endpoint que lea o escriba algo del usuario exige `SYNC_TOKEN`.** Sin excepciones. La
+  revisión de seguridad encontró tres abiertos, y en los tres el razonamiento para dejarlos así
+  había sido "no devuelve el secreto" — que no es lo mismo que "no devuelve nada sensible":
+  `notion-tasks` servía las tareas privadas de Notion a cualquiera, y `push-subscribe` /
+  `sync-external-summary` escribían en claves fijas cuyo contenido acaba llegando al teléfono del
+  usuario como notificación. Al añadir un endpoint nuevo, la pregunta no es "¿expone una
+  credencial?" sino "¿quién debería poder llamarlo?".
+- **`study-ical.js` hace que el servidor pida una URL de fuera.** Valida host (lista de rangos
+  privados) Y cada redirección a mano: con `redirect: 'follow'`, un dominio público que responda
+  302 hacia `169.254.169.254` salta la validación entera.
 - **The `ACCESS_PIN` is not security.** It's a plain string in a file anyone can read; it keeps
   casual visitors out of the panel and nothing more. Real secrets belong in the backend's
   environment variables.
