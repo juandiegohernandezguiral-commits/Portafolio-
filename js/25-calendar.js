@@ -29,6 +29,7 @@ const calUi = {
   mes: null,                                   // Date del primer día del mes visible
   diaSel: null,                                // 'YYYY-MM-DD' del día abierto
   ocultas: new Set(store.get('calOcultas', [])),
+  alta: store.get('calAlta', 'evento'),      // que se crea con el campo rapido
 };
 
 /* ---- fechas: clave local, nunca UTC ----
@@ -229,6 +230,12 @@ function renderEvents() {
           </div>
         </div>
 
+        ${calUi.ocultas.size ? `
+          <p class="meta-label text-amber-500 mb-2">
+            ${calUi.ocultas.size} fuente${calUi.ocultas.size > 1 ? 's ocultas' : ' oculta'} ·
+            <button type="button" data-cal-ver-todo class="underline hover:text-accent">mostrar todo</button>
+          </p>` : ''}
+
         <div class="cal-cabecera">
           ${['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
             .map(d => `<span>${d}</span>`).join('')}
@@ -244,17 +251,30 @@ function renderEvents() {
           </h3>
         </div>
 
-        <form data-cal-alta class="flex gap-2 mb-4">
-          <input name="titulo" placeholder="Añadir algo este día" autocomplete="off"
-            class="flex-1 min-w-0 surface-soft rounded-xl px-3 py-2.5 text-sm focus:border-accent focus:outline-none" />
-          <button type="submit" class="px-3 py-2.5 rounded-xl bg-accent text-white mono text-[10px] uppercase tracking-[0.1em] shrink-0">+</button>
-        </form>
+        ${calFormAlta()}
 
-        ${delSel.length ? `<div class="space-y-1.5">${delSel.map(calFilaItem).join('')}</div>` : `
-          <p class="text-neutral-500 text-xs leading-relaxed">
-            Nada este día. Escribe arriba para añadir un evento, o ponle fecha a una tarea
-            desde Tareas y aparece aquí.
-          </p>`}
+        ${delSel.length ? `<div class="space-y-1.5">${delSel.map(calFilaItem).join('')}</div>` : (() => {
+          /* Si hay filtros puestos, decirlo. Sin esto el dia se ve vacio
+             exactamente igual que si de verdad no hubiera nada, y el usuario
+             concluye que el calendario no funciona. Me paso a mi mismo
+             probandolo: cuatro fuentes ocultas de una prueba anterior y un dia
+             en blanco sin ninguna pista de por que. */
+          const escondidos = (porDia.get(calUi.diaSel) ? 0 : todos.filter(x => x.clave === calUi.diaSel).length);
+          if (escondidos > 0) {
+            return `
+              <p class="text-amber-500 text-xs leading-relaxed">
+                Hay ${escondidos} cosa${escondidos > 1 ? 's' : ''} este día, pero
+                ${escondidos > 1 ? 'están ocultas' : 'está oculta'} por los filtros de arriba.
+              </p>
+              <button type="button" data-cal-ver-todo
+                class="mt-2 w-full py-2 rounded-xl surface-soft hover:border-accent transition mono text-[10px] uppercase tracking-[0.1em]">Mostrar todo</button>`;
+          }
+          return `
+            <p class="text-neutral-500 text-xs leading-relaxed">
+              Nada este día. Escribe arriba para añadirlo, o ponle fecha a algo desde su vista
+              y aparece aquí.
+            </p>`;
+        })()}
 
         ${delSel.filter(x => !x.hecho).length >= 4 ? `
           <p class="text-amber-500 text-[11px] leading-relaxed mt-4 pt-3 border-t border-neutral-100 dark:border-white/5">
@@ -263,6 +283,67 @@ function renderEvents() {
           </p>` : ''}
       </aside>
     </div>`;
+}
+
+/**
+ * Alta rápida desde el panel del día.
+ *
+ * El selector existe porque sin él esta vista sólo sabía crear EVENTOS, y de
+ * las cinco cosas que muestra sólo una (el ITM) llega sola. Para apuntar una
+ * tarea o un pendiente de clase había que salir a otra vista, acordarse de
+ * ponerle la fecha, y volver — que en la práctica significa que no se hace y
+ * que el calendario deja de reflejar el día de verdad.
+ *
+ * Hábitos y proyectos NO están aquí a propósito: un hábito no es una cosa de
+ * un día (se define por su cadencia) y una entrega de proyecto no se crea, se
+ * le pone fecha a un proyecto que ya existe. Meterlos aquí sería un formulario
+ * que miente sobre lo que hace. Para esos hay un atajo a su vista.
+ */
+function calFormAlta() {
+  const tipos = [
+    ['evento',  'Evento',  'Algo que pasa ese día'],
+    ['tarea',   'Tarea',   'Algo que tienes que hacer'],
+    ['estudio', 'ITM',     'Entrega o parcial de clase'],
+  ];
+  const sel = calUi.alta;
+  const materias = (typeof studySubjects !== 'undefined' ? studySubjects : []);
+
+  return `
+    <form data-cal-alta class="mb-4">
+      <div class="flex gap-1 mb-2">
+        ${tipos.map(([k, label, ayuda]) => `
+          <button type="button" data-cal-tipo="${k}" title="${ayuda}"
+            class="flex-1 py-1.5 rounded-lg mono text-[9px] uppercase tracking-[0.1em] transition ${
+              sel === k ? 'bg-accent text-white' : 'surface-soft text-neutral-500 hover:text-accent'}">${label}</button>`).join('')}
+      </div>
+
+      <div class="flex gap-2">
+        <input name="titulo" placeholder="${
+          sel === 'tarea' ? '¿Qué hay que hacer?' :
+          sel === 'estudio' ? 'Entrega, quiz, parcial…' : 'Añadir algo este día'}" autocomplete="off"
+          class="flex-1 min-w-0 surface-soft rounded-xl px-3 py-2.5 text-sm focus:border-accent focus:outline-none" />
+        <button type="submit" class="px-3 py-2.5 rounded-xl bg-accent text-white mono text-[10px] uppercase tracking-[0.1em] shrink-0">+</button>
+      </div>
+
+      ${sel === 'estudio' ? (materias.length ? `
+        <select name="materia" class="w-full surface-soft rounded-xl px-3 py-2 mt-2 text-xs focus:border-accent focus:outline-none">
+          <option value="">Sin materia</option>
+          ${materias.map(m => `<option value="${m.id}">${escapeHtml(m.name)}</option>`).join('')}
+        </select>`
+        : `<p class="text-neutral-500 text-[11px] mt-2 leading-relaxed">
+             No tienes materias creadas. Se añadirá sin materia y podrás asignarla luego en Estudio.
+           </p>`) : ''}
+
+      <!-- Lo que NO se crea desde aqui, y a donde ir. Decirlo evita que se
+           busque un selector que no existe. -->
+      <div class="flex items-center gap-3 mt-2.5 flex-wrap">
+        <span class="meta-label text-neutral-500">También:</span>
+        <button type="button" data-cal-ir-vista="habits"
+          class="meta-label text-neutral-500 hover:text-accent transition">+ hábito</button>
+        <button type="button" data-cal-ir-vista="projects"
+          class="meta-label text-neutral-500 hover:text-accent transition">+ proyecto</button>
+      </div>
+    </form>`;
 }
 
 function calFilaItem(it) {
@@ -312,8 +393,28 @@ document.addEventListener('click', e => {
     return;
   }
 
+  const tipo = e.target.closest('[data-cal-tipo]');
+  if (tipo) {
+    calUi.alta = tipo.dataset.calTipo;
+    store.set('calAlta', calUi.alta);
+    renderEvents();
+    const campo = document.querySelector('[data-cal-alta] [name=titulo]');
+    if (campo) campo.focus();
+    return;
+  }
+
+  const irV = e.target.closest('[data-cal-ir-vista]');
+  if (irV) { showView(irV.dataset.calIrVista); return; }
+
   const dia = e.target.closest('[data-cal-dia]');
   if (dia) { calUi.diaSel = dia.dataset.calDia; renderEvents(); return; }
+
+  if (e.target.closest('[data-cal-ver-todo]')) {
+    calUi.ocultas.clear();
+    store.set('calOcultas', []);
+    renderEvents();
+    return;
+  }
 
   const fte = e.target.closest('[data-cal-fuente]');
   if (fte) {
@@ -382,14 +483,33 @@ document.addEventListener('submit', e => {
   const titulo = (form.titulo.value || '').trim();
   if (!titulo) return;
 
-  /* Se crea a las 9:00 del día seleccionado y no a medianoche: un evento a las
-     00:00 se lee como "ayer por la noche" y además sale el primero de la lista
-     por encima de cosas que sí tienen hora. */
-  events.push(touch({
-    id: uid(), title: titulo,
-    date: `${calUi.diaSel}T09:00`,
-    createdAt: Date.now(),
-  }));
+  /* Las horas por defecto no son arbitrarias:
+       - Un EVENTO a las 09:00 y no a medianoche, porque a las 00:00 se lee como
+         "ayer por la noche" y ademas se cuela el primero de la lista por encima
+         de cosas que si tienen hora puesta.
+       - Una TAREA y un pendiente del ITM a las 23:59, que es como se entiende
+         "para el viernes": tienes el dia entero. A las 00:00 nacerian vencidos
+         durante todo ese dia. Es la misma razon por la que el parser del
+         calendario del ITM fija los eventos de dia completo a mediodia. */
+  if (calUi.alta === 'tarea') {
+    tasks.push(touch({
+      id: uid(), title: titulo, desc: '', priority: 'media', status: 'todo',
+      repeat: 'none', due: `${calUi.diaSel}T23:59`, projectId: null, createdAt: Date.now(),
+    }));
+  } else if (calUi.alta === 'estudio') {
+    const materia = form.materia ? form.materia.value : '';
+    studyItems.push(touch({
+      id: uid(), createdAt: Date.now(), source: 'manual', done: false,
+      title: titulo, subjectId: materia || '', kind: 'tarea',
+      due: `${calUi.diaSel}T23:59`, weight: 0, grade: null, notes: '',
+    }));
+  } else {
+    events.push(touch({
+      id: uid(), title: titulo,
+      date: `${calUi.diaSel}T09:00`,
+      createdAt: Date.now(),
+    }));
+  }
   saveAll();
   renderEvents();
   const nuevo = document.querySelector('[data-cal-alta] [name=titulo]');

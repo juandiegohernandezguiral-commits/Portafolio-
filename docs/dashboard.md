@@ -45,7 +45,33 @@ open/close cycles don't degrade, and closing the browser mid-session leaves `the
   syntax: `!alta` / `!media` / `!baja` for priority, `hoy` / `mañana` for a due date.
 - **Overview** — summary stats pulled from all other modules
 - **Agenda** — two tabs, switched with `showAgendaTab()`:
-  - **Calendario** — original events view; events stored as `jdh_events`
+  - **Calendario** (`js/25-calendar.js`) — month grid that merges the **five dated sources** in
+    the panel: `events`, `tasks` with a `due`, `studyItems` from the ITM, project `deadline`s and
+    habits (derived from their cadence for the visible range only — materialising them would turn
+    them into records to sync and prune).
+
+    That merge is the point. Knowing there's a midterm on Friday is useless if a project is due
+    the same Friday and three tasks are overdue, each living in a different view. Days with three
+    or more pending items get an amber bar, and the day panel says so.
+
+    **Quick-add creates events, tasks *or* ITM items** — of the five sources only the ITM one
+    arrives on its own, so without a type selector you had to leave for another view, remember to
+    set the date, and come back; in practice that means it doesn't happen and the calendar stops
+    reflecting the real day. Habits and projects are deliberately *not* here: a habit isn't a
+    one-day thing and a project deadline isn't created, it's set on a project that already
+    exists. Both get a shortcut to their own view instead.
+
+    Default times aren't arbitrary: events at 09:00 (at 00:00 they read as "last night" and sort
+    above things that do have a time), tasks and ITM items at 23:59 — "for Friday" means you have
+    the day; at 00:00 they'd be born overdue.
+
+    **Day keys are LOCAL, never UTC.** `toISOString().slice(0,10)` would push everything after
+    19:00 into the next day's cell in Colombia — exactly the hours you plan tomorrow. Third time
+    this bug class has appeared in this project.
+
+    **Hidden filters are announced.** With sources filtered out, an empty day looks identical to a
+    genuinely empty one, and the conclusion is "the calendar is broken". It happened to me while
+    testing it.
   - **Centro de tareas** — bento-grid hub aggregating Trello, Outlook/To Do and Notion (see below)
 - **Tasks (Kanban)** — drag-and-drop 3-column board; data at `jdh_tasks`. Tasks carry an
   optional `due` (datetime-local string) and `repeat`
