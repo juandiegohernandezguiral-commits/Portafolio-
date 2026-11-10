@@ -194,7 +194,12 @@ function renderStudy() {
       : 'Lo que aprendes por fuera de la universidad: cursos, proyectos y lo que quieres dominar.';
   }
 
-  if (studyUi.tab === 'uni') renderUniversidad();
+  if (studyUi.tab === 'uni') {
+    renderUniversidad();
+    // Después de pintar: así la vista aparece ya y la sincronización, si toca,
+    // la refresca cuando termine en vez de retrasar el primer dibujo.
+    autoSyncMoodle();
+  }
   else renderDev();
 }
 
@@ -598,6 +603,42 @@ function materiaPorCurso(curso) {
  * si sincronizar borrara el 4.5 que ya te habían puesto, el panel sería una
  * trampa. Por eso los campos del usuario se preservan explícitamente.
  */
+/* Cada cuántas horas conviene volver a preguntarle al ITM.
+   Seis es el punto medio: los profesores no publican cada minuto, pero sí
+   pasa que ponen una entrega por la mañana para esa misma semana. Menos de
+   eso sería pedir por pedir; más y volvemos al problema de hoy — datos viejos
+   que parecen al día. */
+const MOODLE_HORAS_FRESCO = 6;
+
+/**
+ * Sincroniza con el ITM al abrir Estudio, si hace falta.
+ *
+ * Hasta ahora syncMoodle() SÓLO corría al pulsar el botón, y eso significaba
+ * que los pendientes estaban tan al día como lo último que te acordaste de
+ * pulsar. El efecto es peor que no tenerlos: una lista vieja no se ve vieja,
+ * se ve vacía, y de ahí a concluir "esto no está conectado" hay un paso.
+ *
+ * Va en silencio (interactive:false) a propósito: si falla, el aviso de la
+ * cabecera ya lo cuenta, y un toast de error cada vez que entras en Estudio
+ * por tener el wifi flojo es ruido que acaba ignorándose.
+ */
+function autoSyncMoodle() {
+  if (!moodleFeeds().length) return;
+  if (moodleState.status === 'syncing') return;
+  /* isStudyBackendReady() y NO isSyncConfigured(): esta última exige además
+     que la sincronización de datos esté activada, y traer del ITM no depende
+     de eso — sólo necesita la URL del backend y el token. Con la condición
+     equivocada, alguien con el sync pausado nunca volvería a recibir sus
+     entregas y no habría forma de saber por qué. */
+  if (typeof isStudyBackendReady === 'function' && !isStudyBackendReady()) return;
+
+  const ultima = moodleState.lastSync ? Date.parse(moodleState.lastSync) : 0;
+  const horas = (Date.now() - ultima) / 3600000;
+  if (ultima && horas < MOODLE_HORAS_FRESCO) return;
+
+  syncMoodle({ interactive: false });
+}
+
 async function syncMoodle({ interactive = false } = {}) {
   if (!isStudyBackendReady()) {
     if (interactive) alert('Primero configura la URL del backend y el SYNC_TOKEN en "Conectar cuentas" → Sincronización.');
