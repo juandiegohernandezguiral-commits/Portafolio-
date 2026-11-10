@@ -810,15 +810,10 @@
 
           <!-- Calendar tab -->
           <div data-agenda-panel="calendar">
-            <div class="surface rounded-2xl p-6 mb-6">
-              <h3 class="font-display font-bold mb-4">Agregar evento</h3>
-              <form id="event-form" class="grid md:grid-cols-4 gap-3">
-                <input name="title" required placeholder="Título" class="md:col-span-2 surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none" />
-                <input name="date" type="datetime-local" required class="surface-soft rounded-xl px-4 py-3 focus:border-accent focus:outline-none" />
-                <button type="submit" class="rounded-xl bg-accent text-white font-bold mono text-[11px] uppercase tracking-[0.25em]">Añadir</button>
-              </form>
-            </div>
-            <div class="surface rounded-2xl p-6"><h3 class="font-display font-bold mb-4">Eventos programados</h3><div id="events-list" class="space-y-2"></div></div>
+            <!-- Lo pinta entero js/25-calendar.js. El formulario de "agregar
+                 evento" que habia aqui se quito: ahora se añade desde el panel
+                 del dia, que ya sabe la fecha y no obliga a teclearla. -->
+            <div id="events-list"></div>
           </div>
 
           <!-- Task hub tab: Trello / Outlook / Notion aggregation + push notifications -->
@@ -2032,6 +2027,9 @@
 <!-- Habilidades: rellena la sub-pestana Desarrollo de Software. Reemplaza
      renderDev() de 22-study.js. Usa proyMinutos() de 23, de ahi que vaya despues. -->
 <script src="js/24-skills.js"></script>
+<!-- Calendario unificado: reemplaza renderEvents() de 05. Carga el ultimo
+     porque lee de 13 (habitos), 22 (ITM) y 23 (proyectos). -->
+<script src="js/25-calendar.js"></script>
 <script src="js/99-init.js"></script>
 </body>
 </html>

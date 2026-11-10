@@ -473,12 +473,25 @@ function renderOverview() {
     </div>`).join('') : '<div class="text-neutral-500 text-sm">Nada urgente.</div>';
 }
 
-document.getElementById('event-form').addEventListener('submit', e => {
-  e.preventDefault();
-  const fd = new FormData(e.target);
-  events.push(touch({ id: uid(), title: fd.get('title'), date: fd.get('date'), createdAt: Date.now() }));
-  saveAll(); e.target.reset(); renderEvents();
-});
+/* El formulario suelto de "agregar evento" se quito del marcado: ahora se
+   añade desde el panel del dia del calendario (js/25-calendar.js), que ya sabe
+   la fecha en vez de obligar a teclearla.
+
+   El escucha se deja con una guarda en vez de borrarlo del todo porque
+   getElementById devuelve null cuando el elemento no esta, y encadenar
+   .addEventListener sobre null lanza un TypeError que corta la ejecucion de
+   TODO este archivo a partir de aqui — el panel entero se queda sin kanban,
+   sin notas y sin backup, y en consola solo se ve un error en una linea que
+   no tiene nada que ver. */
+const eventForm = document.getElementById('event-form');
+if (eventForm) {
+  eventForm.addEventListener('submit', e => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    events.push(touch({ id: uid(), title: fd.get('title'), date: fd.get('date'), createdAt: Date.now() }));
+    saveAll(); e.target.reset(); renderEvents();
+  });
+}
 function renderEvents() {
   const sorted = [...events].sort((a,b) => new Date(a.date) - new Date(b.date));
   document.getElementById('events-list').innerHTML = sorted.length ? sorted.map(e => `

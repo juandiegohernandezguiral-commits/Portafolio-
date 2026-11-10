@@ -13,7 +13,7 @@
  * invalida la caché anterior y fuerza a los clientes a recoger la nueva.
  */
 
-const SW_VERSION = 'jdh-sw-v11';
+const SW_VERSION = 'jdh-sw-v12';
 const SHELL_CACHE = `${SW_VERSION}-shell`;
 const RUNTIME_CACHE = `${SW_VERSION}-runtime`;
 
@@ -50,6 +50,7 @@ const SHELL_ASSETS = [
   './js/22-study.js',
   './js/23-projects.js',
   './js/24-skills.js',
+  './js/25-calendar.js',
   './medellin-hero.jpg',
   './js/99-init.js',
   './icon.svg',

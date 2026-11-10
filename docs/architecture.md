@@ -38,6 +38,7 @@ one:
 | `js/22-study.js` | Estudio: Universidad (ITM) y Desarrollo de Software. Defines `renderStudy`, `subjectStats`, `syncMoodle`, `interpretarCaptura` |
 | `js/23-projects.js` | Proyectos: tipos, estados y detección de abandono. **Reemplaza** `renderProjects()` de 05 — el de allí es código muerto, incluidos sus manejadores de click. Usa `statTile()` de 19 |
 | `js/24-skills.js` | Mapa de habilidades: nivel autodeclarado + evidencia medida. **Reemplaza** `renderDev()` de 22. Usa `tieneEtiqueta()` de 22 y `proyMinutos()` de 23, de ahí que cargue el último de los tres |
+| `js/25-calendar.js` | Calendario unificado: cruza eventos, tareas, entregas del ITM, fechas de proyectos y hábitos. **Reemplaza** `renderEvents()` de 05. Carga el último porque lee de 13, 22 y 23 |
 | `js/99-init.js` | Dashboard seed + migrations, nav highlight, `#hoy` PWA shortcut. Must load last |
 
 Two consequences worth remembering when editing:
@@ -98,7 +99,11 @@ Two consequences worth remembering when editing:
   que esa vista existe en vez de ser una lista. Si fallara hacia el lado permisivo se convierte en
   un inventario de cosas que *crees* saber; hacia el estricto, te regaña por estar empezando.
 
-All seven are plain `node` scripts with no dependencies and no test runner. `npm test` runs them
+- `node tests/calendar.test.js` — la clave de día (que tiene que ser LOCAL: en UTC todo lo de
+  después de las 19:00 caería en la casilla del día siguiente) y que las cinco fuentes lleguen.
+  Si una deja de aparecer, la vista se sigue viendo perfecta y miente por omisión.
+
+All eight are plain `node` scripts with no dependencies and no test runner. `npm test` runs them
 in sequence.
 
 ## External dependencies (CDN, no local copies)

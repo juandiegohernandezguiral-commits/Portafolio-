@@ -745,3 +745,46 @@ html.dark .mapa-cara { stroke: rgba(0,0,0,.35); }
   background: rgba(120,120,130,.28);
 }
 html.dark .skill-puntos i { background: rgba(255,255,255,.14); }
+
+/* ---- Calendario del panel (js/25-calendar.js) ---- */
+.cal-cabecera {
+  display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 4px;
+}
+.cal-cabecera span {
+  text-align: center; font-size: 10px; letter-spacing: .1em; text-transform: uppercase;
+  color: #8a8a93; font-family: 'JetBrains Mono', monospace;
+}
+.cal-rejilla { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+
+.cal-dia {
+  position: relative; aspect-ratio: 1 / .88; min-height: 58px;
+  display: flex; flex-direction: column; align-items: flex-start; justify-content: space-between;
+  padding: .45rem .5rem; border-radius: .7rem; text-align: left;
+  background: #fafafa; border: 1px solid #ededed;
+  transition: border-color .15s, background .15s;
+}
+html.dark .cal-dia { background: rgba(255,255,255,.025); border-color: rgba(255,255,255,.06); }
+.cal-dia:hover { border-color: var(--accent); }
+.cal-vacio { background: transparent; border-color: transparent; pointer-events: none; }
+.cal-dia.es-pasado .cal-num { opacity: .45; }
+.cal-dia.es-hoy { border-color: var(--accent); }
+.cal-dia.es-hoy .cal-num { color: var(--accent); font-weight: 700; }
+.cal-dia.es-sel { background: rgba(38,103,255,.10); border-color: var(--accent); }
+
+.cal-num { font-size: 12px; font-family: 'JetBrains Mono', monospace; line-height: 1; }
+.cal-marcas { display: flex; gap: 3px; flex-wrap: wrap; align-items: center; }
+.cal-marcas i { width: 5px; height: 5px; border-radius: 50%; display: block; }
+.cal-marcas i.cal-mas {
+  width: auto; height: auto; font-size: 9px; font-style: normal; color: #8a8a93; line-height: 1;
+}
+/* Franja superior en los dias con tres o mas cosas pendientes: el aviso de
+   sobrecarga tiene que verse sin contar puntos uno a uno. */
+.cal-carga {
+  position: absolute; top: 0; left: .5rem; right: .5rem; height: 2px;
+  border-radius: 0 0 2px 2px; background: #f59e0b;
+}
+
+@media (max-width: 640px) {
+  .cal-dia { min-height: 46px; padding: .35rem .3rem; }
+  .cal-num { font-size: 11px; }
+}
