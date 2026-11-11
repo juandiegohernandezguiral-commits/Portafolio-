@@ -245,12 +245,25 @@
 [[headers]]
   for = "/*"
   [headers.values]
+    # LOS CDN VAN TAMBIEN EN connect-src, Y NO ES REDUNDANTE.
+    # El service worker intercepta esas peticiones (ver CACHEABLE_ORIGINS en
+    # sw.js) y las pide EL con fetch(). Un fetch hecho desde un service worker
+    # se rige por connect-src, no por script-src. Sin los CDN ahi, la CSP
+    # bloquea ese fetch, staleWhileRevalidate() no encuentra copia en cache y
+    # lanza, y el navegador presenta el fallo como un 503 — con la pagina
+    # entera sin Tailwind ni GSAP.
+    #
+    # Lo peor del fallo es como se ve: curl descarga los CDN sin problema
+    # (no pasa por el service worker) y la consola no muestra violacion de CSP,
+    # asi que parece que los CDN se han caido. Si alguna vez se añade un origen
+    # nuevo a CACHEABLE_ORIGINS en sw.js, tiene que entrar aqui tambien.
+    #
     # 'unsafe-inline' en script-src es inevitable hoy: Tailwind CDN se configura
     # con un <script> inline y el sitio tiene dos mas. Quitarlo exigiria un paso
     # de compilacion, que es justo la restriccion que este proyecto mantiene a
     # proposito. Aun asi la CSP sigue sirviendo: bloquea cargar scripts de
     # dominios ajenos y mandar datos a cualquier sitio (connect-src).
-    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://unpkg.com https://cdn.jsdelivr.net https://alcdn.msauth.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; media-src 'self' blob:; connect-src 'self' https://api.trello.com https://graph.microsoft.com https://login.microsoftonline.com https://fonts.gstatic.com; frame-src https://login.microsoftonline.com; worker-src 'self'; manifest-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'; upgrade-insecure-requests"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://unpkg.com https://cdn.jsdelivr.net https://alcdn.msauth.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; media-src 'self' blob:; connect-src 'self' https://api.trello.com https://graph.microsoft.com https://login.microsoftonline.com https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://unpkg.com https://cdn.jsdelivr.net https://fonts.googleapis.com https://fonts.gstatic.com; frame-src https://login.microsoftonline.com; worker-src 'self'; manifest-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'; upgrade-insecure-requests"
 
     # Clickjacking: sin esto, cualquiera puede meter el sitio en un <iframe>
     # invisible y superponer su propio teclado sobre el PIN del panel.
