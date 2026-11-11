@@ -36,6 +36,31 @@
   publish = "."
   functions = "netlify/functions"
 
+  # En TOML, una tabla anidada se queda con TODO lo que venga despues hasta la
+  # siguiente cabecera. Por eso [build.environment] va al final de [build]: si
+  # se pone en medio, las claves de abajo (functions) caen dentro de ella y
+  # Netlify deja de encontrar el backend. Paso al escribir esto.
+  [build.environment]
+    # ---- Escaneo de secretos de Netlify ----
+    # VAPID_SUBJECT se excluye porque NO es un secreto, ni por diseño ni aquí.
+    #
+    # Por diseño: el estandar de Web Push (RFC 8292) define ese campo como un
+    # `mailto:` que identifica a quien contactar si hay problemas con tus
+    # notificaciones. Viaja en CADA peticion push. Esta hecho para ser visible.
+    #
+    # Y aqui en concreto: su valor es el correo de contacto publico del
+    # portafolio, el mismo que aparece como enlace en index.html porque se
+    # quiere que la gente lo use.
+    #
+    # El escaner compara cadenas literalmente y no distingue entre "una clave
+    # filtrada" y "un correo publico que ademas esta en una variable". Fallaba
+    # el despliegue entero por eso.
+    #
+    # OJO: esto excluye SOLO esa clave. VAPID_PRIVATE_KEY, SYNC_TOKEN,
+    # BLOBS_TOKEN y GEMINI_API_KEY siguen vigilados, y deben seguir asi — si
+    # alguno de esos salta, es un problema de verdad y no se silencia.
+    SECRETS_SCAN_OMIT_KEYS = "VAPID_SUBJECT"
+
 [functions]
   # Sin node_bundler explícito: se usa el de Netlify por defecto.
   #
