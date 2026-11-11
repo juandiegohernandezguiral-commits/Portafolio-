@@ -294,6 +294,20 @@ async function renderOutlookTasks() {
 
    Es el MISMO token del sync (SYNC_TOKEN en Netlify), que el panel ya tiene
    configurado; no hace falta uno nuevo. */
+/* URL base del backend PROPIO.
+   Antes cada sitio la sacaba de donde podia, y push la pedia a
+   integrations.notion.proxyUrl — que no tiene nada que ver con las
+   notificaciones. Si no habias configurado Notion, activar push fallaba con un
+   mensaje que te mandaba a configurar Notion. Ahora manda la URL del sync (que
+   es el mismo sitio), con el proxy de Notion de reserva y, si no hay ninguna,
+   ruta relativa: el portafolio y las funciones se sirven del MISMO dominio, asi
+   que '/push/subscribe' funciona tal cual. */
+function backendBaseUrl() {
+  const u = ((integrations.sync && integrations.sync.url) ||
+             (integrations.notion && integrations.notion.proxyUrl) || '').trim();
+  return u.replace(/\/$/, '');
+}
+
 function backendHeaders(extra) {
   const t = ((integrations.sync && integrations.sync.token) || '').trim();
   const h = Object.assign({}, extra || {});
@@ -315,8 +329,10 @@ function backendAuthError(res) {
 }
 
 async function fetchNotionTasks() {
-  const proxyUrl = integrations.notion.proxyUrl.replace(/\/$/, '');
-  const res = await fetch(`${proxyUrl}/notion/tasks`, { headers: backendHeaders() });
+  // backendBaseUrl() y no el proxy de Notion a secas: /notion/tasks lo sirve
+  // ESTE backend, el mismo que el sync. Si alguien configuró el sync pero no
+  // "Notion", la URL estaba vacía y la petición se iba a la raíz del sitio.
+  const res = await fetch(`${backendBaseUrl()}/notion/tasks`, { headers: backendHeaders() });
   const authErr = backendAuthError(res);
   if (authErr) throw new Error(authErr);
   if (!res.ok) throw new Error(`Proxy de Notion respondió ${res.status}`);
@@ -372,7 +388,7 @@ async function syncExternalSummaryToBackend(combinedItems) {
     .slice(0, 50)
     .map(it => ({ id: it.id, title: it.title, due: it.due ? it.due.toISOString() : null, source: it.sourceName.toLowerCase() }));
   try {
-    await fetch(`${proxyUrl.replace(/\/$/, '')}/sync/external-summary`, {
+    await fetch(`${backendBaseUrl()}/sync/external-summary`, {
       method: 'POST',
       headers: backendHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ items }),
@@ -653,17 +669,42 @@ function urlBase64ToUint8Array(base64String) {
   return output;
 }
 
+/* Activar las notificaciones push.
+ *
+ * Cada salida dice POR QUE sale. La version anterior tenia dos caminos mudos:
+ * si el permiso no se concedia hacia `return` sin mas, y si faltaban datos
+ * mandaba a configurar Notion — que no pinta nada aqui. Desde fuera las dos
+ * cosas se veian igual: pulsas «Activar» y no pasa absolutamente nada, sin
+ * saber si fallo, si hay que esperar, o si ya quedo activado. */
 document.getElementById('enable-notifications-btn')?.addEventListener('click', async () => {
-  if (!('Notification' in window)) return;
+  if (!('Notification' in window)) {
+    toast('Este navegador no soporta notificaciones', { type: 'error' });
+    return;
+  }
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+    toast('Este navegador no soporta notificaciones push', { type: 'error' });
+    return;
+  }
+
+  const vapidPublicKey = (integrations.push.vapidPublicKey || '').trim();
+  if (!vapidPublicKey) {
+    toast('Falta la clave VAPID pública en Conectar cuentas', { type: 'error' });
+    return;
+  }
+
   try {
+    /* El permiso se pide ANTES de nada porque Chrome sólo muestra el diálogo
+       dentro del gesto del usuario: si se pide después de un await largo, la
+       ventana no aparece y parece que el botón está roto. */
     const perm = await Notification.requestPermission();
     renderNotifStatus();
-    if (perm !== 'granted' || !('serviceWorker' in navigator) || !('PushManager' in window)) return;
 
-    const vapidPublicKey = (integrations.push.vapidPublicKey || '').trim();
-    const proxyUrl = (integrations.notion.proxyUrl || '').trim();
-    if (!vapidPublicKey || !proxyUrl) {
-      alert('Faltan datos: configura la VAPID Public Key y la URL del proxy (backend) en "Conectar cuentas" → Notion / Notificaciones push antes de activar.');
+    if (perm === 'denied') {
+      toast('Bloqueaste las notificaciones para este sitio. Hay que reactivarlas en el candado de la barra de direcciones', { type: 'error' });
+      return;
+    }
+    if (perm !== 'granted') {
+      toast('Cerraste el aviso sin decidir. Vuelve a pulsar Activar', { type: 'error' });
       return;
     }
 
@@ -675,15 +716,30 @@ document.getElementById('enable-notifications-btn')?.addEventListener('click', a
         applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
       });
     }
-    // Registra la suscripción real en el backend (Netlify Blobs, ver /netlify/functions/push-subscribe.js).
-    // La suscripción no contiene credenciales de nada — solo el endpoint push del navegador.
-    await fetch(`${proxyUrl.replace(/\/$/, '')}/push/subscribe`, {
+
+    /* Registra la suscripción en el backend (Netlify Blobs, ver
+       /netlify/functions/push-subscribe.js). No contiene credenciales: sólo el
+       endpoint push que el navegador acaba de generar. */
+    const res = await fetch(`${backendBaseUrl()}/push/subscribe`, {
       method: 'POST',
       headers: backendHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify(sub),
     });
+
+    const authErr = backendAuthError(res);
+    if (authErr) { toast(authErr, { type: 'error' }); return; }
+    if (!res.ok) {
+      toast(`El backend rechazó la suscripción (${res.status})`, { type: 'error' });
+      return;
+    }
+
+    renderNotifStatus();
+    toast('Notificaciones activadas');
   } catch (err) {
     console.warn('[notifications] subscription failed:', err);
-    alert('No se pudo completar la suscripción a notificaciones push. Revisa la consola para más detalle.');
+    /* El mensaje del error importa y hay que enseñarlo: una clave VAPID que no
+       coincide con la del servidor falla aquí con "applicationServerKey is not
+       valid", y sin verlo es indistinguible de cualquier otro fallo. */
+    toast('No se pudo suscribir: ' + (err && err.message ? err.message : 'error desconocido'), { type: 'error' });
   }
 });
