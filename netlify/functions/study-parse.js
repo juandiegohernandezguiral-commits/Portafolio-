@@ -150,8 +150,15 @@ exports.handler = async (event) => {
     if (!process.env.GEMINI_API_KEY) {
       return json(503, { error: 'ai_not_configured', message: 'Falta GEMINI_API_KEY.' });
     }
-    const candidatos = [MODELO, 'gemini-2.5-flash', 'gemini-flash-latest',
-                        'gemini-2.5-flash-lite', 'gemini-2.5-pro'];
+    /* ?probe=1&solo=<modelo> prueba UNO. Hace falta porque cuando la clave
+       empieza a funcionar de verdad cada generacion tarda un par de segundos,
+       y cinco seguidas se pasan del limite de tiempo de la funcion: el 504
+       tapaba el resultado justo cuando por fin habia uno bueno que enseñar. */
+    const soloUno = (event.queryStringParameters || {}).solo;
+    const candidatos = soloUno
+      ? [soloUno]
+      : [MODELO, 'gemini-2.5-flash', 'gemini-flash-latest',
+         'gemini-2.5-flash-lite', 'gemini-2.5-pro'];
     const vistos = new Set();
     const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
     const resultados = [];
